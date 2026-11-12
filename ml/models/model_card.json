@@ -1,0 +1,53 @@
+{
+  "model_name": "BanyuWening Random Forest Water Quality Classifier",
+  "algorithm": "RandomForestClassifier",
+  "version": "1.0.0",
+  "accuracy": 1.0,
+  "macro_f1": 1.0,
+  "feature_columns": [
+    "ph",
+    "temperature_c",
+    "tds_ppm",
+    "turbidity_ntu",
+    "water_level",
+    "ph_deviation",
+    "temp_deviation",
+    "tds_ratio",
+    "water_stress_index"
+  ],
+  "feature_importances": {
+    "ph": 0.10180984134362729,
+    "temperature_c": 0.16054775986054257,
+    "tds_ppm": 0.038225339124801645,
+    "turbidity_ntu": 0.05839453842901941,
+    "water_level": 0.13618767238380056,
+    "ph_deviation": 0.002789128990950919,
+    "temp_deviation": 0.07720172537115426,
+    "tds_ratio": 0.035172816052324675,
+    "water_stress_index": 0.3896711784437788
+  },
+  "classes": {
+    "0": "AMAN",
+    "1": "WASPADA",
+    "2": "BAHAYA"
+  },
+  "confusion_matrix": [
+    [
+      407,
+      0,
+      0
+    ],
+    [
+      0,
+      51,
+      0
+    ],
+    [
+      0,
+      0,
+      42
+    ]
+  ],
+  "train_samples": 2000,
+  "test_samples": 500
+}

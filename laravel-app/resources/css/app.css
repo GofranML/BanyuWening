@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand palette from design.md - light theme */
+  --bg: #F2EFE7;
+  --surface: #FBFAF6;
+  --surface-2: #E9E5DA;
+  --line: #D9D4C7;
+  --ink: #14302D;
+  --muted: #55645F;
+  --brand: #33706A;
+  --brand-ink: #FFFFFF;
+
+  /* Status colors */
+  --aman-bg: #E4F0E7;
+  --aman-text: #24663F;
+  --aman: #267A4B;
+  --waspada-bg: #FAEFD6;
+  --waspada-text: #7A4E00;
+  --waspada: #A87000;
+  --bahaya-bg: #FBE3E0;
+  --bahaya-text: #A3221B;
+  --bahaya: #C62F25;
+  --offline-bg: #E8E6E0;
+  --offline-text: #4F5A57;
+  --offline: #7A8481;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0F2321;
+  --surface: #16302D;
+  --surface-2: #1D3A36;
+  --line: #2A4743;
+  --ink: #E8ECE9;
+  --muted: #9DB0AB;
+  --brand: #8CC2BA;
+  --brand-ink: #0F2321;
+
+  --aman-text: #7FD3A0;
+  --aman: #7FD3A0;
+  --aman-bg: color-mix(in srgb, #7FD3A0 16%, #16302D);
+  --waspada-text: #F2C46B;
+  --waspada: #F2C46B;
+  --waspada-bg: color-mix(in srgb, #F2C46B 16%, #16302D);
+  --bahaya-text: #FF9C92;
+  --bahaya: #FF9C92;
+  --bahaya-bg: color-mix(in srgb, #FF9C92 16%, #16302D);
+  --offline-text: #9DB0AB;
+  --offline: #9DB0AB;
+  --offline-bg: color-mix(in srgb, #9DB0AB 16%, #16302D);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+
+  --color-aman: var(--aman);
+  --color-aman-bg: var(--aman-bg);
+  --color-aman-text: var(--aman-text);
+  --color-waspada: var(--waspada);
+  --color-waspada-bg: var(--waspada-bg);
+  --color-waspada-text: var(--waspada-text);
+  --color-bahaya: var(--bahaya);
+  --color-bahaya-bg: var(--bahaya-bg);
+  --color-bahaya-text: var(--bahaya-text);
+  --color-offline: var(--offline);
+  --color-offline-bg: var(--offline-bg);
+  --color-offline-text: var(--offline-text);
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --radius-card: 6px;
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  ::selection { background: var(--brand); color: var(--brand-ink); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* Sleek custom scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
