@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Python Machine Learning Test Suite for BanyuWening
 Audits dataset integrity, preprocessing, features, inference, serialization, and edge cases.
 """
@@ -19,7 +19,7 @@ from predict import predict_single
 
 def audit_dataset():
     print("--- [1] AUDIT DATASET INTEGRITY ---")
-    csv_path = Path(__file__).resolve().parent / "datasets" / "sensor_readings.csv"
+    csv_path = Path(__file__).resolve().parent / "datasets" / "sensor_readings_dummy.csv"
     assert csv_path.exists(), f"Dataset file {csv_path} does not exist"
     
     df = pd.read_csv(csv_path)

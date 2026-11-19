@@ -1,4 +1,4 @@
-"""
+﻿"""
 Modul Pelatihan Model Random Forest BanyuWening
 Melatih model klasifikasi risiko kualitas air kolam lele (AMAN, WASPADA, BAHAYA)
 menggunakan Scikit-learn Random Forest dan menyimpannya via Joblib.
@@ -89,7 +89,7 @@ def train_and_save_model():
     datasets_dir.mkdir(parents=True, exist_ok=True)
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    csv_path = datasets_dir / "sensor_readings.csv"
+    csv_path = datasets_dir / "sensor_readings_dummy.csv"
     if csv_path.exists():
         print(f"[*] Memuat dataset aktual dari: {csv_path}")
         df_raw = pd.read_csv(csv_path)

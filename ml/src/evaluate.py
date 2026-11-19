@@ -1,4 +1,4 @@
-"""
+﻿"""
 Modul Evaluasi Model Machine Learning BanyuWening
 Menguji akurasi, matriks konfusi, dan kurva prediksi terhadap data uji.
 """
@@ -15,7 +15,7 @@ from features import transform_dataframe
 def evaluate_model():
     base_dir = Path(__file__).resolve().parent.parent
     model_path = base_dir / "models" / "random_forest_water_quality.joblib"
-    csv_path = base_dir / "datasets" / "sensor_readings.csv"
+    csv_path = base_dir / "datasets" / "sensor_readings_dummy.csv"
 
     if not model_path.exists() or not csv_path.exists():
         print("[-] Model atau dataset belum tersedia. Jalankan train.py terlebih dahulu.")

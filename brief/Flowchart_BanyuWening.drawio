@@ -1,0 +1,682 @@
+<mxfile host="app.diagrams.net" agent="Antigravity" pages="4">
+  <diagram id="p1" name="Hal 1 - Inisialisasi &amp; Failsafe">
+    <mxGraphModel dx="1493" dy="774" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hdr1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1.5;align=center;" value="&lt;b style=&#39;font-size: 15px;&#39;&gt;FLOWCHART SISTEM BANYUWENING - BAGIAN 1&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size: 11px; color: #475569;&#39;&gt;Inisialisasi Perangkat Keras, Kalibrasi Sensorik &amp;amp; Mode Offline Failsafe Mandiri (ESP32 Edge)&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="1080" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="2" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#334155;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Petambak / Operator Kolam&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Aktor Fisik, Operasional Kolam &amp; Tindakan Manual&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#065F46;strokeColor=#CBD5E1;fontColor=light-dark(#F19C99,#F19C99);fontStyle=1;fontSize=11;" value="&lt;b&gt;Node IoT ESP32 &amp;amp; Perangkat&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; font-weight: normal;&quot;&gt;Sensor Kolam, Relay 2-Ch, Aerator 12V &amp;amp; LCD 16x2&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="220" x="256" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#1E40AF;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Cloud Broker &amp; Backend FastAPI&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;HiveMQ MQTT TLS, API Render &amp; Telegram Service&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="476" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#6B21A8;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;ML Engine &amp; Supabase DB&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Inferensi XGBoost (1-3 Jam) &amp; PostgreSQL Tables&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="692" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#92400E;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Antarmuka Pengguna (UI)&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Web Dashboard Next.js (Vercel) &amp; Telegram Bot&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="906" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#1D4ED8;strokeWidth=1.5;fontColor=#1E3A8A;fontStyle=1;fontSize=10;" value="Mulai (Start Operasional)" vertex="1">
+          <mxGeometry height="36" width="150" x="73" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Petambak menyalakan sakelar daya&lt;br&gt;Adaptor 12V 5A &amp; Step-Down 5V" vertex="1">
+          <mxGeometry height="46" width="170" x="63" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Teknisi mencelupkan probe kaca ke&lt;br&gt;larutan buffer pH 4.01 &amp; 7.00" vertex="1">
+          <mxGeometry height="46" width="170" x="63" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.5;fontColor=#92400E;fontSize=10;" value="Lembar Catatan Log Kalibrasi&lt;br&gt;Sensor pH (Formulir Fisik)" vertex="1">
+          <mxGeometry height="48" width="160" x="68" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Pemasangan probe sensor pada&lt;br&gt;pipa PVC &amp; float switch kolam" vertex="1">
+          <mxGeometry height="46" width="170" x="63" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="8" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=1.5;fontColor=#1E293B;fontSize=10;" value="Inisialisasi GPIO ESP32, ADC 12-bit,&lt;br&gt;Serial 115200 &amp; Timer 30s" vertex="1">
+          <mxGeometry height="42" width="170" x="281" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=1.5;fontColor=#1E293B;fontSize=10;" value="Load Koefisien Kalibrasi &amp;&lt;br&gt;Kredensial WiFi/HiveMQ EEPROM" vertex="1">
+          <mxGeometry height="42" width="170" x="281" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="LCD 16x2 I2C Display:&lt;br&gt;&#39;Booting BanyuWening... WiFi&#39;" vertex="1">
+          <mxGeometry height="40" width="170" x="281" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="WiFi &amp; Broker MQTT&lt;br&gt;Terhubung?" vertex="1">
+          <mxGeometry height="60" width="130" x="301" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="16" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="148" y="460" />
+              <mxPoint x="266" y="460" />
+              <mxPoint x="266" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="17" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="18" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="19" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#F5F3FF;strokeColor=#6D28D9;strokeWidth=1.5;fontColor=#4C1D95;fontStyle=1;fontSize=10;" value="Call Routine_Offline_Failsafe()&lt;br&gt;(Proteksi Mandiri Lokal)" vertex="1">
+          <mxGeometry height="44" width="170" x="281" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Baca Mandiri Sensor Analog pH,&lt;br&gt;Suhu, TDS, Turbiditas, Float" vertex="1">
+          <mxGeometry height="44" width="170" x="281" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="pH &lt; 6.5 / &gt; 8.5 atau&lt;br&gt;Suhu &gt; 33 C?" vertex="1">
+          <mxGeometry height="60" width="130" x="301" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="jZ7Ws7IiJdssAM86VFp1-80" edge="1" parent="1" source="27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;defaultLabelBackgroundColor=page;">
+          <mxGeometry relative="1" x="-0.2929" as="geometry">
+            <Array as="points">
+              <mxPoint x="316" y="710" />
+              <mxPoint x="360" y="710" />
+            </Array>
+            <mxPoint x="380" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Relay ON (Darurat)&lt;br&gt;Aerator 12V Menyala" vertex="1">
+          <mxGeometry height="40" width="90" x="271" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Relay OFF (Normal)&lt;br&gt;Aerator Standby" vertex="1">
+          <mxGeometry height="40" width="90" x="371" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="jZ7Ws7IiJdssAM86VFp1-77" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;defaultLabelBackgroundColor=page;">
+          <mxGeometry relative="1" x="-0.1155" as="geometry">
+            <Array as="points">
+              <mxPoint x="261" y="748" />
+              <mxPoint x="261" y="310" />
+            </Array>
+            <mxPoint x="366" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="29" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="LCD 16x2 Display Status:&lt;br&gt;&#39;MODE OFFLINE: AKTIF&#39;" vertex="1">
+          <mxGeometry height="36" width="170" x="281" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="25" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="26" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;;exitX=0;exitY=0.5;entryX=0.125;entryY=0.029;entryDx=0;entryDy=0;entryPerimeter=0;" target="27" value="Ya">
+          <mxGeometry relative="1" x="0.229" as="geometry">
+            <Array as="points">
+              <mxPoint x="282.3" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="38" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="LCD 16x2 Display:&lt;br&gt;&#39;ONLINE: IP OK - MQTT CONNECTED&#39;" vertex="1">
+          <mxGeometry height="40" width="170" x="499" y="335" as="geometry" />
+        </mxCell>
+        <mxCell id="39" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Timer Interrupt ESP32:&lt;br&gt;Pemicu Sampling Tiap 30 Detik" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="40" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Akuisisi Sensor: pH, Suhu DS18B20,&lt;br&gt;TDS Meter, Turbiditas &amp; Float Switch" vertex="1">
+          <mxGeometry height="46" width="170" x="499" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="41" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Multisampling ADC 10x Averaging&lt;br&gt;&amp; Filter Digital Derau Sinyal" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="42" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Konversi Nilai Fisik: pH, Suhu C,&lt;br&gt;TDS ppm, Turbiditas NTU, Level" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="43" parent="1" style="shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#1E40AF;strokeWidth=1.5;fontColor=#1E40AF;fontStyle=1;fontSize=9.5;" value="[KE HALAMAN 2: TRANSMISI CLOUD]" vertex="1">
+          <mxGeometry height="44" width="160" x="504" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;" target="38" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="39" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="40" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="41" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="42" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="49" edge="1" parent="1" source="42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="43" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="50" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=1.5;fontColor=#1E293B;fontSize=10;" value="HiveMQ Cloud: Broker TLS Port 8883&lt;br&gt;Standby Listening Telemetri Kolam" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="51" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=1.5;fontColor=#1E293B;fontSize=10;" value="FastAPI Backend Service (Render)&lt;br&gt;Standby Subscribed banyuwening/#" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="52" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F0FDF4;strokeColor=#15803D;strokeWidth=1.5;fontColor=#14532D;fontSize=10;" value="Supabase PostgreSQL Database:&lt;br&gt;Connection Pool &amp; Schema Ready" vertex="1">
+          <mxGeometry height="44" width="170" x="499" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="53" edge="1" parent="1" source="50" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="51" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="54" edge="1" parent="1" source="51" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="52" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jZ7Ws7IiJdssAM86VFp1-58" edge="1" parent="1" source="19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.497;entryY=-0.077;entryDx=0;entryDy=0;entryPerimeter=0;defaultLabelBackgroundColor=page;fontColor=light-dark(#000000,#FB8E8E);" target="24" value="TIdak">
+          <mxGeometry relative="1" x="-0.0658" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jZ7Ws7IiJdssAM86VFp1-62" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.878;entryY=0.053;entryDx=0;entryDy=0;entryPerimeter=0;defaultLabelBackgroundColor=page;fontColor=light-dark(#F19C99,#F19C99);" target="28" value="Tidak">
+          <mxGeometry relative="1" x="0.2801" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jZ7Ws7IiJdssAM86VFp1-81" edge="1" parent="1" source="28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.581;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;defaultLabelBackgroundColor=page;" target="29">
+          <mxGeometry relative="1" x="-0.0351" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="p2" name="Hal 2 - Cloud MQTT &amp; ML XGBoost">
+    <mxGraphModel dx="1241" dy="643" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hdr2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1.5;align=center;" value="&lt;b style=&#39;font-size: 15px;&#39;&gt;FLOWCHART SISTEM BANYUWENING - BAGIAN 2&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size: 11px; color: #475569;&#39;&gt;Transmisi Data MQTT TLS, Validasi Backend FastAPI, PostgreSQL Supabase &amp;amp; Inferensi Prediksi XGBoost&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="1080" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="2" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#334155;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Petambak / Operator Kolam&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Aktor Fisik, Operasional Kolam &amp; Tindakan Manual&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#065F46;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Node IoT ESP32 &amp; Perangkat&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Sensor Kolam, Relay 2-Ch, Aerator 12V &amp; LCD 16x2&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="220" x="256" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#1E40AF;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Cloud Broker &amp; Backend FastAPI&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;HiveMQ MQTT TLS, API Render &amp; Telegram Service&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="476" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#6B21A8;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;ML Engine &amp; Supabase DB&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Inferensi XGBoost (1-3 Jam) &amp; PostgreSQL Tables&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="692" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#92400E;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Antarmuka Pengguna (UI)&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Web Dashboard Next.js (Vercel) &amp; Telegram Bot&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="906" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#1E40AF;strokeWidth=1.5;fontColor=#1E40AF;fontStyle=1;fontSize=9.5;" value="[DARI HALAMAN 1: TELEMETRI 30S]" vertex="1">
+          <mxGeometry height="40" width="170" x="281" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Serialisasi Format JSON Telemetri:&lt;br&gt;device_id, ts, pH, Temp, TDS, Turb" vertex="1">
+          <mxGeometry height="42" width="170" x="281" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Publish MQTT Topic: banyuwening/telemetry&lt;br&gt;(Port 8883 dengan Enkripsi TLS)" vertex="1">
+          <mxGeometry height="46" width="170" x="281" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="10" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="8" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Broker HiveMQ Cloud Menerima Paket &amp;&lt;br&gt;Meneruskan ke FastAPI Subscriber" vertex="1">
+          <mxGeometry height="46" width="170" x="499" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="FastAPI Subscriber (Cloud Render)&lt;br&gt;Menangkap Payload JSON Telemetri" vertex="1">
+          <mxGeometry height="44" width="170" x="499" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="Validasi Integritas Payload:&lt;br&gt;Format Valid &amp; Rentang Normal?" vertex="1">
+          <mxGeometry height="60" width="140" x="514" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Catat Log Error: Paket Corrupt&lt;br&gt;atau Nilai Out-of-Range" vertex="1">
+          <mxGeometry height="40" width="170" x="499" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#FFFFFF;strokeColor=#0F172A;strokeWidth=1.5;fontColor=#0F172A;fontStyle=1;fontSize=11;" value="A" vertex="1">
+          <mxGeometry height="30" width="30" x="569" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#B91C1C;" target="15" value="Tidak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Parsing Payload JSON Telemetri &amp;&lt;br&gt;Siapkan Struktur Kolom SQL" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;" target="22" value="Ya">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="425" />
+              <mxPoint x="680" y="616" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Eksekusi SQL Insert Data Telemetri&lt;br&gt;ke Supabase PostgreSQL" vertex="1">
+          <mxGeometry height="44" width="170" x="714" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F0FDF4;strokeColor=#15803D;strokeWidth=1.5;fontColor=#14532D;fontSize=10;" value="Supabase PostgreSQL:&lt;br&gt;Tabel sensor_readings (Time-Series)" vertex="1">
+          <mxGeometry height="48" width="170" x="714" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Query Riwayat Telemetri 1-2 Jam:&lt;br&gt;Ambil Deret Waktu Sensor Terakhir" vertex="1">
+          <mxGeometry height="44" width="170" x="714" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Feature Engineering: Rolling Mean (1 Jam)&lt;br&gt;&amp; Slope Laju Perubahan (dpH/dt, dTemp/dt)" vertex="1">
+          <mxGeometry height="46" width="170" x="714" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#F5F3FF;strokeColor=#6D28D9;strokeWidth=1.5;fontColor=#4C1D95;fontStyle=1;fontSize=10;" value="Call Subprogram XGBoost Model:&lt;br&gt;Predict_Water_Risk(features)" vertex="1">
+          <mxGeometry height="46" width="170" x="714" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="29" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Output Prediksi: Kelas Risiko&lt;br&gt;(Aman, Waspada, Bahaya) &amp; Probabilitas" vertex="1">
+          <mxGeometry height="46" width="170" x="714" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F0FDF4;strokeColor=#15803D;strokeWidth=1.5;fontColor=#14532D;fontSize=10;" value="Supabase PostgreSQL:&lt;br&gt;Tabel prediction_results &amp; alerts" vertex="1">
+          <mxGeometry height="48" width="170" x="714" y="605" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="1" style="shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#1E40AF;strokeWidth=1.5;fontColor=#1E40AF;fontStyle=1;fontSize=9.5;" value="[KE HALAMAN 3: EVALUASI &amp; MITIGASI]" vertex="1">
+          <mxGeometry height="40" width="170" x="714" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="24" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="584" y="650" />
+              <mxPoint x="704" y="650" />
+              <mxPoint x="704" y="175" />
+              <mxPoint x="799" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="25" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="26" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="35" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="27" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="36" edge="1" parent="1" source="27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="28" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="37" edge="1" parent="1" source="28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="29" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="38" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="30" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="39" edge="1" parent="1" source="30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="31" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="p3" name="Hal 3 - Otomasi Aerator &amp; UI">
+    <mxGraphModel dx="1493" dy="774" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hdr3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1.5;align=center;" value="&lt;b style=&#39;font-size: 15px;&#39;&gt;FLOWCHART SISTEM BANYUWENING - BAGIAN 3&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size: 11px; color: #475569;&#39;&gt;Otomasi Mitigasi Aerator DC 12V, Peringatan Dini Bot Telegram, Visualisasi Dashboard Next.js &amp;amp; Kendali Manual&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="1080" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="2" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#334155;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Petambak / Operator Kolam&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Aktor Fisik, Operasional Kolam &amp; Tindakan Manual&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#065F46;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Node IoT ESP32 &amp; Perangkat&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Sensor Kolam, Relay 2-Ch, Aerator 12V &amp; LCD 16x2&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="220" x="256" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#1E40AF;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Cloud Broker &amp; Backend FastAPI&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;HiveMQ MQTT TLS, API Render &amp; Telegram Service&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="216" x="476" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#6B21A8;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;ML Engine &amp; Supabase DB&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Inferensi XGBoost (1-3 Jam) &amp; PostgreSQL Tables&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="692" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=36;horizontal=1;collapsible=0;dropTarget=0;fillColor=#92400E;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" value="&lt;b&gt;Antarmuka Pengguna (UI)&lt;/b&gt;&lt;br&gt;&lt;font style=&#39;font-size: 9px; font-weight: normal; color: #E2E8F0;&#39;&gt;Web Dashboard Next.js (Vercel) &amp; Telegram Bot&lt;/font&gt;" vertex="1">
+          <mxGeometry height="720" width="214" x="906" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#1E40AF;strokeWidth=1.5;fontColor=#1E40AF;fontStyle=1;fontSize=9.5;" value="[DARI HALAMAN 2: STATUS PREDIKSI ML]" vertex="1">
+          <mxGeometry height="38" width="170" x="499" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="Status Prediksi =&lt;br&gt;WASPADA atau BAHAYA?" vertex="1">
+          <mxGeometry height="60" width="140" x="514" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Generate JSON Command:&lt;br&gt;{&#39;relay&#39;: &#39;ON&#39;, &#39;mode&#39;: &#39;AUTO_MITIGATION&#39;}" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Publish MQTT ke Topic: banyuwening/control&lt;br&gt;(Cluster HiveMQ Cloud TLS)" vertex="1">
+          <mxGeometry height="44" width="170" x="499" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#F5F3FF;strokeColor=#6D28D9;strokeWidth=1.5;fontColor=#4C1D95;fontStyle=1;fontSize=10;" value="Call Telegram_Notification_Service()&lt;br&gt;Susun Pesan HTML Early Warning Kritis" vertex="1">
+          <mxGeometry height="46" width="170" x="499" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="kJDb2Rf6nYtFG4neG0QI-60" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;defaultLabelBackgroundColor=page;entryX=0.625;entryY=1;entryDx=-11.5;entryDy=0;entryPerimeter=0;" target="34">
+          <mxGeometry relative="1" x="0.0131" as="geometry">
+            <Array as="points">
+              <mxPoint x="584" y="548" />
+              <mxPoint x="1023.8" y="548" />
+            </Array>
+            <mxPoint x="1020" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="HTTP POST Webhook ke Telegram Bot API&lt;br&gt;(Broadcast Peringatan Dini Petambak)" vertex="1">
+          <mxGeometry height="46" width="170" x="499" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Generate Status Standby Normal:&lt;br&gt;{&#39;relay&#39;: &#39;OFF&#39;, &#39;mode&#39;: &#39;MONITORING&#39;}" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Publish Command Standby ke MQTT&lt;br&gt;(Relay Aerator Tetap Normal)" vertex="1">
+          <mxGeometry height="42" width="170" x="499" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="8" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;" target="9" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#B91C1C;;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" target="13" value="Tidak (Aman)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="220" />
+              <mxPoint x="690" y="581" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="ESP32 Terima Payload di Topic:&lt;br&gt;banyuwening/control" vertex="1">
+          <mxGeometry height="44" width="170" x="281" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#F5F3FF;strokeColor=#6D28D9;strokeWidth=1.5;fontColor=#4C1D95;fontStyle=1;fontSize=10;" value="Call Execute_Aerator_Control(STATE)&lt;br&gt;(Rutin Pengendali Relay)" vertex="1">
+          <mxGeometry height="44" width="170" x="281" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="GPIO 25 = HIGH -&gt; Optocoupler Relay 2-Ch&lt;br&gt;Hubungkan Beban Adaptor 12V 5A" vertex="1">
+          <mxGeometry height="46" width="170" x="281" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" value="Motor Aerator DC 12V Aktif, Hembuskan&lt;br&gt;Gelembung O2 via Selang &amp; Batu Aerasi" vertex="1">
+          <mxGeometry height="46" width="170" x="281" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="LCD 16x2 Display Status:&lt;br&gt;&#39;AERATOR: ON (PREDIKSI MITIGASI)&#39;" vertex="1">
+          <mxGeometry height="40" width="170" x="281" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#1D4ED8;strokeWidth=1.5;fontColor=#1E3A8A;fontStyle=1;fontSize=10;" value="Loop Standby 30s" vertex="1">
+          <mxGeometry height="30" width="130" x="301" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="28" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="23" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="24" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="25" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="26" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="27" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="Telegram Mobile: Pop-Up Notifikasi&lt;br&gt;Pesan Early Warning Kritis Masuk ke HP" vertex="1">
+          <mxGeometry height="46" width="170" x="929" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" value="Next.js Fetch Data Real-Time via&lt;br&gt;REST API &amp; WebSocket FastAPI" vertex="1">
+          <mxGeometry height="44" width="170" x="928" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="36" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="Web Dashboard: Card KPI Telemetri&lt;br&gt;(pH, Suhu, TDS, Turbiditas, Water Level)" vertex="1">
+          <mxGeometry height="44" width="170" x="928" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="37" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="Web Dashboard: Badge Status Risiko&lt;br&gt;&amp; Visualisasi Grafik Tren Time-Series" vertex="1">
+          <mxGeometry height="44" width="170" x="928" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="38" parent="1" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" value="Web Dashboard: Indikator Sakelar&lt;br&gt;Aerator ON/OFF &amp; Jam Nyala" vertex="1">
+          <mxGeometry height="40" width="170" x="928" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="39" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#1D4ED8;strokeWidth=1.5;fontColor=#1E3A8A;fontStyle=1;fontSize=10;" value="Monitoring Kontinu" vertex="1">
+          <mxGeometry height="30" width="130" x="948" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="36" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="37" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="38" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="39" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Petambak membaca notifikasi darurat&lt;br&gt;Telegram &amp; cek grafik di Dashboard Web" vertex="1">
+          <mxGeometry height="46" width="170" x="63" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="46" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="Float Switch:&lt;br&gt;Level Air Surut?" vertex="1">
+          <mxGeometry height="55" width="130" x="83" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="47" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Petambak melakukan pengisian air&lt;br&gt;kolam terpal fisik hingga batas aman" vertex="1">
+          <mxGeometry height="44" width="170" x="63" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="48" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" value="Operator Butuh&lt;br&gt;Override Sakelar?" vertex="1">
+          <mxGeometry height="55" width="130" x="83" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="49" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" value="Operator klik Toggle Relay Manual&lt;br&gt;pada Dashboard Web Next.js" vertex="1">
+          <mxGeometry height="44" width="170" x="63" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="50" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.5;fontColor=#92400E;fontSize=10;" value="Ekspor Dokumen Laporan Rekapitulasi&lt;br&gt;Kualitas Air Kolam (PDF/Excel)" vertex="1">
+          <mxGeometry height="44" width="170" x="63" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="51" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#1D4ED8;strokeWidth=1.5;fontColor=#1E3A8A;fontStyle=1;fontSize=10;" value="SELESAI (Loop 30s)" vertex="1">
+          <mxGeometry height="30" width="130" x="83" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="52" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="45" value="">
+          <mxGeometry relative="1" x="0.01" as="geometry">
+            <Array as="points">
+              <mxPoint x="918" y="513" />
+              <mxPoint x="918" y="250" />
+              <mxPoint x="148" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="53" edge="1" parent="1" source="45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="46" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="54" edge="1" parent="1" source="46" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;" target="47" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="55" edge="1" parent="1" source="46" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#B91C1C;;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" target="48" value="Tidak">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="250" y="422.5" />
+              <mxPoint x="250" y="572.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="56" edge="1" parent="1" source="47" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="48" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="57" edge="1" parent="1" source="48" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#047857;" target="49" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="58" edge="1" parent="1" source="48" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#B91C1C;;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="50" value="Tidak">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="83" y="572" />
+              <mxPoint x="68" y="572" />
+              <mxPoint x="68" y="702" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="59" edge="1" parent="1" source="49" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="50" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="60" edge="1" parent="1" source="50" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0F172A;strokeWidth=1.5;fontSize=10;fontStyle=1;" target="51" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="p4" name="Hal 4 - Legenda &amp; Matriks Sistem">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hdr4" value="&lt;b style=&#39;font-size: 15px;&#39;&gt;LAMPIRAN STANDAR FLOWCHART &amp;amp; SPESIFIKASI SISTEM BANYUWENING&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size: 11px; color: #475569;&#39;&gt;Rujukan Standar Simbol Diagram Alir (ANSI X3.5 / ISO 5807), Matriks Ambang Batas Sensorik &amp;amp; Alokasi Pinout ESP32&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1.5;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1080" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="grp_leg" value="&lt;b style=&#39;font-size: 13px;&#39;&gt;1. LEGENDA RESMI SIMBOL DIAGRAM ALIR (ANSI / ISO)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;startSize=30;horizontal=1;collapsible=0;dropTarget=0;fillColor=#1E293B;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="530" height="710" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="Terminal" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#1D4ED8;strokeWidth=1.5;fontColor=#1E3A8A;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="125" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Terminal (START, END)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Menyatakan awal dan akhir aliran sistem (Mulai/Selesai).&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="121" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="Input" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;fontColor=#064E3B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="173" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Input / Output (READ, WRITE)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Operasi pembacaan ADC sensor, publish/subscribe MQTT, REST API.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="169" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="Proses" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="221" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Proses (Assignment)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Perhitungan rumus matematik, averaging ADC 10x, serialisasi JSON.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="217" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="Operasi" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;flipV=1;fillColor=#FEF3C7;strokeColor=#B45309;strokeWidth=1.5;fontColor=#78350F;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="269" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Operasi Manual (Human Action)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Tindakan fisik petambak: sakelar daya, kalibrasi buffer, isi air.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="265" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="Decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=1.5;fontColor=#7F1D1D;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="317" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Decision (YES / NO)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Penentuan kondisi: koneksi WiFi, ambang batas bahaya, status prediksi ML.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="313" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="Display" style="shape=display;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;fontColor=#312E81;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="365" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Display (Tampilan Monitor/Layar)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Tampilan layar monitor: LCD 16x2 I2C, Web Dashboard Next.js, Telegram.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="361" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="Call" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#F5F3FF;strokeColor=#6D28D9;strokeWidth=1.5;fontColor=#4C1D95;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="413" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Call (Memanggil Subprogram)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Pemanggilan rutin modular: Routine_Offline_Failsafe(), XGBoost Predict.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="409" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="Dokumen" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.5;fontColor=#92400E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="461" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Dokumen (Laporan Cetak)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Dokumen fisik: lembar log kalibrasi sensor pH &amp; laporan cetak PDF/Excel.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="457" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="Stored" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#F0FDF4;strokeColor=#15803D;strokeWidth=1.5;fontColor=#14532D;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="509" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Stored Data (Basis Data)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Penyimpanan persisten pada Supabase PostgreSQL &amp; EEPROM ESP32.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="505" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="Preparation" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=1.5;fontColor=#1E293B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="557" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Preparation (Inisialisasi Nilai)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Pemberian nilai awal variabel, konfigurasi baudrate 115200 &amp; pinout GPIO.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="553" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="On-Page" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#FFFFFF;strokeColor=#0F172A;strokeWidth=1.5;fontColor=#0F172A;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="605" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;On-Page Connector (A, B, C)&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Penghubung alur pada halaman yang sama tanpa memotong garis.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="601" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="Off-Page" style="shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#1E40AF;strokeWidth=1.5;fontColor=#1E40AF;fontStyle=1;fontSize=9.5;" vertex="1" parent="1">
+          <mxGeometry x="60" y="653" width="90" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b style=&#39;color: #0F172A; font-size: 11px;&#39;&gt;Off-Page Connector&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color: #475569; font-size: 10px;&#39;&gt;Penghubung alur antar halaman yang berbeda (Pentagon runcing ke bawah).&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="165" y="649" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="grp_mat" value="&lt;b style=&#39;font-size: 13px;&#39;&gt;2. MATRIKS AMBANG BATAS KUALITAS AIR KOLAM LELE (SRS)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;startSize=30;horizontal=1;collapsible=0;dropTarget=0;fillColor=#065F46;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="590" y="80" width="530" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;b style=&#39;font-size: 11px; color: #0F172A;&#39;&gt;Derajat Keasaman (pH)&lt;/b&gt; &lt;span style=&#39;color: #64748B; font-size: 10px;&#39;&gt;(Modul PH-4502C + Probe Kaca)&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #047857; font-size: 10px;&#39;&gt;• Rentang Ideal: &lt;b&gt;6.5 - 8.5 pH (Netral / Sehat)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #B91C1C; font-size: 10px;&#39;&gt;• Kondisi Kritis: &lt;b&gt;&amp;lt; 6.0 (Asam) atau &amp;gt; 8.8 (Basa)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #1E40AF; font-size: 10px;&#39;&gt;• Aksi Sistem: &lt;b&gt;Aktifkan Aerator DC 12V &amp;amp; Telegram Alert&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="605" y="125" width="500" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b style=&#39;font-size: 11px; color: #0F172A;&#39;&gt;Suhu Air Kolam&lt;/b&gt; &lt;span style=&#39;color: #64748B; font-size: 10px;&#39;&gt;(Sensor Digital DS18B20 (1-Wire))&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #047857; font-size: 10px;&#39;&gt;• Rentang Ideal: &lt;b&gt;26.0 - 32.0 °C (Metabolisme Normal)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #B91C1C; font-size: 10px;&#39;&gt;• Kondisi Kritis: &lt;b&gt;&amp;gt; 33.0 °C (Panas) atau &amp;lt; 22.0 °C&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #1E40AF; font-size: 10px;&#39;&gt;• Aksi Sistem: &lt;b&gt;Nyalakan Aerator Darurat Sirkulasi Suhu&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="605" y="189" width="500" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;b style=&#39;font-size: 11px; color: #0F172A;&#39;&gt;Total Dissolved Solids&lt;/b&gt; &lt;span style=&#39;color: #64748B; font-size: 10px;&#39;&gt;(Analog TDS Meter (Konduktivitas))&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #047857; font-size: 10px;&#39;&gt;• Rentang Ideal: &lt;b&gt;&amp;lt; 400 ppm (Kelarutan Bersih)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #B91C1C; font-size: 10px;&#39;&gt;• Kondisi Kritis: &lt;b&gt;&amp;gt; 800 ppm (Pembusukan Pakan)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #1E40AF; font-size: 10px;&#39;&gt;• Aksi Sistem: &lt;b&gt;Peringatan Dini Kualitas Air &amp;amp; Ganti Air&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="605" y="253" width="500" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="&lt;b style=&#39;font-size: 11px; color: #0F172A;&#39;&gt;Kekeruhan (Turbiditas)&lt;/b&gt; &lt;span style=&#39;color: #64748B; font-size: 10px;&#39;&gt;(Turbidity Sensor Optik Analog)&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #047857; font-size: 10px;&#39;&gt;• Rentang Ideal: &lt;b&gt;&amp;lt; 50 NTU (Air Kolam Sehat)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #B91C1C; font-size: 10px;&#39;&gt;• Kondisi Kritis: &lt;b&gt;&amp;gt; 120 NTU (Pepekatan Lumpur)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #1E40AF; font-size: 10px;&#39;&gt;• Aksi Sistem: &lt;b&gt;Evaluasi Slope Laju Peningkatan Lumpur&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="605" y="317" width="500" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="&lt;b style=&#39;font-size: 11px; color: #0F172A;&#39;&gt;Ketinggian Air Kolam&lt;/b&gt; &lt;span style=&#39;color: #64748B; font-size: 10px;&#39;&gt;(Float Switch Kontak Kering)&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #047857; font-size: 10px;&#39;&gt;• Rentang Ideal: &lt;b&gt;Terapung / Normal (Taraf Cukup)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #B91C1C; font-size: 10px;&#39;&gt;• Kondisi Kritis: &lt;b&gt;Tenggelam (Volume di Bawah Min)&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color: #1E40AF; font-size: 10px;&#39;&gt;• Aksi Sistem: &lt;b&gt;Alert Water Level Low &amp;amp; Petambak Isi Air&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="605" y="381" width="500" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="grp_pin" value="&lt;b style=&#39;font-size: 13px;&#39;&gt;3. SPESIFIKASI ALOKASI PINOUT ESP32 &amp; INFRASTRUKTUR CLOUD&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;startSize=30;horizontal=1;collapsible=0;dropTarget=0;fillColor=#1E40AF;strokeColor=#CBD5E1;fontColor=#FFFFFF;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="590" y="440" width="530" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Sensor pH Analog PH-4502C&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 34 (ADC1_CH6)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Analog 0-3.3V, sampling 10x, kalibrasi buffer 4 &amp;amp; 7&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="485" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Sensor Suhu Air DS18B20&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 4 (Digital 1-Wire)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Resolusi 12-bit waterproof probe, pull-up 4.7kΩ&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="517" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Sensor TDS Meter Analog&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 35 (ADC1_CH7)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Analog voltage divider konversi ke ppm zat terlarut&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="549" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Sensor Turbiditas Optik&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 32 (ADC1_CH4)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Analog transduser transmisi cahaya fototransistor&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="581" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Float Switch Water Level&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 18 (Input Pull-Up)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Dry contact switch deteksi ambang batas minimum kolam&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="613" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Modul Relay 2-Channel 5V&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 25 &amp;amp; GPIO 26]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Kontrol Aerator DC 12V 5A &amp;amp; cadangan pompa sirkulasi&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="645" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Layar LCD 16x2 I2C Display&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[GPIO 21 (SDA) / 22 (SCL)]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;Display lokal telemetri tepi kolam &amp;amp; status WiFi/MQTT&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="677" width="500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="&lt;b style=&#39;font-size: 10.5px; color: #0F172A;&#39;&gt;• Infrastruktur Cloud &amp;amp; DB&lt;/b&gt; &lt;span style=&#39;color: #1E40AF; font-weight: bold;&#39;&gt;[HiveMQ Cloud / FastAPI]&lt;/span&gt;: &lt;span style=&#39;color: #475569; font-size: 9.5px;&#39;&gt;MQTT TLS 8883, REST API Render, PostgreSQL Supabase&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="605" y="709" width="500" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,4 +1,4 @@
-# BanyuWening Machine Learning Engine (Random Forest)
+﻿# BanyuWening Machine Learning Engine (Random Forest)
 
 Modul Machine Learning berbasis Scikit-learn (Random Forest) untuk klasifikasi risiko kualitas air kolam akuakultur air tawar (ikan lele - *Clarias batrachus*).
 
@@ -6,7 +6,7 @@ Modul Machine Learning berbasis Scikit-learn (Random Forest) untuk klasifikasi r
 ```
 ml/
 ├── datasets/
-│   └── sensor_readings.csv       # Dataset telemetri sensor
+│   └── sensor_readings_dummy.csv       # Dataset telemetri sensor
 ├── models/
 │   ├── random_forest_water_quality.joblib  # Serialisasi model Joblib
 │   └── model_card.json           # Metadata & evaluasi model
