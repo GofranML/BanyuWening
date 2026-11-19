@@ -1,0 +1,1106 @@
+{
+  ".omc/state/idle-notif-cooldown.json": {
+    "mtime": 1795077051.9550407,
+    "seen": 1795085154.7409284,
+    "ast_hash": "410dbfcc04288afd4145b56673cee17e",
+    "semantic_hash": ""
+  },
+  ".omc/state/read-budget-warnings.json": {
+    "mtime": 1795078274.9808874,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c728480df68a7d98eea549e0e1abc563",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/03efdbec-c1e9-40a4-8cf0-ae80c1d747db/last-tool-error-state.json": {
+    "mtime": 1795076102.8841765,
+    "seen": 1795085154.7409284,
+    "ast_hash": "eee76b7f73567f593bbb5e234e508eb7",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/03efdbec-c1e9-40a4-8cf0-ae80c1d747db/pre-tool-advisory-throttle.json": {
+    "mtime": 1795076805.1860237,
+    "seen": 1795085154.7409284,
+    "ast_hash": "a116ac50bd5d588282827d262abc35a5",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/03efdbec-c1e9-40a4-8cf0-ae80c1d747db/session-started.json": {
+    "mtime": 1795075388.2217643,
+    "seen": 1795085154.7409284,
+    "ast_hash": "1894a025f907a4cfdea6cca720c88350",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/312fe022-45c8-420c-9b64-97aacaa1f149/session-started.json": {
+    "mtime": 1795077102.1875908,
+    "seen": 1795085154.7409284,
+    "ast_hash": "647955e5a5e4ca68a4972ef514de0134",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/8401e78d-3565-4df8-83db-40c8f0fccc3a/pre-tool-advisory-throttle.json": {
+    "mtime": 1795085010.4918265,
+    "seen": 1795085154.7409284,
+    "ast_hash": "38fcd35e02f5f3188d37e02026e4d0ac",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/8401e78d-3565-4df8-83db-40c8f0fccc3a/session-started.json": {
+    "mtime": 1795084612.4963853,
+    "seen": 1795085154.7409284,
+    "ast_hash": "cf549494633972dcbaf8a55e39a0b95c",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/c8d98534-d159-4d79-b465-4ccf230507cb/session-started.json": {
+    "mtime": 1794913127.9826508,
+    "seen": 1795085154.7409284,
+    "ast_hash": "5533f00fc30f8007d1c8447a16014f21",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/ddad9ae2-fdba-48f6-a2d5-3a87b373d249/session-started.json": {
+    "mtime": 1794915484.0097532,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d138751d4aafe016bb65aa676e8a6488",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/df06ae44-78f3-4ba0-9c0b-02a9fbb7d870/last-tool-error-state.json": {
+    "mtime": 1795078246.5343091,
+    "seen": 1795085154.7409284,
+    "ast_hash": "5f4aa5ec5e53f7332c01f8dc22646464",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/df06ae44-78f3-4ba0-9c0b-02a9fbb7d870/pre-tool-advisory-throttle.json": {
+    "mtime": 1795079239.3288975,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b9e96c373d4d4882be37ea6b61948329",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/df06ae44-78f3-4ba0-9c0b-02a9fbb7d870/session-started.json": {
+    "mtime": 1795078971.2630534,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3d96bdb5fdc8841505007c004e85e770",
+    "semantic_hash": ""
+  },
+  ".omc/state/sessions/ea62dd52-8fff-4f9e-8d8e-a492b90bc3db/session-started.json": {
+    "mtime": 1794916132.8831067,
+    "seen": 1795085154.7409284,
+    "ast_hash": "af9aab1f325bf9fc3d982b4d1a111119",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Console/Commands/MqttSubscribeCommand.php": {
+    "mtime": 1794427000.63282,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8af4937a3307ba62e5737fa05ec43f5a",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Controllers/ApiController.php": {
+    "mtime": 1794428055.5842247,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c1a64897355d29f7d03f4e1e5c20a1f7",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Controllers/AuthController.php": {
+    "mtime": 1794468877.7401574,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d0826f7799ebe330647643a899cfcae6",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Controllers/Controller.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "25a307335c0719bc9a91b3f7babd186d",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Controllers/DashboardController.php": {
+    "mtime": 1794471159.4305801,
+    "seen": 1795085154.7409284,
+    "ast_hash": "e082a7c47657346bf5c3d591b0bd48b9",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Controllers/LandingController.php": {
+    "mtime": 1794471180.7506642,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8ec7ed3ed94fd8890cc785af33a07a69",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Http/Middleware/HandleInertiaRequests.php": {
+    "mtime": 1794468719.413169,
+    "seen": 1795085154.7409284,
+    "ast_hash": "1cf1dad096829c9ae922995391945a49",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Jobs/PredictWaterQualityJob.php": {
+    "mtime": 1794426957.190995,
+    "seen": 1795085154.7409284,
+    "ast_hash": "0069bb9d0ecbef02ba238f363e3df215",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/Alert.php": {
+    "mtime": 1794426814.7449636,
+    "seen": 1795085154.7409284,
+    "ast_hash": "9ec145b09113141a687446183da87d4e",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/Device.php": {
+    "mtime": 1794426792.7107258,
+    "seen": 1795085154.7409284,
+    "ast_hash": "de764030939d44ef7fdacfc393d73e75",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/DispatchLog.php": {
+    "mtime": 1794426837.9843972,
+    "seen": 1795085154.7409284,
+    "ast_hash": "2ec02c83b2043abae7fcf17692f10d01",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/LandingContent.php": {
+    "mtime": 1794472761.1017878,
+    "seen": 1795085154.7409284,
+    "ast_hash": "65dbcfe07d4982dd8d4592e2cd8e56af",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/NotificationSetting.php": {
+    "mtime": 1794426824.6371796,
+    "seen": 1795085154.7409284,
+    "ast_hash": "9f68e901b50d7b78dea2a4c516c4a10e",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/Prediction.php": {
+    "mtime": 1794426809.7502327,
+    "seen": 1795085154.7409284,
+    "ast_hash": "fb2cd30f6d188c0f0405abb164b46bfb",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/RelayLog.php": {
+    "mtime": 1794426819.41207,
+    "seen": 1795085154.7409284,
+    "ast_hash": "fb76c3b0b36d98e04aaaf621e117849b",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/SensorReading.php": {
+    "mtime": 1794426799.9186096,
+    "seen": 1795085154.7409284,
+    "ast_hash": "bfe5ecdb1e30d599c6d29c709ed646d1",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Models/User.php": {
+    "mtime": 1794468706.9384892,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b77d93cf938d583de3d06ad692dc1431",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Providers/AppServiceProvider.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c0094f35cad6bba7636002a62186dae4",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Services/MachineLearningService.php": {
+    "mtime": 1794479079.8885329,
+    "seen": 1795085154.7409284,
+    "ast_hash": "6e8d81ff06758508e4220a2adadcfb04",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Services/NotificationService.php": {
+    "mtime": 1794426983.9344947,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d761c86e385f6cce9f4d76930244737c",
+    "semantic_hash": ""
+  },
+  "laravel-app/app/Services/TwoFactorService.php": {
+    "mtime": 1794469360.847645,
+    "seen": 1795085154.7409284,
+    "ast_hash": "0544dc0b25c446a57acc53de51ab6bbd",
+    "semantic_hash": ""
+  },
+  "laravel-app/artisan": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "e66bb13691f6184c762c196427d8e685",
+    "semantic_hash": ""
+  },
+  "laravel-app/bootstrap/app.php": {
+    "mtime": 1794426675.0887122,
+    "seen": 1795085154.7409284,
+    "ast_hash": "41f768f9d633bd7b731689fdc4615070",
+    "semantic_hash": ""
+  },
+  "laravel-app/bootstrap/providers.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "888c810b5a4720916f07aa05dd2c2dd3",
+    "semantic_hash": ""
+  },
+  "laravel-app/composer.json": {
+    "mtime": 1794426700.7363863,
+    "seen": 1795085154.7409284,
+    "ast_hash": "e8f7a71f9ccacfa6a8210916e851d278",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/app.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8befef279da74e4a8e393cb3d59fd354",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/auth.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "26354511ab860b301f2a3554bc388b91",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/cache.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "9775fa662b3c35e5f130b66f785155d2",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/database.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "594a01554ab7583541a8fb05a69f935f",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/filesystems.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "bde1aa1027f0448f17348dbd93f3d7ea",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/logging.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "57cabdaa04bc44810fedbea9ce77b052",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/mail.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "18601a927b48d38337ba2077426a7d60",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/queue.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "f98ce92e7bf51db1fabaf8a30e12fc5a",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/services.php": {
+    "mtime": 1794479066.316419,
+    "seen": 1795085154.7409284,
+    "ast_hash": "ab36f2d304d29bbc415690d417c4f35c",
+    "semantic_hash": ""
+  },
+  "laravel-app/config/session.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "5ea7169252ec3cc7fad471f5cd0d7678",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/factories/UserFactory.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "1c9f381f9c2bc3027971a3bfdbe99164",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/0001_01_01_000000_create_users_table.php": {
+    "mtime": 1794426746.1709368,
+    "seen": 1795085154.7409284,
+    "ast_hash": "1cbe60397a43647cc8f950b5524dce9a",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/0001_01_01_000001_create_cache_table.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "6952fb360e8d8b84e6f47573e4459d48",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/0001_01_01_000002_create_jobs_table.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b0603b9fa0a27473971da76bb0c42ee1",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/2026_11_12_000001_create_banyuwening_core_tables.php": {
+    "mtime": 1794426759.4449298,
+    "seen": 1795085154.7409284,
+    "ast_hash": "fa1028669d75404aa87d1ded4b2525d0",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/2026_11_12_000002_create_landing_contents_table.php": {
+    "mtime": 1794466506.3106031,
+    "seen": 1795085154.7409284,
+    "ast_hash": "0f06caf656dd7ed6a136cd62ef6a2ea4",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/migrations/2026_11_12_000003_add_two_factor_to_users_table.php": {
+    "mtime": 1794468669.9761648,
+    "seen": 1795085154.7409284,
+    "ast_hash": "e5950f45b1816ff020bfe468e6d279f2",
+    "semantic_hash": ""
+  },
+  "laravel-app/database/seeders/DatabaseSeeder.php": {
+    "mtime": 1794471857.7343056,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3b5e545d77e56a46257fe93849c8d4ef",
+    "semantic_hash": ""
+  },
+  "laravel-app/package.json": {
+    "mtime": 1794468658.758488,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d615000c457ee797db60348c3a5d3349",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/index.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d8eda274115af5fd2aaa8230af329ef7",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/credits.json": {
+    "mtime": 1794345127.0222046,
+    "seen": 1795085154.7409284,
+    "ast_hash": "fb6d9b87dbbbd7c276a1f93ddf132c31",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/AeratorControlDialog.tsx": {
+    "mtime": 1794427291.616621,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d41542c3be469557d2a20e2e6c9415a7",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/AlertsSection.tsx": {
+    "mtime": 1794427345.817241,
+    "seen": 1795085154.7409284,
+    "ast_hash": "ef517a9282bc22384767030f209534f6",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/ChartsSection.tsx": {
+    "mtime": 1794471654.542117,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b0278d1082be4ca0c4a249e064da4fcb",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/ContactEmailLink.tsx": {
+    "mtime": 1794427306.1384299,
+    "seen": 1795085154.7409284,
+    "ast_hash": "9160cd2187d46b46ffd4e9ced80a3e24",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/ExportSection.tsx": {
+    "mtime": 1794427499.5326312,
+    "seen": 1795085154.7409284,
+    "ast_hash": "6390e5628e95d1927e6b4979cb6a9ddd",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/ParameterCard.tsx": {
+    "mtime": 1794472391.3670254,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b5235115b6b45c372d0846ffff5d0134",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/PredictionPanel.tsx": {
+    "mtime": 1794471644.014038,
+    "seen": 1795085154.7409284,
+    "ast_hash": "dc325f10d0e7901dd36ca44f108372b2",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/SimulatorSection.tsx": {
+    "mtime": 1794427522.5391235,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3748cd5f1b3f62a5eb86a5a3f9d84b26",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/Sparkline.tsx": {
+    "mtime": 1794427227.751106,
+    "seen": 1795085154.7409284,
+    "ast_hash": "f033ce4531028e9fb9c975fdc5a76a56",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/StatusBadge.tsx": {
+    "mtime": 1794472366.1284251,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3a5245adf02aef54ea82d63a2b59b9b2",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/StatusCard.tsx": {
+    "mtime": 1794427199.8193207,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c5b6d7c6d1a53076c07e24a47d83185f",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/UserProfileSettings.tsx": {
+    "mtime": 1794475047.5835516,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8a2e69ab5c608f275f5286bde3e49245",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/AnalisDetailedData.tsx": {
+    "mtime": 1794427692.8512802,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8c1a8f57eeae5af6c339c5d1ad2da85e",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/OperatorTutorial.tsx": {
+    "mtime": 1794388799.2289546,
+    "seen": 1795085154.7409284,
+    "ast_hash": "88b2b0a9bb5710dcbc12a64c494c33b2",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/PemilikProcessedData.tsx": {
+    "mtime": 1794388857.2721996,
+    "seen": 1795085154.7409284,
+    "ast_hash": "0df64e3fffa45d506074d26b0b01e37a",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminApiDocs.tsx": {
+    "mtime": 1794470128.7525384,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c5272a4580bf27459d9c32cb91136782",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminContentManagement.tsx": {
+    "mtime": 1794472855.8722765,
+    "seen": 1795085154.7409284,
+    "ast_hash": "f1820862290f0ad0e569be4f73d21701",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminDocs.tsx": {
+    "mtime": 1794472998.7230184,
+    "seen": 1795085154.7409284,
+    "ast_hash": "dd31a7d068a504423793c2050b46fad0",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminNotificationConfig.tsx": {
+    "mtime": 1794475014.1188679,
+    "seen": 1795085154.7409284,
+    "ast_hash": "2b4c8194e9b0bd133e4aeff478d9f77c",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminSecurityBackup.tsx": {
+    "mtime": 1794470086.09007,
+    "seen": 1795085154.7409284,
+    "ast_hash": "8bc6330406d26aec76ed6afb8e099be8",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Components/roles/SuperAdminUserManagement.tsx": {
+    "mtime": 1794468999.8020744,
+    "seen": 1795085154.7409284,
+    "ast_hash": "7b775d67e81683f574245923123d4213",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Pages/Dashboard.tsx": {
+    "mtime": 1794471825.9490888,
+    "seen": 1795085154.7409284,
+    "ast_hash": "31a7d76f3192325006715b876427630a",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Pages/Demo.tsx": {
+    "mtime": 1794427930.8326292,
+    "seen": 1795085154.7409284,
+    "ast_hash": "a9097f49021e659fc80f3423a8388e93",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Pages/Home.tsx": {
+    "mtime": 1794472821.5495691,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d840cb9fc9aa1767a63f370f28ae9e93",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Pages/Login.tsx": {
+    "mtime": 1794469181.8652494,
+    "seen": 1795085154.7409284,
+    "ast_hash": "ff6361cec71f7a951f2abb2ca3eb7922",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/Types/index.ts": {
+    "mtime": 1794469844.000589,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d4bfe2b8b0db8b55ab262ced8c823bc1",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/app.js": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "b519d08ef66fd54910edbedba6181ec2",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/app.tsx": {
+    "mtime": 1794427138.2038915,
+    "seen": 1795085154.7409284,
+    "ast_hash": "89bacbac23d9c31ddc0174d6206ac8dd",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/lib/formatters.ts": {
+    "mtime": 1794471105.9292367,
+    "seen": 1795085154.7409284,
+    "ast_hash": "cd84b0d4635068c633b985edd9b3196b",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/js/lib/notification-config.ts": {
+    "mtime": 1794427645.6969738,
+    "seen": 1795085154.7409284,
+    "ast_hash": "7b5debab212d8abc886df1a309396471",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/views/app.blade.php": {
+    "mtime": 1794468152.294068,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d7dc868f5f78a6686a55e7e2c5921c74",
+    "semantic_hash": ""
+  },
+  "laravel-app/resources/views/welcome.blade.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "1a03818ea91deb4f3989c6c994e5867c",
+    "semantic_hash": ""
+  },
+  "laravel-app/routes/console.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3c6ce2e6d16444282b24a9aa63885563",
+    "semantic_hash": ""
+  },
+  "laravel-app/routes/web.php": {
+    "mtime": 1794470054.1534162,
+    "seen": 1795085154.7409284,
+    "ast_hash": "02820e92cfe902eb3fe849074e7c6297",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/Feature/BanyuWeningMigrationTest.php": {
+    "mtime": 1794473040.696535,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c004b78d4ce059e916d2a8d9fce6aa08",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/Feature/ComprehensiveBackendTest.php": {
+    "mtime": 1794478501.5597494,
+    "seen": 1795085154.7409284,
+    "ast_hash": "05938291fdc7606e3d364f3523ea3bdb",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/Feature/EndToEndPipelineTest.php": {
+    "mtime": 1794478687.8577383,
+    "seen": 1795085154.7409284,
+    "ast_hash": "a5dbf43ddbdc12ce806e418fa2984248",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/Feature/ExampleTest.php": {
+    "mtime": 1794469393.2975862,
+    "seen": 1795085154.7409284,
+    "ast_hash": "c96ff5c57a701fe7fd29006d7df3c7fe",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/TestCase.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "7e567dc27e68d5b57bae16af07f68907",
+    "semantic_hash": ""
+  },
+  "laravel-app/tests/Unit/ExampleTest.php": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7409284,
+    "ast_hash": "3f679e9508c834f0ad95943455fcd836",
+    "semantic_hash": ""
+  },
+  "laravel-app/tsconfig.json": {
+    "mtime": 1794427090.8675084,
+    "seen": 1795085154.7409284,
+    "ast_hash": "30677a04b1a8783331b8a8ba8461c465",
+    "semantic_hash": ""
+  },
+  "laravel-app/vite.config.js": {
+    "mtime": 1794472403.9189866,
+    "seen": 1795085154.7409284,
+    "ast_hash": "d9c6ae7296d44a5df0121554d8fa4e53",
+    "semantic_hash": ""
+  },
+  "ml/models/model_card.json": {
+    "mtime": 1794426592.471914,
+    "seen": 1795085154.7419283,
+    "ast_hash": "58858f6d15ddc020fdd5de1466d37c9c",
+    "semantic_hash": ""
+  },
+  "ml/src/evaluate.py": {
+    "mtime": 1794567888.7026873,
+    "seen": 1795085154.7419283,
+    "ast_hash": "1b3d99a4c5de9465fd8a023a6ac3a2d2",
+    "semantic_hash": ""
+  },
+  "ml/src/features.py": {
+    "mtime": 1794426402.451949,
+    "seen": 1795085154.7419283,
+    "ast_hash": "bce679aca417c3fe19cab33164980182",
+    "semantic_hash": ""
+  },
+  "ml/src/predict.py": {
+    "mtime": 1794426641.5688322,
+    "seen": 1795085154.7419283,
+    "ast_hash": "10f7caccddaca61aaa39310e1cd0ad90",
+    "semantic_hash": ""
+  },
+  "ml/src/preprocessing.py": {
+    "mtime": 1794426390.2893186,
+    "seen": 1795085154.7419283,
+    "ast_hash": "771d8255d29bb62109b2c56ea44c788d",
+    "semantic_hash": ""
+  },
+  "ml/src/train.py": {
+    "mtime": 1794567888.7072406,
+    "seen": 1795085154.7419283,
+    "ast_hash": "25422f20e1f32de9b5326f4e5e044b94",
+    "semantic_hash": ""
+  },
+  "ml/test_ml_pipeline.py": {
+    "mtime": 1794567888.713099,
+    "seen": 1795085154.7419283,
+    "ast_hash": "cc1f7340af407021f0cb13d4f301a3f4",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/Panduan_Logo.html": {
+    "mtime": 1794303846.642089,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d9ef8f7b75a0de2fa2b9e0ab3d7de293",
+    "semantic_hash": ""
+  },
+  "brief/PRD_BanyuWening.md": {
+    "mtime": 1794488955.8141332,
+    "seen": 1795085154.7419283,
+    "ast_hash": "959a8fe58754a31f30277976f7ac0d3e",
+    "semantic_hash": ""
+  },
+  "brief/design.md": {
+    "mtime": 1794305689.585572,
+    "seen": 1795085154.7419283,
+    "ast_hash": "b6f1c33f246b2b18984d4b58e6f708f7",
+    "semantic_hash": ""
+  },
+  "brief/plan.md": {
+    "mtime": 1794305594.478213,
+    "seen": 1795085154.7419283,
+    "ast_hash": "44b7b6a17ea4f559a06c01ea39bb8096",
+    "semantic_hash": ""
+  },
+  "laravel-app/AGENTS.md": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7419283,
+    "ast_hash": "4b049823bd463671a9cbbe6d0fd9a302",
+    "semantic_hash": ""
+  },
+  "laravel-app/CLAUDE.md": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7419283,
+    "ast_hash": "4b049823bd463671a9cbbe6d0fd9a302",
+    "semantic_hash": ""
+  },
+  "laravel-app/README.md": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d2661a31fed7f254f5b7d3b6fe19330a",
+    "semantic_hash": ""
+  },
+  "laravel-app/deploy/README.md": {
+    "mtime": 1794479148.7459114,
+    "seen": 1795085154.7419283,
+    "ast_hash": "dd8ce5f1faaa416964d06301c83b36c4",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/robots.txt": {
+    "mtime": 1790726204.0,
+    "seen": 1795085154.7419283,
+    "ast_hash": "b6216d61c03e6ce0c9aea6ca7808f7ca",
+    "semantic_hash": ""
+  },
+  "ml/README.md": {
+    "mtime": 1794567888.7186909,
+    "seen": 1795085154.7419283,
+    "ast_hash": "456b11e7841e0a5af9bc4af48a67e968",
+    "semantic_hash": ""
+  },
+  "ml/requirements.txt": {
+    "mtime": 1794426377.269598,
+    "seen": 1795085154.7419283,
+    "ast_hash": "248235a3f0bcf7af5c2a92568358f12f",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/horizontal-gelap.png": {
+    "mtime": 1794303744.0561194,
+    "seen": 1795085154.7419283,
+    "ast_hash": "618287c45f77a4be0d368d06d1487a20",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/horizontal-mono-hitam.png": {
+    "mtime": 1794303744.8977149,
+    "seen": 1795085154.7419283,
+    "ast_hash": "b9a14e7e7d909488750246bca16f0d9e",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/horizontal-mono-putih.png": {
+    "mtime": 1794303745.6481533,
+    "seen": 1795085154.7419283,
+    "ast_hash": "6928479ae872a7690322c09f5be6c9f4",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/horizontal.png": {
+    "mtime": 1794303743.2865965,
+    "seen": 1795085154.7419283,
+    "ast_hash": "15460083816e2b7d9d03082de2ead674",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/ikon-aplikasi-192.png": {
+    "mtime": 1794303752.4572325,
+    "seen": 1795085154.7419283,
+    "ast_hash": "32e3a0d54e1fa24a0dc514ca8ce28d08",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/ikon-aplikasi-32.png": {
+    "mtime": 1794303753.358215,
+    "seen": 1795085154.7419283,
+    "ast_hash": "0d204533371fc15614cfb31f6e706765",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/ikon-aplikasi-512.png": {
+    "mtime": 1794303751.7112324,
+    "seen": 1795085154.7419283,
+    "ast_hash": "2c999183bb6ed2aaae6c97166a0cc35f",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/logogram-gelap.png": {
+    "mtime": 1794303749.274343,
+    "seen": 1795085154.7419283,
+    "ast_hash": "f9584fdb811702dda01a1e9952eaca68",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/logogram-mono-hitam.png": {
+    "mtime": 1794303750.1311686,
+    "seen": 1795085154.7419283,
+    "ast_hash": "8f1fd890fe2fb5f0ec58100c7da4cc06",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/logogram-mono-putih.png": {
+    "mtime": 1794303750.9693663,
+    "seen": 1795085154.7419283,
+    "ast_hash": "5c3dafe674850ec774318c409ea027f6",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/logogram.png": {
+    "mtime": 1794303748.315885,
+    "seen": 1795085154.7419283,
+    "ast_hash": "cfe0402000ab062c89d4dbcc2ef6666d",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/vertikal-gelap.png": {
+    "mtime": 1794303747.4811065,
+    "seen": 1795085154.7419283,
+    "ast_hash": "f91df823dacf5b080aab61eff483db23",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/png/vertikal.png": {
+    "mtime": 1794303746.4978733,
+    "seen": 1795085154.7419283,
+    "ast_hash": "6573627424fd3bdc68bb708f9d9d2437",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/horizontal-gelap.svg": {
+    "mtime": 1794303743.4433277,
+    "seen": 1795085154.7419283,
+    "ast_hash": "514a5323a52d6e903651de716c6d57d5",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/horizontal-mono-hitam.svg": {
+    "mtime": 1794303744.2236362,
+    "seen": 1795085154.7419283,
+    "ast_hash": "fce356a656154a2d3176a441bcfdd37c",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/horizontal-mono-putih.svg": {
+    "mtime": 1794303745.0406744,
+    "seen": 1795085154.7419283,
+    "ast_hash": "f66f5db08bd24dda292c06b17eb2c5b6",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/horizontal.svg": {
+    "mtime": 1794303742.734637,
+    "seen": 1795085154.7419283,
+    "ast_hash": "bb9994c5cee325b6615ff5606c68f61d",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/ikon-aplikasi.svg": {
+    "mtime": 1794303751.1057043,
+    "seen": 1795085154.7419283,
+    "ast_hash": "5061951fffb6503ae1aaf8a6fe1d1754",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/logogram-gelap.svg": {
+    "mtime": 1794303748.5026875,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ffbdca06b228ea26c309e21f1afa8633",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/logogram-mono-hitam.svg": {
+    "mtime": 1794303749.468741,
+    "seen": 1795085154.7419283,
+    "ast_hash": "56253647ee0fac00d5a9cf861975fc73",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/logogram-mono-putih.svg": {
+    "mtime": 1794303750.2936978,
+    "seen": 1795085154.7419283,
+    "ast_hash": "65edf8ea784d590a6d688621d077ada2",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/logogram.svg": {
+    "mtime": 1794303747.6628282,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ccb5ed219f5f39b096b05e5b205b9d40",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/vertikal-gelap.svg": {
+    "mtime": 1794303746.6970627,
+    "seen": 1795085154.7419283,
+    "ast_hash": "21f936410cf6258d1b0e1a3dbc11e491",
+    "semantic_hash": ""
+  },
+  "brief/Logo_BanyuWening/svg/vertikal.svg": {
+    "mtime": 1794303745.8136573,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d2a52f3b285926b2fb0d13c85b6b370c",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/horizontal-gelap.svg": {
+    "mtime": 1794344751.1793988,
+    "seen": 1795085154.7419283,
+    "ast_hash": "514a5323a52d6e903651de716c6d57d5",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/horizontal-mono-putih.svg": {
+    "mtime": 1794344751.2294178,
+    "seen": 1795085154.7419283,
+    "ast_hash": "f66f5db08bd24dda292c06b17eb2c5b6",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/horizontal.svg": {
+    "mtime": 1794344683.9894488,
+    "seen": 1795085154.7419283,
+    "ast_hash": "bb9994c5cee325b6615ff5606c68f61d",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/logogram-gelap.svg": {
+    "mtime": 1794344751.1979291,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ffbdca06b228ea26c309e21f1afa8633",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/logogram-mono-putih.svg": {
+    "mtime": 1794344751.2148228,
+    "seen": 1795085154.7419283,
+    "ast_hash": "65edf8ea784d590a6d688621d077ada2",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/brand/logogram.svg": {
+    "mtime": 1794344684.015275,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ccb5ed219f5f39b096b05e5b205b9d40",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/aerasi.jpg": {
+    "mtime": 1794344684.1336987,
+    "seen": 1795085154.7419283,
+    "ast_hash": "035bc5fc33e4ce777da42695275f0503",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/andir.jpg": {
+    "mtime": 1794344684.0867102,
+    "seen": 1795085154.7419283,
+    "ast_hash": "443551596621dac3fe37d2ea6671733a",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/aquaculture-underwater.jpg": {
+    "mtime": 1794390291.7127364,
+    "seen": 1795085154.7419283,
+    "ast_hash": "55c6bd6e04566ca9fe8c85ffb1d6eb69",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/esp32.jpg": {
+    "mtime": 1794344684.076291,
+    "seen": 1795085154.7419283,
+    "ast_hash": "551198456f2687bae9aca10a04dc0c2b",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/kolam-timelapse-poster.jpg": {
+    "mtime": 1794345120.1754253,
+    "seen": 1795085154.7419283,
+    "ast_hash": "65de10a1eeb737f543402b3e47948a33",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/lele-1.jpg": {
+    "mtime": 1794344684.065801,
+    "seen": 1795085154.7419283,
+    "ast_hash": "61b53a2da1a79abe057520367f870d38",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/lele-2.jpg": {
+    "mtime": 1794344684.0497587,
+    "seen": 1795085154.7419283,
+    "ast_hash": "b3cb371c4b61d65d2504fcf12a81fbf9",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/lembang.jpg": {
+    "mtime": 1794344684.1127572,
+    "seen": 1795085154.7419283,
+    "ast_hash": "31be8f0dc0905aaec022e37342d18f89",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/ph-meter.jpg": {
+    "mtime": 1794344684.0392647,
+    "seen": 1795085154.7419283,
+    "ast_hash": "28c18b11cd995d5e7385aa95ca3a296d",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/takeran.jpg": {
+    "mtime": 1794345127.0222046,
+    "seen": 1795085154.7419283,
+    "ast_hash": "b95ee6ede1bb877c2ff407a5ed28494e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/test1.jpg": {
+    "mtime": 1794390226.6715558,
+    "seen": 1795085154.7419283,
+    "ast_hash": "bcdd23097e2274fb4787a66c34fbb82f",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/tjipanas-anak.jpg": {
+    "mtime": 1794344684.1022384,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ecf5c286239c7a23e2dfec29afdb8125",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/tjipanas.jpg": {
+    "mtime": 1794344684.1232288,
+    "seen": 1795085154.7419283,
+    "ast_hash": "7fbf89ecd4df352757918adf04490ae2",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/water-surface.jpg": {
+    "mtime": 1794390221.2883346,
+    "seen": 1795085154.7419283,
+    "ast_hash": "4be911d7c65cccdf2ce2d83a8cd43dce",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794469321_test-pond.jpg": {
+    "mtime": 1794469321.7910564,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794469406_test-pond.jpg": {
+    "mtime": 1794469406.5952916,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794469451_test-pond.jpg": {
+    "mtime": 1794469451.4965272,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794470348_test-pond.jpg": {
+    "mtime": 1794470348.3739674,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794470735_test-pond.jpg": {
+    "mtime": 1794470735.5283275,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794471457_test-pond.jpg": {
+    "mtime": 1794471457.4418554,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794471915_test-pond.jpg": {
+    "mtime": 1794471915.1338744,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794472570_test-pond.jpg": {
+    "mtime": 1794472570.4663873,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794473024_test-pond.jpg": {
+    "mtime": 1794473024.0992439,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794473060_test-pond.jpg": {
+    "mtime": 1794473060.4815514,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794473322_test-pond.jpg": {
+    "mtime": 1794473322.7486289,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794475088_test-pond.jpg": {
+    "mtime": 1794475088.515589,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794475313_test-pond.jpg": {
+    "mtime": 1794475313.1605332,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794477766_test-pond.jpg": {
+    "mtime": 1794477766.4334586,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794478391_test-pond.jpg": {
+    "mtime": 1794478391.5275302,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794478537_test-pond.jpg": {
+    "mtime": 1794478537.5537024,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794478730_test-pond.jpg": {
+    "mtime": 1794478730.7148478,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/uploads/landing/1794479162_test-pond.jpg": {
+    "mtime": 1794479162.0798626,
+    "seen": 1795085154.7419283,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "laravel-app/public/pics/kolam-timelapse.webm": {
+    "mtime": 1794345117.3998086,
+    "seen": 1795085154.7419283,
+    "ast_hash": "47e186198b837002fe47764479432117",
+    "semantic_hash": ""
+  },
+  "laravel-app/package-lock.json": {
+    "mtime": 1794468658.8844554,
+    "seen": 1795085154.7419283,
+    "ast_hash": "ab0228637ada8b90170ba08bca6329e8",
+    "semantic_hash": ""
+  }
+}
