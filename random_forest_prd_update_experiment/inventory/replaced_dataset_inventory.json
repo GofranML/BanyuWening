@@ -1,0 +1,46 @@
+{
+  "workspace": "D:\\SEMESTER 5\\PEMOGRAMAN WEB LANJUTAN\\web-BanyuWening",
+  "dataset_dir": "D:\\SEMESTER 5\\PEMOGRAMAN WEB LANJUTAN\\web-BanyuWening\\ml\\datasets",
+  "date": "2026-11-20",
+  "dummy_preserved": {
+    "name": "sensor_readings_dummy.csv",
+    "sha256": "7f6e586f0ea7c96cd2d16d6f80f1cf8a7c4fab9e4b3006cea0bf33774093cb3b"
+  },
+  "removed_datasets": [
+    {
+      "name": "kaggle_apgopi_pondsdata_aquaponds.csv",
+      "bytes": 4351353,
+      "sha256": "bdaea70564f5feae444ee16c7fb7196644579cbcc440088a26816c62777c5770"
+    },
+    {
+      "name": "kaggle_nrf_catfish_pond1.csv",
+      "bytes": 12660336,
+      "sha256": "6389f3db02aa10b320253b1202d9d4ed666e39c86c3314d2fc02d14ee422064a"
+    },
+    {
+      "name": "kaggle_nrf_catfish_pond12.csv",
+      "bytes": 13121533,
+      "sha256": "468ddb2d9b9c5b96541404f4059a937b8e94cec172fe78c0bfc829cb3a907f12"
+    },
+    {
+      "name": "pond_iot_2023.csv",
+      "bytes": 4431680,
+      "sha256": "ea2a2569107912f151141bcad67a39c41c25b9b4ddca775d40346d66e39f2c07"
+    },
+    {
+      "name": "pond_iot_2023_raw.csv",
+      "bytes": 19026532,
+      "sha256": "ac69aff715a31f3f35439247b02d9e7bf95e409652bf88e5f15329c6effb9dba"
+    },
+    {
+      "name": "realfishdataset.csv",
+      "bytes": 12600,
+      "sha256": "2a1f9caf06b543a66be4eac557e81f3a455576c96d26aae93aefde64b3634991"
+    },
+    {
+      "name": "water_potability.csv",
+      "bytes": 525187,
+      "sha256": "904004bde729bfe3d2e195f46343bceead09e32a0eb95bb8184e7e20e029b2bf"
+    }
+  ]
+}

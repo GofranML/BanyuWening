@@ -45,9 +45,9 @@ def generate_bootstrap_aquaculture_dataset(n_samples: int = 2500) -> pd.DataFram
     # 8% anomali waspada, 4% anomali bahaya
     anomaly_indices = np.random.choice(n_samples, size=int(0.12 * n_samples), replace=False)
     for idx in anomaly_indices[:len(anomaly_indices)//2]:
-        # Anomali waspada
+        # Anomali waspada (mendekati batas SNI 8228.4:2015: pH 6.0-<6.5 / >8.5-8.8, Suhu 22-<25 / >30-33 C)
         ph[idx] = np.random.choice([6.4, 8.6])
-        temperature_c[idx] = np.random.choice([32.4, 25.4])
+        temperature_c[idx] = np.random.choice([31.2, 24.2])
         tds_ppm[idx] = np.random.uniform(610, 750)
         turbidity_ntu[idx] = np.random.uniform(85, 115)
 
@@ -58,12 +58,15 @@ def generate_bootstrap_aquaculture_dataset(n_samples: int = 2500) -> pd.DataFram
         tds_ppm[idx] = np.random.uniform(820, 1100)
         turbidity_ntu[idx] = np.random.uniform(125, 200)
 
-    # Label target deterministik PRD
+    # Label target deterministik PRD v2.3 — HANYA pH dan suhu yang dipakai (mengacu SNI 8228.4:2015).
+    # AMAN: Suhu 25–30°C & pH 6.5–8.5 | WASPADA: mendekati batas | BAHAYA: keluar dari rentang.
+    # TDS, turbidity, dan ketinggian air masih dihitung sebagai fitur (lihat features.py),
+    # tetapi ambangnya BELUM tervalidasi secara lokal, jadi TIDAK boleh masuk ke label target.
     target = []
-    for p, t, tds_val, turb_val, wl in zip(ph, temperature_c, tds_ppm, turbidity_ntu, water_level):
-        is_bahaya = (p < 6.0 or p > 8.8 or t > 33.0 or t < 22.0 or tds_val > 800 or turb_val > 120 or wl == "LOW")
-        is_waspada = (p < 6.5 or p > 8.5 or t > 32.0 or t < 26.0 or tds_val > 600 or turb_val > 80)
-        
+    for p, t in zip(ph, temperature_c):
+        is_bahaya = (p < 6.0 or p > 8.8 or t > 33.0 or t < 22.0)
+        is_waspada = (p < 6.5 or p > 8.5 or t > 30.0 or t < 25.0)
+
         if is_bahaya:
             target.append(2)  # BAHAYA
         elif is_waspada:
@@ -154,6 +157,17 @@ def train_and_save_model():
         "confusion_matrix": conf_mat,
         "train_samples": len(X_train),
         "test_samples": len(X_test),
+        "label_policy": {
+            "reference": "SNI 8228.4:2015 (Suhu 25-30 C, pH 6.5-8.5)",
+            "target_label_parameters": ["ph", "temperature_c"],
+            "feature_only_parameters": ["tds_ppm", "turbidity_ntu", "water_level"],
+            "notes": (
+                "Rentang suhu dan pH mengacu pada SNI 8228.4:2015. Untuk TDS, turbidity, dan ketinggian air, "
+                "belum ada ambang universal yang dapat langsung ditetapkan; batasnya harus ditentukan melalui "
+                "pengukuran kolam dan validasi lapangan. Ketiganya tidak dipakai untuk membentuk label target "
+                "AMAN/WASPADA/BAHAYA pada benchmark, tetapi tetap dipakai sebagai fitur/pemantauan bila tersedia."
+            ),
+        },
     }
 
     with open(models_dir / "model_card.json", "w") as f:

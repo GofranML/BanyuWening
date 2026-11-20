@@ -1,0 +1,9 @@
+              precision    recall  f1-score   support
+
+        AMAN       0.00      0.00      0.00        15
+     WASPADA       0.01      1.00      0.02        15
+      BAHAYA       1.00      0.75      0.86      5907
+
+    accuracy                           0.75      5937
+   macro avg       0.34      0.58      0.29      5937
+weighted avg       0.99      0.75      0.85      5937

@@ -38,7 +38,7 @@ def get_action_recommendation(risk: str, triggers: list, reading: dict) -> str:
         if reading["tds_ppm"] > 600:
             return "Endapan bahan organik (pakan/feses) menumpuk. Siapkan sifon kolam dan ganti sebagian air."
         return "Model memproyeksikan potensi penurunan kualitas air 1–3 jam ke depan. Periksa aerasi dan filter."
-    return "Seluruh parameter berada dalam ambang batas aman SNI lele. Lanjutkan jadwal pemberian pakan normal."
+    return "Suhu dan pH berada dalam rentang aman SNI 8228.4:2015 (25–30 °C, pH 6.5–8.5); TDS, turbidity, dan ketinggian air tetap dipantau terhadap baseline lokal."
 
 def predict_single(sensor_payload: dict) -> dict:
     base_dir = Path(__file__).resolve().parent.parent
@@ -75,17 +75,19 @@ def predict_single(sensor_payload: dict) -> dict:
         triggers.append(f"pH mendekati batas ({cleaned['ph']:.2f})")
 
     if cleaned["temperature_c"] > 33.0 or cleaned["temperature_c"] < 22.0:
-        triggers.append(f"Suhu ekstrim ({cleaned['temperature_c']:.1f} °C)")
-    elif cleaned["temperature_c"] > 32.0 or cleaned["temperature_c"] < 26.0:
-        triggers.append(f"Suhu tidak ideal ({cleaned['temperature_c']:.1f} °C)")
+        triggers.append(f"Suhu keluar dari rentang ({cleaned['temperature_c']:.1f} °C)")
+    elif cleaned["temperature_c"] > 30.0 or cleaned["temperature_c"] < 25.0:
+        triggers.append(f"Suhu mendekati batas ({cleaned['temperature_c']:.1f} °C)")
 
+    # Catatan pemantauan: ambang TDS, turbidity, dan ketinggian air belum tervalidasi secara lokal;
+    # nilai di bawah hanya indikator pemantauan sementara sambil menunggu kalibrasi baseline kolam.
     if cleaned["tds_ppm"] > 800:
-        triggers.append(f"TDS pekat ({cleaned['tds_ppm']:.0f} ppm)")
+        triggers.append(f"TDS menyimpang ekstrem dari baseline sementara ({cleaned['tds_ppm']:.0f} ppm)")
     elif cleaned["tds_ppm"] > 600:
-        triggers.append(f"TDS mendekati batas ({cleaned['tds_ppm']:.0f} ppm)")
+        triggers.append(f"TDS menyimpang dari baseline sementara ({cleaned['tds_ppm']:.0f} ppm)")
 
     if cleaned["turbidity_ntu"] > 120:
-        triggers.append(f"Kekeruhan tinggi ({cleaned['turbidity_ntu']:.1f} NTU)")
+        triggers.append(f"Turbidity meningkat dari baseline sementara ({cleaned['turbidity_ntu']:.1f} NTU)")
 
     if cleaned["water_level"] < 0.5:
         triggers.append("Level air surut")

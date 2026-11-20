@@ -16,15 +16,15 @@
     "water_stress_index"
   ],
   "feature_importances": {
-    "ph": 0.10180984134362729,
-    "temperature_c": 0.16054775986054257,
-    "tds_ppm": 0.038225339124801645,
-    "turbidity_ntu": 0.05839453842901941,
-    "water_level": 0.13618767238380056,
-    "ph_deviation": 0.002789128990950919,
-    "temp_deviation": 0.07720172537115426,
-    "tds_ratio": 0.035172816052324675,
-    "water_stress_index": 0.3896711784437788
+    "ph": 0.07656032192619014,
+    "temperature_c": 0.33685247182143985,
+    "tds_ppm": 0.08279884818682069,
+    "turbidity_ntu": 0.04352570873805817,
+    "water_level": 0.006245522817900693,
+    "ph_deviation": 0.017010435077186675,
+    "temp_deviation": 0.09217655887397516,
+    "tds_ratio": 0.0727184791245455,
+    "water_stress_index": 0.2721116534338831
   },
   "classes": {
     "0": "AMAN",
@@ -33,21 +33,34 @@
   },
   "confusion_matrix": [
     [
-      407,
+      325,
       0,
       0
     ],
     [
       0,
-      51,
+      145,
       0
     ],
     [
       0,
       0,
-      42
+      30
     ]
   ],
   "train_samples": 2000,
-  "test_samples": 500
+  "test_samples": 500,
+  "label_policy": {
+    "reference": "SNI 8228.4:2015 (Suhu 25-30 C, pH 6.5-8.5)",
+    "target_label_parameters": [
+      "ph",
+      "temperature_c"
+    ],
+    "feature_only_parameters": [
+      "tds_ppm",
+      "turbidity_ntu",
+      "water_level"
+    ],
+    "notes": "Rentang suhu dan pH mengacu pada SNI 8228.4:2015. Untuk TDS, turbidity, dan ketinggian air, belum ada ambang universal yang dapat langsung ditetapkan; batasnya harus ditentukan melalui pengukuran kolam dan validasi lapangan. Ketiganya tidak dipakai untuk membentuk label target AMAN/WASPADA/BAHAYA pada benchmark, tetapi tetap dipakai sebagai fitur/pemantauan bila tersedia."
+  }
 }

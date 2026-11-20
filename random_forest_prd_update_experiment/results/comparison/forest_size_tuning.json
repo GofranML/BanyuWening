@@ -1,0 +1,68 @@
+{
+  "dataset_series_tuned": 15,
+  "candidate_tree_counts": [
+    100,
+    200,
+    300,
+    500,
+    800
+  ],
+  "folds": 3,
+  "selection_rule": "smallest n_estimators within 0.005 mean macro-F1 of the best chronological validation score",
+  "selected_n_estimators": 100,
+  "peak_validation_macro_f1": 0.5547139609825537,
+  "tolerance": 0.005,
+  "limitations": "Selection is for these Kaggle source series and proxy targets only; cannot guarantee new-domain accuracy. The existing chronological holdout has already been used in the earlier 100/300 comparison.",
+  "candidates": [
+    {
+      "n_estimators": 100,
+      "mean_validation_macro_f1": 0.5541530804834929,
+      "std_validation_macro_f1": 0.17237189903292005,
+      "mean_train_macro_f1": 0.9026807712962791,
+      "mean_generalization_gap": 0.3485276908127861,
+      "mean_incremental_fit_seconds": 0.7925571955556128,
+      "validation_folds": 45,
+      "within_0_005_of_peak": true
+    },
+    {
+      "n_estimators": 200,
+      "mean_validation_macro_f1": 0.5518673568577834,
+      "std_validation_macro_f1": 0.1749769034259012,
+      "mean_train_macro_f1": 0.9026239046691696,
+      "mean_generalization_gap": 0.35075654781138627,
+      "mean_incremental_fit_seconds": 0.7911747999997008,
+      "validation_folds": 45,
+      "within_0_005_of_peak": true
+    },
+    {
+      "n_estimators": 300,
+      "mean_validation_macro_f1": 0.5543550058166401,
+      "std_validation_macro_f1": 0.17438647907330102,
+      "mean_train_macro_f1": 0.9028031491768803,
+      "mean_generalization_gap": 0.3484481433602402,
+      "mean_incremental_fit_seconds": 0.8003047000005609,
+      "validation_folds": 45,
+      "within_0_005_of_peak": true
+    },
+    {
+      "n_estimators": 500,
+      "mean_validation_macro_f1": 0.5535403835288584,
+      "std_validation_macro_f1": 0.17422061104936676,
+      "mean_train_macro_f1": 0.9028842205099964,
+      "mean_generalization_gap": 0.34934383698113813,
+      "mean_incremental_fit_seconds": 1.5312628533309585,
+      "validation_folds": 45,
+      "within_0_005_of_peak": true
+    },
+    {
+      "n_estimators": 800,
+      "mean_validation_macro_f1": 0.5547139609825537,
+      "std_validation_macro_f1": 0.17508906955423661,
+      "mean_train_macro_f1": 0.9029503917058592,
+      "mean_generalization_gap": 0.3482364307233057,
+      "mean_incremental_fit_seconds": 2.258640313332823,
+      "validation_folds": 45,
+      "within_0_005_of_peak": true
+    }
+  ]
+}

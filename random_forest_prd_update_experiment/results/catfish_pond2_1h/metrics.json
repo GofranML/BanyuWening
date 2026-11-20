@@ -1,0 +1,88 @@
+{
+  "experiment": "catfish_pond2_1h",
+  "series_id": "catfish_pond2",
+  "dataset": "kaggle_catfish_pond2.csv",
+  "horizon": "1h",
+  "horizon_minutes": 60,
+  "task_note": "Label proxy masa depan mengikuti matriks PRD v2.3: AMAN pH 6.5-8.5 & suhu 25-30 C; WASPADA pada buffer mendekati batas (pH 6.0-<6.5 atau >8.5-8.8; suhu 22-<25 atau >30-33); BAHAYA di luar buffer. TDS/turbidity/level tidak menentukan label sebelum baseline dan batas lokal tervalidasi.",
+  "source_audit": {
+    "source_file": "kaggle_catfish_pond2.csv",
+    "series_id": "catfish_pond2",
+    "source_rows": 172249,
+    "rows_with_valid_time": 172249,
+    "duplicate_timestamp_rows": 0,
+    "resampled_bins": 38647,
+    "observed_bins": 22161,
+    "timestamp_start": "2021-06-19 00:00:00+00:00",
+    "timestamp_end": "2021-10-31 04:30:00+00:00",
+    "feature_columns": [
+      "ph",
+      "temperature_c",
+      "turbidity_ntu"
+    ],
+    "frequency": "5min",
+    "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+  },
+  "status": "COMPLETED",
+  "target": "future_proxy_risk",
+  "label_version": "prd-v2.3-sni-ph-temperature-local-baseline-pending",
+  "model_variant": "rf_100trees",
+  "train_size": 13127,
+  "test_size": 1194,
+  "eligible_windows": 14321,
+  "accuracy": 0.9690117252931323,
+  "precision_macro": 0.3327581248202473,
+  "recall_macro": 0.32518268690275437,
+  "f1_macro": 0.3289267945984364,
+  "precision_weighted": 0.9915857689367169,
+  "recall_weighted": 0.9690117252931323,
+  "f1_weighted": 0.980168789934034,
+  "train_f1_macro": 0.998508011257425,
+  "generalization_gap_f1": 0.6695812166589887,
+  "train_seconds": 1.499929500001599,
+  "evaluation_seconds": 0.2678427000064403,
+  "class_distribution_train": {
+    "1.0": 9596,
+    "0.0": 2904,
+    "2.0": 627
+  },
+  "class_distribution_test": {
+    "2.0": 1186,
+    "1.0": 8
+  },
+  "cross_validation": {
+    "method": "3-fold chronological TimeSeriesSplit; gap=horizon steps",
+    "scoring": "macro F1",
+    "fold_scores": [
+      0.6317099815575954,
+      0.6231068009126752,
+      0.43109876361391364
+    ],
+    "mean": 0.5619718486947282,
+    "std": 0.09260787215721226
+  },
+  "parameters": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "max_depth": 18,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 100,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "label_note": "Label proxy masa depan mengikuti matriks PRD v2.3: AMAN pH 6.5-8.5 & suhu 25-30 C; WASPADA pada buffer mendekati batas (pH 6.0-<6.5 atau >8.5-8.8; suhu 22-<25 atau >30-33); BAHAYA di luar buffer. TDS/turbidity/level tidak menentukan label sebelum baseline dan batas lokal tervalidasi.",
+  "model_path": "models\\catfish_pond2\\rf_1h.joblib",
+  "model_reload_verified": true
+}

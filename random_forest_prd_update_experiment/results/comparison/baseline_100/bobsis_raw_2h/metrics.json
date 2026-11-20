@@ -1,0 +1,88 @@
+{
+  "experiment": "bobsis_raw_2h",
+  "series_id": "bobsis_raw",
+  "dataset": "kaggle_aquaponic_iot_raw.csv",
+  "horizon": "2h",
+  "horizon_minutes": 120,
+  "task_note": "Label proxy masa depan dari pH 6.5-8.5 dan suhu 25-30 C; bahaya ekstrem pH<6/>8.8 atau suhu<22/>33 C. Bukan label biologis; TDS/turbidity tidak menentukan label.",
+  "source_audit": {
+    "source_file": "kaggle_aquaponic_iot_raw.csv",
+    "series_id": "bobsis_raw",
+    "source_rows": 505730,
+    "rows_with_valid_time": 505730,
+    "duplicate_timestamp_rows": 499581,
+    "resampled_bins": 96607,
+    "observed_bins": 11108,
+    "timestamp_start": "2023-01-02 00:00:00+00:00",
+    "timestamp_end": "2023-12-03 10:30:00+00:00",
+    "feature_columns": [
+      "ph",
+      "temperature_c",
+      "tds_ppm"
+    ],
+    "frequency": "5min",
+    "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated",
+    "lineage": "same Kaggle source as filtered/raw paired files; variants are not independent datasets"
+  },
+  "status": "COMPLETED",
+  "target": "future_proxy_risk",
+  "label_version": "prd-v2.2-full-3class-metrics-and-diverse-test",
+  "train_size": 8723,
+  "test_size": 928,
+  "eligible_windows": 9651,
+  "accuracy": 0.8189655172413793,
+  "precision_macro": 0.5489297279767501,
+  "recall_macro": 0.5483418686908769,
+  "f1_macro": 0.5465616446008603,
+  "precision_weighted": 0.8270445534086549,
+  "recall_weighted": 0.8189655172413793,
+  "f1_weighted": 0.8198901429124552,
+  "train_f1_macro": 0.9650023626938974,
+  "generalization_gap_f1": 0.41844071809303707,
+  "train_seconds": 1.876698000007309,
+  "evaluation_seconds": 0.2640352000016719,
+  "class_distribution_train": {
+    "1.0": 4576,
+    "2.0": 3305,
+    "0.0": 842
+  },
+  "class_distribution_test": {
+    "2.0": 497,
+    "1.0": 431
+  },
+  "cross_validation": {
+    "method": "3-fold chronological TimeSeriesSplit; gap=horizon steps",
+    "scoring": "macro F1",
+    "fold_scores": [
+      0.6302049692286779,
+      0.5215215422255433,
+      0.5993581372222435
+    ],
+    "mean": 0.5836948828921549,
+    "std": 0.04573128016608328
+  },
+  "parameters": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "max_depth": 18,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 100,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "label_note": "Label proxy masa depan dari pH 6.5-8.5 dan suhu 25-30 C; bahaya ekstrem pH<6/>8.8 atau suhu<22/>33 C. Bukan label biologis; TDS/turbidity tidak menentukan label.",
+  "model_path": "models\\bobsis_raw\\rf_2h.joblib",
+  "model_reload_verified": true
+}

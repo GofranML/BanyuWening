@@ -1,0 +1,114 @@
+{
+  "sources": [
+    {
+      "kaggle_ref": "ogbuokiriblessing/sensor-based-aquaponics-fish-pond-datasets",
+      "license": "CC BY 4.0",
+      "files": [
+        "kaggle_catfish_pond1.csv",
+        "kaggle_catfish_pond10.csv",
+        "kaggle_catfish_pond11.csv",
+        "kaggle_catfish_pond12.csv",
+        "kaggle_catfish_pond2.csv",
+        "kaggle_catfish_pond3.csv",
+        "kaggle_catfish_pond4.csv",
+        "kaggle_catfish_pond6.csv",
+        "kaggle_catfish_pond7.csv",
+        "kaggle_catfish_pond8.csv",
+        "kaggle_catfish_pond9.csv"
+      ]
+    },
+    {
+      "kaggle_ref": "jocelyndumlao/iot-monitoring-of-water-quality-and-tilapia",
+      "license": "CC0-1.0",
+      "files": [
+        "kaggle_tilapia_iot_health_2024.xlsx"
+      ]
+    },
+    {
+      "kaggle_ref": "bobsis/small-aquaculture-fishpond",
+      "license": "CC BY 4.0",
+      "files": [
+        "kaggle_aquaponic_iot_filtered.csv",
+        "kaggle_aquaponic_iot_raw.csv"
+      ]
+    }
+  ],
+  "dummy_preserved_sha256": "7f6e586f0ea7c96cd2d16d6f80f1cf8a7c4fab9e4b3006cea0bf33774093cb3b",
+  "datasets_now": [
+    {
+      "name": "kaggle_aquaponic_iot_filtered.csv",
+      "bytes": 4431680,
+      "sha256": "ea2a2569107912f151141bcad67a39c41c25b9b4ddca775d40346d66e39f2c07"
+    },
+    {
+      "name": "kaggle_aquaponic_iot_raw.csv",
+      "bytes": 19026532,
+      "sha256": "ac69aff715a31f3f35439247b02d9e7bf95e409652bf88e5f15329c6effb9dba"
+    },
+    {
+      "name": "kaggle_catfish_pond1.csv",
+      "bytes": 6809242,
+      "sha256": "063ea4f0c9fcd24f016fbfc52e5422b655dfb4f3542d40476d99d899655dda76"
+    },
+    {
+      "name": "kaggle_catfish_pond10.csv",
+      "bytes": 45352,
+      "sha256": "7cd9f8b98a6edf6f2111046f35b19a1304f840c4eaef0b182b5b8922cd601690"
+    },
+    {
+      "name": "kaggle_catfish_pond11.csv",
+      "bytes": 223312,
+      "sha256": "70146266d05a99a41bf90f3902b231c81c01af551b216053bc76ffea5299be78"
+    },
+    {
+      "name": "kaggle_catfish_pond12.csv",
+      "bytes": 261311,
+      "sha256": "9699eeaf9f5054bc4df034985c4880820ec192c5bd5be0d8247b486eb3e1b5d5"
+    },
+    {
+      "name": "kaggle_catfish_pond2.csv",
+      "bytes": 14363675,
+      "sha256": "be6b8d9113d2c32d82a6fe8fa51538bcd1085a1034681e8b7f2d67275436eb63"
+    },
+    {
+      "name": "kaggle_catfish_pond3.csv",
+      "bytes": 13993546,
+      "sha256": "a1980e80250bfd610274acb3e281ebf93ba2b1e5449c61982bf97d262f8c01be"
+    },
+    {
+      "name": "kaggle_catfish_pond4.csv",
+      "bytes": 7574192,
+      "sha256": "ff3822f2e28b191e126d9b92fc6ea6a7be36b1fc5924ac97af1a83f7ec598634"
+    },
+    {
+      "name": "kaggle_catfish_pond6.csv",
+      "bytes": 7581741,
+      "sha256": "5da60c205dc569f147ec9f20b285c869884171741316a3b9af052850b68193ed"
+    },
+    {
+      "name": "kaggle_catfish_pond7.csv",
+      "bytes": 27346535,
+      "sha256": "8fc3c26241da6ad9bd748c116e06cac00664c0a0d7cfa424fc8453ed5e03bd52"
+    },
+    {
+      "name": "kaggle_catfish_pond8.csv",
+      "bytes": 7212522,
+      "sha256": "1260a962f979876a1d451a55208bcd9e7fef077e3d13ccfee98863f6afb128a7"
+    },
+    {
+      "name": "kaggle_catfish_pond9.csv",
+      "bytes": 15218730,
+      "sha256": "9e3aea85c8f2b68504548e3ef273a8cb032a2817118d82da4a6b5758e615bf54"
+    },
+    {
+      "name": "kaggle_tilapia_iot_health_2024.xlsx",
+      "bytes": 589563,
+      "sha256": "5c7fba481c91d4f227450044d8f620af157406061b360c0f2c669c0b041a9bfe"
+    },
+    {
+      "name": "sensor_readings_dummy.csv",
+      "bytes": 253200,
+      "sha256": "7f6e586f0ea7c96cd2d16d6f80f1cf8a7c4fab9e4b3006cea0bf33774093cb3b"
+    }
+  ]
+}

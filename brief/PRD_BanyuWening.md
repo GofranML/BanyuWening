@@ -1,9 +1,11 @@
 # Product Requirements Document — BanyuWening
 
-**Versi:** 2.0 (Smart PLC & Agentic AI Mitigation Edition)  
-**Tanggal:** 12 November 2026  
+**Versi:** 2.1 (Modular Multi-Pond + Hybrid Edge-Cloud AI)  
+**Tanggal revisi:** 20 November 2026  
 **Tim:** M. Ilham Nandari (PM/Fullstack), Gofran Muttaqi Likhan (IoT/Cloud/DB), Monika Lisbet Lase (Admin/QA)  
 **Deadline:** 15 Januari 2027 (95 hari dari 12 Oktober 2026)
+
+> **Catatan revisi yang mengikat:** Addendum §12 adalah sumber kebenaran untuk hardware v2, perilaku offline/PLN padam, peran Edge Fuzzy/Cloud Random Forest/AI Agent, kanal notifikasi, OTA, biaya cloud, target risiko, dan keselamatan. Addendum ini menggantikan bagian v2.0 yang bertentangan, termasuk eksekusi aktuator langsung oleh LLM dan klaim telemetri yang mengabaikan `pond_id`.
 
 ---
 
@@ -294,3 +296,145 @@ create table agent_mitigation_logs (
 | **Internet Kolam Putus Saat Mitigasi** | Cloud tidak bisa mematikan relay yang sedang ON | Firmware ESP32 memiliki timer internal (*Hardware Watchdog*). Relay otomatis OFF setelah `duration_s` habis meskipun koneksi cloud putus. |
 | **Relay Port Salah Colok oleh Operator** | Pompa molase tercolok ke port aerator | Fitur "Test Pulse 3 Detik" di dashboard saat inisiasi alat agar operator dapat memastikan alat fisik yang bereaksi sudah sesuai sebelum dioperasikan secara otomatis. |
 
+---
+
+## 12. Addendum Normatif v2.1 — Modular Multi-Kolam dan Hybrid Edge-Cloud
+
+Addendum ini menggantikan persyaratan v2.0 yang bertentangan. Istilah “1–3 jam”, “6–12 jam”, dan “4–6 bulan” di bawah merupakan pembacaan rentang yang konsisten dari naskah revisi (yang sempat tertulis “13 jam”, “612 jam”, dan “46 bulan”). Rentang runtime UPS dan umur probe tetap **target/estimasi yang harus dibuktikan lewat uji lapangan**, bukan jaminan performa.
+
+### 12.1 Produk dan paket hardware v2
+
+Satu **Core Hub v2 melayani hingga empat kolam milik satu pemilik** dalam satu lokasi. Klaim patungan antar-tetangga bukan bagian produk. Konektor sensor menggunakan GX16 kedap air dan kabel shielded maksimal 35 m; jalur kabel sensor harus dipisahkan dari kabel AC 220 V. Jarak tersebut menjadi batas desain yang wajib lulus uji noise, grounding, proteksi surge, dan akurasi ADC pada konfigurasi lapangan.
+
+| Komponen | Spesifikasi v2 | Biaya dan batas paket |
+|---|---|---|
+| Core Hub v2 | Custom carrier PCB, ESP32-WROOM dengan modul pre-certified SDPPI; proses sertifikasi perangkat jadi ke SDPPI/DJID Komdigi direncanakan; RTC DS3231, LittleFS, LCD 16x2, box IP65, empat port chassis GX16, GPIO expander MCP23017/PCF8574, level shifter 3.3 V/5 V, dan mini UPS 2S dua sel 18650 + BMS | COGS Rp595.000; harga satuan Rp900.000 |
+| Starter 2K | Dua ADS1115 (8 input ADC); empat relay; dua soket GX16 aktif dari empat; kapasitas dua kolam, dua aktuator per kolam | Jumlah kanal dan batas beban harus dikonfirmasi pada uji integrasi |
+| Juragan 4K + Expansion Kit | Tiga ADS1115 (12 input ADC); delapan relay optocoupler; empat port aktif; kapasitas empat kolam, dua aktuator per kolam | Setiap ADS1115 harus memakai alamat I2C unik. Tiga alamat yang direncanakan: 0x48, 0x49, 0x4A; verifikasi skematik ADDR dan konflik alamat sebelum PCB dipesan. ADS1115 menyediakan empat input single-ended per IC. |
+| Modul Sensor Kolam v2 | Probe pH PH-4502C, DS18B20 1-Wire, TDS dengan MOSFET power-switch, turbidity ber-potting epoxy di stilling well PVC, float switch, kabel shielded dan filter EMI RC/ferrite | COGS Rp535.000; harga satuan Rp800.000 |
+
+ADS1115 memiliki empat alamat I2C yang dapat dipilih melalui pin ADDR dan empat input single-ended; lihat [datasheet Texas Instruments ADS1115](https://www.ti.com/lit/ds/symlink/ads1115.pdf). Desain 35 m harus diuji sebagai satu sistem sensor-kabel-front-end; angka tersebut bukan jaminan bahwa jalur I2C mentah boleh dipanjangkan sejauh itu.
+
+Probe pH kaca dan elektroda TDS merupakan **consumable**, bukan bagian garansi elektronik. Garansi 12 bulan hanya untuk Core Hub dan modul kering IP65; probe mendapat garansi DOA 30 hari. Harga pengganti resmi Rp195.000/probe. Estimasi umur 4–6 bulan di lumpur lele perlu dicatat sebagai hasil pilot dan tidak dijanjikan sebelum data lapangan memadai. Sensor DO dan NH3 tidak termasuk paket standar; ekspansi DO Pro disediakan melalui slot I2C/GX16.
+
+### 12.2 Operasi lokal, Store-and-Forward, dan catu daya
+
+| Kondisi | Perilaku wajib |
+|---|---|
+| WiFi/internet putus, PLN tersedia | Edge Fuzzy dan safety clamp tetap berjalan di ESP32; relay lokal beroperasi; pembacaan, fault, keputusan fuzzy, dan status relay dicatat ke LittleFS dengan timestamp RTC DS3231. Data dikirim ulang berurutan setelah koneksi pulih. |
+| SaaS/backend berhenti | Mode Offline-Plus tetap berfungsi tanpa biaya cloud: pembacaan, aturan lokal, relay lokal, LCD, RTC, dan log lokal tetap aktif. Tidak ada ketergantungan cloud untuk fungsi keselamatan. |
+| PLN padam | Mini UPS 2S menjaga Core Hub, RTC, dan pencatatan LittleFS tetap hidup dengan target 6–12 jam melalui LCD backlight off dan duty-cycle sensor. Peringatan “Listrik PLN Padam” dikirim hanya jika router/gateway dan uplink masih memiliki daya. |
+| PLN padam tanpa genset/inverter beban | Aerator dan pompa AC 220 V **tidak berjalan**. UPS Core Hub tidak boleh dipasarkan seolah-olah menjadi backup daya aktuator AC. |
+
+### 12.3 Fuzzy edge, sensor watchdog, dan adaptasi terkendali
+
+Edge Fuzzy deterministik menjadi kendali lokal utama untuk aerator/pompa. Prioritas operasi: **hard safety bounds dan interlock > proteksi perangkat > kontrol Fuzzy lokal > perintah cloud yang tervalidasi > kontrol manual yang berotorisasi**. Semua relay memiliki maksimum durasi, cooldown, dan duty-cycle clamp; tidak ada perintah yang dapat mempertahankan relay aktif tanpa batas.
+
+Sensor Health Watchdog memberi status `OK`, `SATURATED`, atau `FAULT` berdasarkan flatline, stuck-at-rail, nilai di luar rentang fisik, dan kegagalan komunikasi. Kanal bermasalah ditandai missing dan diisolasi dari keputusan Fuzzy/RF; sistem menurunkan tingkat keyakinan, memakai fitur sensor sehat yang tersisa, mencatat degradasi, dan memberi notifikasi perawatan. Watchdog dapat mendeteksi dan mengisolasi probe kotor/rusak, tetapi **tidak dapat memperbaiki kerusakan fisik probe**.
+
+Metode self-improvement yang disetujui adalah **bounded self-tuning Fuzzy**, bukan pembelajaran bebas pada jalur relay:
+
+1. Aturan inti, emergency limits, arah tindakan, interlock, durasi maksimum, dan duty-cycle clamp dikunci sebagai hard constraints.
+2. Setelah kalibrasi awal, ESP32 menghitung baseline lokal per pond dari rolling median/MAD dan siklus diurnal pada jendela data valid (awal: tujuh hari). Baseline ini boleh menggeser pusat/lebar membership “normal” secara kecil dan bertahap; batas fisik dan zona bahaya tidak boleh bergeser.
+3. Adaptasi dibekukan saat sensor fault/saturated, alarm aktif, kalibrasi berlangsung, relay sedang menjalankan mitigasi, atau sampel dinilai tidak valid. Perubahan parameter dicatat sebagai versi usulan di LittleFS.
+4. Untuk cohort model, data pilot 90 hari diberi label melalui DO meter dan test kit amonia yang dikalibrasi. Kandidat tuning Fuzzy dapat dilatih di cloud dengan ANFIS (hybrid gradient descent + least-squares) atau optimasi parameter terikat, kemudian diuji pada split waktu yang belum dilihat dan skenario batas keselamatan.
+5. AI Agent Supervisor hanya mengevaluasi telemetri, kualitas model, dan kandidat konfigurasi serta menulis rekomendasi/audit; **agent tidak melatih ulang atau menerapkan model sendiri**. Pipeline training terpisah membangun kandidat. Engineer wajib menyetujui konfigurasi sebelum signed JSON dikirim ke MQTT.
+6. ESP32 memvalidasi signature/version, hard bounds, duty-cycle clamp, skema, dan compatibility; config ditulis atomik dengan versi sebelumnya untuk rollback. Level 2 Dual-OTA hanya dipicu manual Engineer; kegagalan health check dalam 60 detik mengaktifkan auto-rollback.
+
+ANFIS diperkenalkan sebagai adaptive-network-based fuzzy inference dengan pembelajaran hybrid: least-squares untuk parameter konsekuen dan gradient descent untuk parameter premise; mode batch dan pattern/online dibahas dalam paper asli Jang 1993 ([paper ANFIS](https://www.cic.ipn.mx/~pescamilla/SistInt/Jang1993.pdf)). Pada BanyuWening, pembaruan online hanya boleh menyentuh baseline/membership normal yang dibatasi. Tidak boleh ada reinforcement-learning langsung yang bereksperimen pada aktuator kolam. Tanpa label DO/NH3 yang tervalidasi, “self-learning” hanya berarti adaptasi baseline/anomali lokal, bukan pembuktian kondisi biologis ikan.
+
+### 12.4 Cold start, label risiko, dan Cloud Random Forest
+
+Pada cold start sampai tersedia pilot berlabel, Edge Fuzzy deterministik + Relative Local Anomaly Detection menjadi satu-satunya kontrol. Cloud RF dapat berjalan dalam **shadow mode**, tetapi status model wajib “belum tervalidasi” dan hasilnya tidak menggerakkan relay.
+
+Paket standar tidak memiliki sensor DO dan amonia. Proxy RF mencakup pH, suhu, TDS, turbiditas, laju perubahan/lag, fitur siklus diurnal, status kesehatan sensor, dan missingness. Nilai DO/NH3 yang dikumpulkan dari DO meter/test kit pada pilot berfungsi sebagai ground truth offline, bukan sebagai sensor kontinu yang seolah-olah tersedia di paket standar.
+
+Tujuan cloud: Random Forest terpisah per `pond_id` memprediksi status **AMAN/WASPADA/BAHAYA** pada horizon 1, 2, dan 3 jam. Definisi label dan ambang kelas harus dikunci bersama ahli budidaya dan sumber yang tercatat sebelum training produksi. Sebagai rentang dasar budidaya air tawar, dokumen teknis BSIP yang mengutip SNI mencantumkan suhu 25–30 °C, pH 6,5–8,5, DO minimal 4 mg/L, dan NH3 maksimal 0,01 mg/L untuk lele; lihat [petunjuk teknis BSIP Kementerian Pertanian](https://lahanrawa.bsip.pertanian.go.id/storage/assets/uploads/publikasi/VxKAveS8lfXXnD6UEhW77QANsI0KkTfyKn13DCQP.pdf). Ambang warning/danger, perubahan cepat, TDS, dan turbiditas tetap harus ditetapkan/ditinjau pakar dan divalidasi pada kondisi kolam lokal; nilai lama di kode tidak otomatis menjadi standar ilmiah.
+
+Training RF memakai data per `pond_id`, horizon target yang eksplisit, chronological holdout, class imbalance handling bila perlu, calibration/performance report, model card, dan monitoring drift. Tidak ada klaim F1 ≥0,80 sebelum diuji pada data pilot independen. Jika hasil model menurun atau sensor tidak sehat, fallback ke Fuzzy lokal dan kirim label “model tidak tersedia/terdegradasi”. Agent mengevaluasi hasil dan boleh mengusulkan pekerjaan retraining, tetapi tidak melakukan self-training/push otomatis.
+
+### 12.5 Cloud, kontrak multi-pond, dan channel adapter
+
+Cloud produksi menggunakan EMQX atau Mosquitto dengan TLS, FastAPI Always-On, dan Supabase Pro. Hub memiliki `device_id`; setiap telemetri, prediksi, konfigurasi, relay, fault, dan log wajib mengandung `pond_id`. Semua key, unique constraint, RLS, query, payload MQTT, API, model, dan dashboard harus mendukung maksimal empat `pond_id` per `device_id`.
+
+Topik minimum:
+
+| Topik | Arah | Isi |
+|---|---|---|
+| `banyuwening/{device_id}/{pond_id}/telemetry` | Hub → cloud | Data sensor, health, fuzzy decision, relay state, sequence, timestamp |
+| `banyuwening/{device_id}/{pond_id}/status` | Hub → cloud | Status online/offline, daya, WiFi, firmware, config/model version |
+| `banyuwening/{device_id}/{pond_id}/control` | Cloud → hub | Usulan/command yang tervalidasi, `cmd_id`, TTL, pond dan channel |
+| `banyuwening/{device_id}/{pond_id}/ack` | Hub → cloud | Accepted/rejected, alasan safety clamp, relay state aktual |
+| `banyuwening/{device_id}/{pond_id}/config/candidate` | Cloud → hub | Signed config candidate yang sudah mendapat HITL approval; bukan output bebas agent |
+
+Diagram v2.1 berikut menggantikan diagram arsitektur lama di §8:
+
+```mermaid
+flowchart LR
+  PONDS["Kolam milik satu pemilik<br/>1-4 pond"] --> SENS["Sensor + stilling well PVC<br/>pH, TDS MOSFET, turbidity, DS18B20, float"]
+  SENS -->|"GX16 + kabel shielded maks 35 m<br/>uji EMI; terpisah dari AC 220 V"| HUB["Core Hub v2 ESP32-WROOM<br/>ADS1115 + GPIO expander<br/>RTC DS3231 + LittleFS<br/>Sensor Health Watchdog"]
+  HUB --> FUZZY["Edge Fuzzy lokal<br/>hard bounds + duty-cycle clamp"]
+  FUZZY --> RELAY["Relay 4/8 channel<br/>aerator + pompa AC 220 V"]
+  UPS["Mini UPS 2S + BMS<br/>target 6-12 jam untuk hub"] --> HUB
+  HUB <-->|"WiFi/MQTT TLS<br/>store-and-forward"| CLOUD["EMQX/Mosquitto TLS<br/>FastAPI Always-On<br/>Supabase Pro"]
+  CLOUD --> RF["Cloud Random Forest<br/>per pond_id; horizon 60/120/180 menit<br/>shadow sampai label pilot tervalidasi"]
+  RF --> AGENT["AI Agent Supervisor<br/>evaluasi + proposal saja"]
+  AGENT --> HITL["Engineer HITL Gate<br/>signed config / manual Dual-OTA"]
+  HITL --> HUB
+  RF --> BOT["WeningBot WhatsApp-first<br/>Telegram/PWA sekunder"]
+  CLOUD --> BOT
+```
+
+Pada PLN padam, UPS hanya menjaga hub/log dan jalur peringatan yang masih memiliki uplink; relay tidak dapat memberi daya pada aerator/pompa AC tanpa inverter/genset eksternal.
+
+Pembacaan lokal dilakukan tiap 30 detik; upload cloud diagregasi tiap 5 menit untuk skala 320 kolam (sekitar 2,76 juta record per bulan sebelum overhead). Raw/store-forward dan agregat wajib mempunyai retensi dan partisi yang ditetapkan agar histori operasional 90 hari dapat dipertahankan. Angka kapasitas dan biaya diverifikasi melalui load test dan estimasi storage/index Supabase Pro.
+
+Channel Adapter **WhatsApp-first** menjadi kanal pengguna utama melalui WeningBot. Telegram dan PWA tetap kanal sekunder. Pesan memuat `pond_id`, status, confidence, fault, sumber keputusan (Fuzzy/RF/operator), dan tindakan yang disarankan. Notifikasi PLN padam dibedakan tegas dari WiFi offline.
+
+### 12.6 Sasaran penerimaan v2
+
+- Satu Core Hub mengelola satu sampai empat kolam milik satu pemilik; konfigurasi dua dan empat kolam lulus uji terpisah.
+- WiFi diputus: keputusan Fuzzy, relay, dan log lokal tetap bekerja; seluruh backlog terunggah berurutan setelah koneksi pulih tanpa duplikasi.
+- PLN diputus: Core Hub tetap log sesuai target UPS yang telah diuji; dokumentasi dan antarmuka menyatakan aerator/pompa AC berhenti kecuali sumber AC eksternal tersedia.
+- Fault, saturation/flatline, dan sensor recovery menghasilkan status/audit dan tidak menyebabkan relay menyala tanpa batas.
+- Safety bounds, duty-cycle clamp, TTL, rollback config, HITL config approval, dan manual Engineer OTA lolos uji fault-injection.
+- Cloud memproses `pond_id`, model version, horizon, dan source dataset secara eksplisit; RF belum tervalidasi tidak pernah memberi command langsung.
+- Broker TLS/FastAPI/Supabase Pro lulus load test target 320 kolam dan skenario backlog reconnect.
+- WhatsApp-first notification mengirim event kritis, WiFi offline/recovery, PLN outage (bila gateway berdaya), dan sensor maintenance.
+
+### 12.7 Jumlah kanal sensor dan evaluasi kecocokan dataset Kaggle
+
+Satu Modul Sensor Kolam v2 memiliki **lima jenis kanal sensor**: (1) pH analog, (2) suhu DS18B20 digital 1-Wire, (3) TDS analog dengan MOSFET power-switch, (4) turbiditas analog, dan (5) float switch digital untuk level air. Tiga kanal pertama/ketiga analog yang memerlukan pembacaan ADC adalah pH, TDS, dan turbiditas; suhu serta float adalah kanal digital. Sensor DO dan amonia bukan bagian dari paket standar. DO meter dan test kit amonia/nitrit pada pilot adalah instrumen rujukan manual untuk ground-truthing.
+
+Pencarian indeks Kaggle melalui Kaggle CLI pada 20 November 2026 menggunakan beberapa query sensor (`pH`, `TDS`, `turbidity`, `water level`, `DS18B20`) serta query tujuan (`aquaculture/fish pond`, `catfish`, `water quality`, `contamination`, `health risk`, `time series`). **Tidak ditemukan dataset yang secara terverifikasi memuat kelima kanal standar sekaligus dan target risiko lele pada horizon 1-3 jam.** Karena itu dataset publik hanya dapat menjadi bahan prototipe/benchmark; tidak memenuhi syarat model produksi per kolam dan tidak menggantikan pilot lokal berlabel.
+
+| Dataset Kaggle yang diperiksa | Kanal relevan yang didokumentasikan | Kesesuaian tujuan dan keputusan |
+|---|---|---|
+| [Sensor Based Aquaponics Fish Pond Datasets](https://www.kaggle.com/datasets/ogbuokiriblessing/sensor-based-aquaponics-fish-pond-datasets) | Catfish; DS18B20/suhu, pH, turbiditas, plus DO, amonia, nitrat; tidak ada TDS/float | Kandidat tujuan terdekat untuk telemetry catfish multi-kolam. Tidak memiliki label risiko 1-3 jam. Dipakai hanya untuk prototipe prediksi proxy horizon dari pH/suhu, setelah watchdog menolak nilai sensor tidak fisik. CC BY 4.0. |
+| [IoT Monitoring of Water Quality and Tilapia](https://www.kaggle.com/datasets/jocelyndumlao/iot-monitoring-of-water-quality-and-tilapia) | pH, suhu, turbiditas, DO; tidak ada TDS/float; target `Health Status` tersedia | Kandidat target kesehatan dini terdekat, tetapi spesiesnya tilapia dan bukan lele. Hanya benchmark eksternal, dengan fitur paket standar yang tersedia saja dan status target masa depan. CC0-1.0. |
+| [A Simple Dataset of Aquaponic Fish Pond IoT](https://www.kaggle.com/datasets/bobsis/small-aquaculture-fishpond) | pH, TDS, suhu; tidak ada turbiditas/float | Kecocokan kanal parsial tertinggi (3 dari 5), tetapi tidak memiliki target risiko masa depan; tidak dipakai sebagai evaluasi klasifikasi risiko. CC BY 4.0. |
+| [Fish Pond Water Contamination Dataset](https://www.kaggle.com/datasets/apgopi/fish-pond-water-contamination-dataset) | pH, suhu, turbiditas, DO, amonia, nitrat, mangan; tidak ada TDS/float | Tujuan kontaminasi kolam dekat, tetapi lisensi Kaggle tercatat unknown. Tidak disalin ke dataset kerja atau dipakai untuk training. |
+
+Pada benchmark catfish, kelas risiko proxy dihitung dari **nilai masa depan pH dan suhu** pada horizon yang diuji; hanya pH, suhu, dan turbiditas saat ini menjadi fitur. Ambang dasar mengikuti rentang pH/suhu dalam §12.4 dan kelas dicatat sebagai proxy teknik, bukan label biologis. Nilai sensor di luar rentang fisik, misalnya suhu sentinel -127 °C, pH di luar rentang 0-14, atau turbidity di luar 0-100 NTU, dikeluarkan dan dicatat sebagai fault. Dataset tilapia memakai target `Health Status` masa depan yang disediakan sumber; ia tidak dianggap validasi lele. Tidak ada fitur TDS/float/DO yang diada-adakan atau diimputasi sebagai kanal pengukuran. Hasil kedua benchmark harus dilaporkan terpisah dan tidak digabung menjadi satu skor.
+
+Dataset Kaggle publik, terutama dataset dengan kanal sensor parsial, target proxy, spesies lain, atau sensor bermasalah, **tidak boleh menjadi dasar klaim akurasi produksi, otomatisasi relay, atau klaim sensor yang sama dengan BOM**. Aktivasi cohort model tetap memerlukan pilot 90 hari per `pond_id` dengan label pembanding DO meter/test kit, validasi ahli, split kronologis, dan persetujuan engineer.
+
+
+
+### 12.8 Hasil tuning jumlah pohon Random Forest (20 November 2026)
+
+Pada benchmark Kaggle eksploratif, jumlah pohon diuji pada 100/200/300/500/800 menggunakan 3-fold chronological TimeSeriesSplit pada 15 kombinasi seri/horizon (45 fold). Aturan pemilihan adalah ukuran terkecil dalam toleransi 0,005 dari mean macro-F1 validasi tertinggi. Hasilnya menetapkan **100 pohon**: mean CV macro-F1 0,554153, hanya 0,000561 di bawah puncak 0,554714 pada 800 pohon. Perbandingan holdout 100 vs 300 pada 15 model memberi mean macro-F1 0,436046 vs 0,435485; waktu fit 300 pohon rata-rata 2,71x lebih tinggi. Mean gap train-validasi sekitar 0,349 pada seluruh ukuran, sehingga penambahan pohon tidak menyelesaikan masalah generalisasi.
+
+Nilai ini adalah baseline shadow benchmark dari dataset publik dengan label proxy, bukan target performa produksi atau bukti bahwa data kolam baru akan akurat. Model tetap dilarang mengendalikan aktuator sampai ada label pilot tervalidasi dan evaluasi eksternal lintas waktu/pond. Rincian serta artefak tuning dicatat di `brief/parameter & weight.md` dan `random_forest_prd_update_experiment/results/comparison/`.
+
+### 12.9 Matriks status sensor dan batas label benchmark
+
+| Parameter | AMAN | WASPADA | BAHAYA | Status dalam label benchmark publik |
+|---|---|---|---|---|
+| Suhu | 25-30 C | 22-<25 C atau >30-33 C | <22 C atau >33 C | Dipakai |
+| pH | 6,5-8,5 | 6,0-<6,5 atau >8,5-8,8 | <6,0 atau >8,8 | Dipakai |
+| TDS | Dalam rentang lokal tervalidasi | Menyimpang dari baseline | Penyimpangan ekstrem | Belum dipakai untuk label |
+| Turbiditas | Dalam rentang lokal tervalidasi | Meningkat dari baseline | Peningkatan ekstrem | Belum dipakai untuk label |
+| Ketinggian air | Dalam batas operasional kolam | Mendekati batas minimum/maksimum | Keluar dari batas operasional | Belum dipakai; tidak tersedia di Kaggle benchmark |
+
+Rentang suhu dan pH mengikuti SNI 8228.4:2015 sebagaimana disepakati pada spesifikasi ini. Nilai ambang TDS, turbiditas, dan ketinggian air tidak boleh diisi dengan angka universal atau dipakai untuk auto-control sebelum setiap `pond_id` memiliki periode baseline, batas operasi yang disetujui ahli/operator, dan hasil validasi lapangan. Pada benchmark publik, TDS dan turbiditas yang tersedia boleh menjadi fitur; mereka tidak menentukan kelas target. Dengan demikian target `future_proxy_risk` saat ini secara eksplisit merupakan proxy masa depan berbasis pH+suhu, bukan status biologis lengkap lima sensor.

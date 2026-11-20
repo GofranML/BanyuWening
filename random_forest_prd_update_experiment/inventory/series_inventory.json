@@ -1,0 +1,373 @@
+{
+  "sources_examined": [
+    {
+      "source_file": "kaggle_catfish_pond1.csv",
+      "series_id": "catfish_pond1",
+      "source_rows": 83126,
+      "rows_with_valid_time": 83126,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 33459,
+      "observed_bins": 12935,
+      "timestamp_start": "2021-06-19 00:00:00+00:00",
+      "timestamp_end": "2021-10-13 04:10:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond10.csv",
+      "series_id": "catfish_pond10",
+      "source_rows": 620,
+      "rows_with_valid_time": 620,
+      "duplicate_timestamp_rows": 310,
+      "resampled_bins": 46756,
+      "observed_bins": 51,
+      "timestamp_start": "2021-06-25 15:45:00+00:00",
+      "timestamp_end": "2021-12-05 00:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond11.csv",
+      "series_id": "catfish_pond11",
+      "source_rows": 3165,
+      "rows_with_valid_time": 3165,
+      "duplicate_timestamp_rows": 2421,
+      "resampled_bins": 65195,
+      "observed_bins": 217,
+      "timestamp_start": "2021-06-25 15:10:00+00:00",
+      "timestamp_end": "2022-02-07 00:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond12.csv",
+      "series_id": "catfish_pond12",
+      "source_rows": 3590,
+      "rows_with_valid_time": 3590,
+      "duplicate_timestamp_rows": 3564,
+      "resampled_bins": 58859,
+      "observed_bins": 12,
+      "timestamp_start": "2021-06-25 15:10:00+00:00",
+      "timestamp_end": "2022-01-16 00:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond2.csv",
+      "series_id": "catfish_pond2",
+      "source_rows": 172249,
+      "rows_with_valid_time": 172249,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 38647,
+      "observed_bins": 22161,
+      "timestamp_start": "2021-06-19 00:00:00+00:00",
+      "timestamp_end": "2021-10-31 04:30:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond3.csv",
+      "series_id": "catfish_pond3",
+      "source_rows": 169185,
+      "rows_with_valid_time": 169185,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 33302,
+      "observed_bins": 17015,
+      "timestamp_start": "2021-06-19 00:00:00+00:00",
+      "timestamp_end": "2021-10-12 15:05:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond4.csv",
+      "series_id": "catfish_pond4",
+      "source_rows": 89844,
+      "rows_with_valid_time": 89844,
+      "duplicate_timestamp_rows": 88,
+      "resampled_bins": 64513,
+      "observed_bins": 12798,
+      "timestamp_start": "2021-06-19 00:00:00+00:00",
+      "timestamp_end": "2022-01-29 00:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond6.csv",
+      "series_id": "catfish_pond6",
+      "source_rows": 91050,
+      "rows_with_valid_time": 91049,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 111457,
+      "observed_bins": 13191,
+      "timestamp_start": "2021-01-07 00:00:00+00:00",
+      "timestamp_end": "2022-01-29 00:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond7.csv",
+      "series_id": "catfish_pond7",
+      "source_rows": 279612,
+      "rows_with_valid_time": 279612,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 56240,
+      "observed_bins": 26001,
+      "timestamp_start": "2021-06-18 13:00:00+00:00",
+      "timestamp_end": "2021-12-30 19:35:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond8.csv",
+      "series_id": "catfish_pond8",
+      "source_rows": 70744,
+      "rows_with_valid_time": 70744,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 49231,
+      "observed_bins": 7440,
+      "timestamp_start": "2021-06-18 12:05:00+00:00",
+      "timestamp_end": "2021-12-06 10:35:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_catfish_pond9.csv",
+      "series_id": "catfish_pond9",
+      "source_rows": 151785,
+      "rows_with_valid_time": 151785,
+      "duplicate_timestamp_rows": 0,
+      "resampled_bins": 33606,
+      "observed_bins": 16560,
+      "timestamp_start": "2021-06-18 12:10:00+00:00",
+      "timestamp_end": "2021-10-13 04:35:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated"
+    },
+    {
+      "source_file": "kaggle_aquaponic_iot_filtered.csv",
+      "series_id": "bobsis_filtered",
+      "source_rows": 118286,
+      "rows_with_valid_time": 118286,
+      "duplicate_timestamp_rows": 114769,
+      "resampled_bins": 87556,
+      "observed_bins": 4742,
+      "timestamp_start": "2023-01-02 00:00:00+00:00",
+      "timestamp_end": "2023-11-02 00:15:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "tds_ppm"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated",
+      "lineage": "same Kaggle source as filtered/raw paired files; variants are not independent datasets"
+    },
+    {
+      "source_file": "kaggle_aquaponic_iot_raw.csv",
+      "series_id": "bobsis_raw",
+      "source_rows": 505730,
+      "rows_with_valid_time": 505730,
+      "duplicate_timestamp_rows": 499581,
+      "resampled_bins": 96607,
+      "observed_bins": 11108,
+      "timestamp_start": "2023-01-02 00:00:00+00:00",
+      "timestamp_end": "2023-12-03 10:30:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "tds_ppm"
+      ],
+      "frequency": "5min",
+      "range_rules": "pH 0..14; temperature 0..40 C; TDS 0..10000 ppm; turbidity 0..100 NTU with 100 rail isolated",
+      "lineage": "same Kaggle source as filtered/raw paired files; variants are not independent datasets"
+    },
+    {
+      "source_file": "kaggle_tilapia_iot_health_2024.xlsx",
+      "series_id": "tilapia_health_2024",
+      "source_rows": 4383,
+      "observed_bins": 4383,
+      "resampled_bins": 4383,
+      "timestamp_start": "2024-01-01 00:00:00+00:00",
+      "timestamp_end": "2024-07-01 14:00:00+00:00",
+      "feature_columns": [
+        "ph",
+        "temperature_c",
+        "turbidity_ntu"
+      ],
+      "frequency": "1h",
+      "available_health_labels": {
+        "Stable": 3678,
+        "At Risk": 705
+      },
+      "source_target": "Health Status; source-defined, tilapia, not catfish biological ground truth"
+    }
+  ],
+  "dummy_excluded": "ml/datasets/sensor_readings_dummy.csv",
+  "exact_five_sensor_match_found": false,
+  "excluded_series": [
+    {
+      "experiment": "catfish_pond1_1h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond1_2h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond1_3h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond10_1h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond10_2h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond10_3h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond11_1h",
+      "reason": "train rows <100; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond11_2h",
+      "reason": "train rows <100; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond11_3h",
+      "reason": "train rows <100; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond12_1h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond12_2h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond12_3h",
+      "reason": "train rows <100; train has <2 classes; test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond3_1h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond3_2h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond3_3h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond4_1h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond4_2h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond4_3h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond8_1h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond8_2h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "catfish_pond8_3h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "bobsis_filtered_1h",
+      "reason": "test has <2 classes"
+    },
+    {
+      "experiment": "bobsis_filtered_2h",
+      "reason": "test has <2 classes"
+    },
+    {
+      "experiment": "bobsis_filtered_3h",
+      "reason": "test rows <100; test has <2 classes"
+    },
+    {
+      "experiment": "tilapia_health_2024_1h",
+      "reason": "test has <2 classes"
+    },
+    {
+      "experiment": "tilapia_health_2024_2h",
+      "reason": "test has <2 classes"
+    },
+    {
+      "experiment": "tilapia_health_2024_3h",
+      "reason": "test has <2 classes"
+    }
+  ],
+  "failures": []
+}
