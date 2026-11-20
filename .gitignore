@@ -27,3 +27,7 @@ Desktop.ini
 # Excluded local RF experiment archives
 random_forest_prd_experiment/
 random_forest_experiment/
+
+# Local temporary & agent state files
+tmp/
+.omc/
