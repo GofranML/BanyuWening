@@ -23,6 +23,7 @@ class SensorReading extends Model
         'aerator_on',
         'mode',
         'battery_v',
+        'transport',
     ];
 
     protected function casts(): array

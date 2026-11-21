@@ -80,11 +80,16 @@ class DatabaseSeeder extends Seeder
                 'mac_address' => 'A4:CF:12:89:BC:42',
                 'mqtt_topic' => 'banyuwening/pond01/telemetry',
                 'status' => 'STANDBY',
+                'transport_protocol' => 'STANDBY',
                 'mode' => 'AUTO',
                 'aerator_on' => false,
                 'last_heartbeat_at' => null,
             ]
         );
+
+        if (!$device->api_token_hash) {
+            $device->issueToken(env('ESP32_NODE_01_TOKEN', 'bw_dev_esp32_node_01_default_token_2026'));
+        }
 
         // Catatan: SensorReadings, Predictions, Alerts, dan RelayLogs TIDAK di-seed
         // pada database operasional utama agar dashboard utama bersih dan berada dalam mode Standby.

@@ -2,115 +2,374 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Alert;
 use App\Models\Device;
-use App\Models\SensorReading;
 use App\Models\Prediction;
 use App\Models\RelayLog;
-use App\Jobs\PredictWaterQualityJob;
+use App\Models\SensorReading;
+use App\Services\RealtimeBroadcaster;
+use App\Services\TelemetryIngestionService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ApiController extends Controller
 {
+    public function __construct(
+        private readonly TelemetryIngestionService $ingestionService,
+        private readonly RealtimeBroadcaster $broadcaster
+    ) {
+    }
+
     /**
-     * Endpoint Ingestion HTTP fallback untuk node ESP32 (POST /api/telemetry)
+     * Endpoint cek kesehatan API & daftar protokol aktif (GET /api/health)
      */
-    public function ingestTelemetry(Request $request)
+    public function health(): JsonResponse
     {
-        if (!$request->has('device_code') && $request->has('device_id')) {
-            $request->merge(['device_code' => $request->input('device_id')]);
-        }
+        return response()->json([
+            'success' => true,
+            'service' => 'BanyuWening IoT & Realtime API',
+            'version' => '2.3.0',
+            'server_time' => now()->toIso8601String(),
+            'swagger_ui' => url('/api/docs'),
+            'openapi_spec' => url('/api/docs/openapi.json'),
+            'websocket_protocols' => array_values(array_map(
+                fn ($p) => $p['subprotocol'],
+                RealtimeBroadcaster::PROTOCOLS
+            )),
+            'http_fallback_ready' => true,
+        ]);
+    }
+
+    /**
+     * Penemuan konfigurasi WebSocket multi-protokol & HTTP Fallback (GET /api/realtime/config)
+     */
+    public function realtimeConfig(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'realtime' => $this->broadcaster->getRealtimeConfig(
+                Auth::user(),
+                $request->getSchemeAndHttpHost()
+            ),
+        ]);
+    }
+
+    /**
+     * Endpoint Ingestion HTTP standar untuk node ESP32 (POST /api/telemetry)
+     * Dilindungi middleware `device.token` (1 token = 1 alat).
+     */
+    public function ingestTelemetry(Request $request): JsonResponse
+    {
+        $transport = strtolower((string) $request->header('X-Transport-Mode', '')) === 'http-fallback'
+            ? 'HTTP_FALLBACK'
+            : 'HTTP';
+
+        return $this->handleSingleIngestion($request, $transport);
+    }
+
+    /**
+     * Endpoint eksplisit HTTP Fallback saat WebSocket banyuwening.telemetry.v1 gagal connect (POST /api/http/telemetry)
+     */
+    public function ingestHttpFallbackTelemetry(Request $request): JsonResponse
+    {
+        return $this->handleSingleIngestion($request, 'HTTP_FALLBACK');
+    }
+
+    /**
+     * Endpoint unggah batch buffer telemetri pasca-offline (POST /api/http/telemetry/batch)
+     */
+    public function ingestBatchTelemetry(Request $request): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
 
         $validated = $request->validate([
-            'device_code' => ['required', 'string'],
-            'ph' => ['nullable', 'numeric'],
-            'temperature_c' => ['nullable', 'numeric'],
-            'tds_ppm' => ['nullable', 'numeric'],
-            'turbidity_ntu' => ['nullable', 'numeric'],
-            'water_level' => ['nullable', 'string'],
-            'aerator_on' => ['nullable', 'boolean'],
-            'mode' => ['nullable', 'string'],
+            'readings' => ['required', 'array', 'min:1', 'max:100'],
+            'readings.*.ph' => ['nullable', 'numeric', 'between:0,14'],
+            'readings.*.temperature_c' => ['nullable', 'numeric', 'between:0,50'],
+            'readings.*.tds_ppm' => ['nullable', 'numeric', 'between:0,10000'],
+            'readings.*.turbidity_ntu' => ['nullable', 'numeric', 'between:0,1000'],
+            'readings.*.water_level' => ['nullable', 'string', 'max:20'],
+            'readings.*.aerator_on' => ['nullable', 'boolean'],
+            'readings.*.mode' => ['nullable', 'string', 'max:20'],
+            'readings.*.battery_v' => ['nullable', 'numeric', 'between:0,24'],
+            'readings.*.recorded_at' => ['nullable', 'date'],
         ]);
 
-        $device = Device::firstOrCreate(
-            ['device_code' => $validated['device_code']],
-            [
-                'name' => 'ESP32 Node Sensor Kolam',
-                'pond_name' => 'Kolam Terpal Sangkuriang 01',
-                'status' => 'ONLINE',
-                'last_heartbeat_at' => Carbon::now(),
-            ]
-        );
+        $readingIds = [];
+        $lastResult = null;
 
-        $ph = $validated['ph'] ?? null;
-        $temp = $validated['temperature_c'] ?? null;
-        $waterLevel = strtoupper($validated['water_level'] ?? 'NORMAL');
-
-        $failsafeAerator = false;
-        if (($ph !== null && ($ph < 6.0 || $ph > 8.8)) || ($temp !== null && $temp > 33.0)) {
-            $failsafeAerator = true;
+        foreach ($validated['readings'] as $entry) {
+            $lastResult = $this->ingestionService->ingest($device, $entry, 'HTTP_FALLBACK');
+            $readingIds[] = $lastResult['reading']->id;
         }
-
-        $reading = SensorReading::create([
-            'device_id' => $device->id,
-            'recorded_at' => Carbon::now(),
-            'ph' => $ph,
-            'temperature_c' => $temp,
-            'tds_ppm' => $validated['tds_ppm'] ?? null,
-            'turbidity_ntu' => $validated['turbidity_ntu'] ?? null,
-            'water_level' => $waterLevel,
-            'aerator_on' => $failsafeAerator || ($validated['aerator_on'] ?? false),
-            'mode' => $failsafeAerator ? 'FAILSAFE' : ($validated['mode'] ?? 'AUTO'),
-        ]);
-
-        $device->update([
-            'status' => 'ONLINE',
-            'last_heartbeat_at' => Carbon::now(),
-            'aerator_on' => $reading->aerator_on,
-            'mode' => $reading->mode,
-        ]);
-
-        // Dispatch ML prediction
-        PredictWaterQualityJob::dispatch($reading);
 
         return response()->json([
             'success' => true,
-            'message' => 'Telemetri tersimpan.',
-            'reading_id' => $reading->id,
-            'aerator_command' => $reading->aerator_on ? 'ON' : 'OFF',
-            'failsafe_triggered' => $failsafeAerator,
+            'message' => count($readingIds) . ' paket telemetri batch tersimpan melalui HTTP Fallback.',
+            'transport' => 'HTTP_FALLBACK',
+            'device_code' => $device->device_code,
+            'ingested_count' => count($readingIds),
+            'reading_ids' => $readingIds,
+            'aerator_command' => $lastResult['aerator_command'] ?? ($device->aerator_on ? 'ON' : 'OFF'),
+            'failsafe_triggered' => $lastResult['failsafe_triggered'] ?? false,
         ], 201);
     }
 
     /**
-     * Endpoint status terkini (GET /api/latest)
+     * HTTP Fallback untuk WebSocket banyuwening.heartbeat.v1 (POST /api/http/heartbeat)
      */
-    public function getLatest()
+    public function httpHeartbeat(Request $request): JsonResponse
     {
-        $latest = SensorReading::latest('recorded_at')->first();
-        $prediction = Prediction::latest('predicted_at')->first();
-        $device = Device::first();
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
+
+        $validated = $request->validate([
+            'rssi' => ['nullable', 'integer'],
+            'uptime_s' => ['nullable', 'integer', 'min:0'],
+            'free_heap' => ['nullable', 'integer', 'min:0'],
+            'battery_v' => ['nullable', 'numeric', 'between:0,24'],
+            'fallback_reason' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $device->update([
+            'status' => 'ONLINE',
+            'transport_protocol' => 'HTTP_FALLBACK',
+            'last_heartbeat_at' => Carbon::now(),
+        ]);
+
+        $this->broadcaster->publish('heartbeat', 'device.heartbeat', [
+            'device_code' => $device->device_code,
+            'status' => 'ONLINE',
+            'transport_protocol' => 'HTTP_FALLBACK',
+            'rssi' => $validated['rssi'] ?? null,
+            'uptime_s' => $validated['uptime_s'] ?? null,
+            'free_heap' => $validated['free_heap'] ?? null,
+            'battery_v' => $validated['battery_v'] ?? null,
+            'fallback_reason' => $validated['fallback_reason'] ?? 'ws_unavailable',
+        ], $device->device_code);
 
         return response()->json([
             'success' => true,
+            'transport' => 'HTTP_FALLBACK',
+            'device_code' => $device->device_code,
+            'server_time' => now()->toIso8601String(),
+            'has_pending_command' => is_array($device->pending_command),
+        ]);
+    }
+
+    /**
+     * HTTP Fallback polling perintah aktuator untuk banyuwening.control.v1 (GET /api/http/commands)
+     */
+    public function getHttpCommands(Request $request): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
+
+        return response()->json([
+            'success' => true,
+            'transport' => 'HTTP_FALLBACK',
+            'device_code' => $device->device_code,
+            'aerator_command' => $device->aerator_on ? 'ON' : 'OFF',
+            'mode' => $device->mode,
+            'pending_command' => $device->pending_command,
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Konfirmasi eksekusi perintah relay melalui HTTP Fallback (POST /api/http/commands/ack)
+     */
+    public function ackHttpCommand(Request $request): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
+
+        $validated = $request->validate([
+            'command_id' => ['nullable', 'string', 'max:80'],
+            'applied_action' => ['required', 'in:ON,OFF,AUTO'],
+            'mode' => ['nullable', 'in:AUTO,MANUAL,FAILSAFE'],
+        ]);
+
+        $applied = $validated['applied_action'];
+        $mode = $validated['mode'] ?? ($applied === 'AUTO' ? 'AUTO' : 'MANUAL');
+        $isOn = $applied === 'ON' ? true : ($applied === 'OFF' ? false : (bool) $device->aerator_on);
+
+        $device->update([
+            'aerator_on' => $isOn,
+            'mode' => $mode,
+            'transport_protocol' => 'HTTP_FALLBACK',
+            'pending_command' => null,
+            'last_heartbeat_at' => Carbon::now(),
+        ]);
+
+        RelayLog::create([
+            'device_id' => $device->id,
+            'action' => $applied,
+            'mode' => $mode,
+            'reason' => 'Konfirmasi eksekusi relay via HTTP Fallback (/api/http/commands/ack)',
+            'actor' => $device->device_code,
+            'triggered_at' => Carbon::now(),
+        ]);
+
+        $this->broadcaster->publish('control', 'control.ack', [
+            'device_code' => $device->device_code,
+            'command_id' => $validated['command_id'] ?? null,
+            'applied_action' => $applied,
+            'aerator_on' => (bool) $device->aerator_on,
+            'mode' => $device->mode,
+            'transport' => 'HTTP_FALLBACK',
+        ], $device->device_code);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Konfirmasi eksekusi perintah relay berhasil dicatat.',
+            'device_code' => $device->device_code,
+            'aerator_on' => (bool) $device->aerator_on,
+            'mode' => $device->mode,
+        ]);
+    }
+
+    /**
+     * Endpoint status terkini (GET /api/latest) — juga dipakai sebagai HTTP Fallback Dashboard
+     */
+    public function getLatest(Request $request): JsonResponse
+    {
+        $device = $this->resolveOptionalDevice($request);
+
+        $latestQuery = SensorReading::latest('recorded_at');
+        if ($device) {
+            $latestQuery->where('device_id', $device->id);
+        }
+        $latest = $latestQuery->first();
+
+        $prediction = $latest
+            ? (Prediction::where('sensor_reading_id', $latest->id)->latest('predicted_at')->first()
+                ?? Prediction::latest('predicted_at')->first())
+            : Prediction::latest('predicted_at')->first();
+
+        $device ??= Device::first();
+
+        return response()->json([
+            'success' => true,
+            'transport_mode' => 'HTTP_FALLBACK',
             'reading' => $latest,
             'prediction' => $prediction,
             'device' => $device,
+            'server_time' => now()->toIso8601String(),
         ]);
     }
 
     /**
      * Endpoint riwayat data sensor (GET /api/history)
      */
-    public function getHistory(Request $request)
+    public function getHistory(Request $request): JsonResponse
     {
-        $limit = min((int)$request->input('limit', 72), 288);
-        $readings = SensorReading::latest('recorded_at')->take($limit)->get()->reverse()->values();
+        $limit = min(max((int) $request->input('limit', 72), 1), 288);
+        $device = $this->resolveOptionalDevice($request);
+
+        $query = SensorReading::latest('recorded_at');
+        if ($device) {
+            $query->where('device_id', $device->id);
+        }
+        $readings = $query->take($limit)->get()->reverse()->values();
 
         return response()->json([
             'success' => true,
             'count' => $readings->count(),
+            'device_code' => $device?->device_code,
             'data' => $readings,
         ]);
+    }
+
+    /**
+     * HTTP Fallback untuk WebSocket banyuwening.alerts.v1 (GET /api/alerts/recent)
+     */
+    public function getRecentAlerts(Request $request): JsonResponse
+    {
+        $limit = min(max((int) $request->input('limit', 25), 1), 100);
+
+        $alerts = Alert::latest()->take($limit)->get()->map(function ($a) {
+            return [
+                'id' => $a->id,
+                'ts' => $a->created_at->toIso8601String(),
+                'level' => $a->level,
+                'param' => $a->parameter,
+                'message' => $a->message,
+                'value' => $a->value,
+                'telegram_sent' => (bool) $a->telegram_sent,
+                'whatsapp_sent' => (bool) $a->whatsapp_sent,
+                'email_sent' => (bool) $a->email_sent,
+                'acknowledged_at' => $a->acknowledged_at?->toIso8601String(),
+                'acknowledged_by' => $a->acknowledged_by,
+            ];
+        });
+
+        $prediction = Prediction::latest('predicted_at')->first();
+
+        return response()->json([
+            'success' => true,
+            'transport_mode' => 'HTTP_FALLBACK',
+            'count' => $alerts->count(),
+            'alerts' => $alerts,
+            'prediction' => $prediction,
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    private function handleSingleIngestion(Request $request, string $transport): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
+
+        $validated = $request->validate([
+            'device_code' => ['nullable', 'string'],
+            'device_id' => ['nullable', 'string'],
+            'ph' => ['nullable', 'numeric', 'between:0,14'],
+            'temperature_c' => ['nullable', 'numeric', 'between:0,50'],
+            'tds_ppm' => ['nullable', 'numeric', 'between:0,10000'],
+            'turbidity_ntu' => ['nullable', 'numeric', 'between:0,1000'],
+            'water_level' => ['nullable', 'string', 'max:20'],
+            'aerator_on' => ['nullable', 'boolean'],
+            'mode' => ['nullable', 'string', 'max:20'],
+            'battery_v' => ['nullable', 'numeric', 'between:0,24'],
+            'recorded_at' => ['nullable', 'date'],
+        ]);
+
+        $result = $this->ingestionService->ingest($device, $validated, $transport);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Telemetri tersimpan.',
+            'transport' => $result['transport'],
+            'device_code' => $device->device_code,
+            'reading_id' => $result['reading']->id,
+            'aerator_command' => $result['aerator_command'],
+            'failsafe_triggered' => $result['failsafe_triggered'],
+        ], 201);
+    }
+
+    private function resolveOptionalDevice(Request $request): ?Device
+    {
+        if ($bearer = $request->bearerToken()) {
+            if ($byToken = Device::findByPlainToken($bearer)) {
+                return $byToken;
+            }
+        }
+
+        if ($headerToken = $request->header('X-Device-Token')) {
+            if ($byToken = Device::findByPlainToken($headerToken)) {
+                return $byToken;
+            }
+        }
+
+        $code = $request->query('device_code') ?? $request->query('device_id');
+        if ($code) {
+            return Device::where('device_code', $code)->first();
+        }
+
+        return null;
     }
 }

@@ -42,9 +42,9 @@ export function SuperAdminDocs() {
           Dokumentasi Lengkap Sistem BanyuWening
         </h1>
         <p className="text-[14px] text-muted mt-1 max-w-3xl">
-          Spesifikasi teknis menyeluruh proyek sistem cerdas pemantau kualitas air kolam ikan
-          berbasis IoT, Machine Learning, dan REST API oleh mahasiswa Institut Teknologi dan Bisnis
-          PalComTech.
+          Spesifikasi teknis menyeluruh arsitektur Modular Multi-Kolam (1 Core Hub : 1-4 Kolam),
+          Edge Watchdog &amp; Auto-Resume, Sensor Health Watchdog, Always-On Cloud (EMQX TLS + FastAPI + Supabase Pro),
+          HITL AI Safety Gate, dan WeningBot WhatsApp-First.
         </p>
       </div>
 
@@ -150,14 +150,14 @@ export function SuperAdminDocs() {
                     <td className="p-3 text-center text-aman font-bold">✓ Ya</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Ya</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Ya</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-medium text-ink">Prediksi Risiko Machine Learning (Random Forest)</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Ya</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Ya</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-medium text-ink">Ekspor Dataset CSV (Format Excel Indonesia)</td>
@@ -168,17 +168,17 @@ export function SuperAdminDocs() {
                   </tr>
                   <tr>
                     <td className="p-3 font-medium text-ink">Laporan Eksekutif Kolam (WQI & Panen)</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Utama</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-medium text-ink">Tutorial SOP Lapangan & Kalibrasi</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                     <td className="p-3 text-center text-aman font-bold">✓ Utama</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
-                    <td className="p-3 text-center text-muted font-normal">—</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
+                    <td className="p-3 text-center text-muted font-normal">-</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-medium text-ink">Buat, Edit & Hapus Akun Pengguna</td>
@@ -565,10 +565,10 @@ export function SuperAdminDocs() {
         >
           <div className="flex items-center gap-2 font-semibold text-[14px] text-ink mb-1">
             <Cpu className="w-4 h-4 text-brand" />
-            <span>1. Node IoT & Wiring</span>
+            <span>1. Core Hub (1:4)</span>
           </div>
           <p className="text-[12px] text-muted">
-            Pinout GPIO ESP32, 4 sensor analog-digital, dan modul relay.
+            ESP32-WROOM, 2-3x ADS1115, MCP23017, Relay 4/8-Ch, LittleFS + RTC DS3231, GX16.
           </p>
         </a>
 
@@ -578,10 +578,10 @@ export function SuperAdminDocs() {
         >
           <div className="flex items-center gap-2 font-semibold text-[14px] text-ink mb-1">
             <Server className="w-4 h-4 text-brand" />
-            <span>2. Protokol MQTT TLS</span>
+            <span>2. Cloud Always-On</span>
           </div>
           <p className="text-[12px] text-muted">
-            Broker HiveMQ Cloud port 8883, skema topik, dan format payload JSON.
+            EMQX/Mosquitto TLS 8883, FastAPI Always-On, Supabase Pro & WeningBot WA.
           </p>
         </a>
 
@@ -591,10 +591,10 @@ export function SuperAdminDocs() {
         >
           <div className="flex items-center gap-2 font-semibold text-[14px] text-ink mb-1">
             <FileCode2 className="w-4 h-4 text-brand" />
-            <span>3. Machine Learning</span>
+            <span>3. ML & HITL Gate</span>
           </div>
           <p className="text-[12px] text-muted">
-            Model klasifikasi Random Forest, rekayasa fitur rolling window, dan akurasi.
+            Cold-Start 4-Fase, Sensor Health Watchdog, dan HITL Engineer Gate.
           </p>
         </a>
 
@@ -604,10 +604,10 @@ export function SuperAdminDocs() {
         >
           <div className="flex items-center gap-2 font-semibold text-[14px] text-ink mb-1">
             <ShieldCheck className="w-4 h-4 text-brand" />
-            <span>4. Aturan Failsafe</span>
+            <span>4. Failsafe &amp; Edge Watchdog</span>
           </div>
           <p className="text-[12px] text-muted">
-            Jaminan keselamatan lokal mikrokontroler saat koneksi cloud terputus.
+            Edge Fuzzy (WiFi mati), Anti-Bricking Rp0, &amp; pemulihan daya otomatis.
           </p>
         </a>
 
@@ -625,137 +625,126 @@ export function SuperAdminDocs() {
         </button>
       </div>
 
-      {/* Bagian 1: Hardware & Wiring */}
+      {/* Bagian 1: Core Hub & Modul Sensor Kolam */}
       <section id="hardware" className="bg-surface border border-line rounded-[6px] p-6 space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-line">
           <Cpu className="w-5 h-5 text-brand" />
           <h2 className="text-[18px] font-semibold text-ink">
-            1. Arsitektur Node Sensor & Wiring GPIO (ESP32)
+            1. Arsitektur Hardware : 1 Core Hub : 1-4 Modul Kolam
           </h2>
         </div>
 
         <p className="text-[13px] text-muted leading-relaxed">
-          Sistem menggunakan mikrokontroler <strong>ESP32 NodeMCU-32S</strong> dengan arsitektur
-          dual-core Xtensa LX6 240 MHz. Mikrokontroler ini membaca 4 sensor kualitas air dan 1 float
-          switch digital setiap 30 detik menggunakan metode ADC Multisampling 10× averaging untuk
-          meredam noise elektrikal air.
+          Satu <strong>Core Hub</strong> (Carrier PCB berbasis <strong>ESP32-WROOM</strong>) melayani maksimal <strong>4 kolam berdempetan dalam klaster 1 pemilik</strong> via soket kedap air GX16 dan kabel shielded maksimal 3-5 meter (terpisah dari jalur AC 220V). Setiap unit wajib lulus <strong>QC Burn-in Test 48 Jam</strong> dan kalibrasi 2-titik (buffer pH 4 &amp; 7).
         </p>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[13px] border border-line rounded">
             <thead className="bg-surface-2 text-ink font-semibold">
               <tr>
-                <th className="p-3 border-b border-line">Komponen / Sensor</th>
-                <th className="p-3 border-b border-line">Pin GPIO</th>
-                <th className="p-3 border-b border-line">Tipe Sinyal</th>
-                <th className="p-3 border-b border-line">Rentang Fisik</th>
-                <th className="p-3 border-b border-line">Fungsi Teknis</th>
+                <th className="p-3 border-b border-line">Subsistem / Komponen</th>
+                <th className="p-3 border-b border-line">Antarmuka / Alamat</th>
+                <th className="p-3 border-b border-line">Spesifikasi Teknis</th>
+                <th className="p-3 border-b border-line">Peran &amp; Kebijakan Garansi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-muted">
               <tr>
-                <td className="p-3 font-medium text-ink">Sensor pH Probe (E-201-C)</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 34 (ADC1_CH6)</td>
-                <td className="p-3">Analog (0 - 3.3V)</td>
-                <td className="p-3">0.00 – 14.00 pH</td>
-                <td className="p-3">Mendeteksi keasaman air akibat dekomposisi pakan / respirasi alga.</td>
+                <td className="p-3 font-medium text-ink">Multi-ADC 2-3x ADS1115 (16-bit)</td>
+                <td className="p-3 font-mono text-[12px]">I2C 0x48 - 0x4A + Level Shifter 3.3V&lt;-&gt;5V</td>
+                <td className="p-3">8 kanal (Starter 2K) atau 12 kanal (Juragan 4K)</td>
+                <td className="p-3">Membaca pH, TDS, dan Turbidity 1-4 kolam dengan resolusi presisi 16-bit.</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Sensor Suhu (DS18B20 Waterproof)</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 4 (OneWire)</td>
-                <td className="p-3">Digital 1-Wire</td>
-                <td className="p-3">-10°C – +85°C</td>
-                <td className="p-3">Memantau fluktuasi suhu harian kolam (pull-up 4.7kΩ ke 3.3V).</td>
+                <td className="p-3 font-medium text-ink">GPIO Expander MCP23017 / PCF8574</td>
+                <td className="p-3 font-mono text-[12px]">I2C Bus + Pull-up</td>
+                <td className="p-3">Ekspansi I/O digital untuk float switch &amp; relay</td>
+                <td className="p-3">Menangani 2 aktuator/kolam pada konfigurasi multi-kolam (Garansi Hub 12 bln).</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Sensor TDS Meter Analog</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 35 (ADC1_CH7)</td>
-                <td className="p-3">Analog (0 - 2.3V)</td>
-                <td className="p-3">0 – 1000 ppm</td>
-                <td className="p-3">Mengukur total zat padat terlarut & mineral air kolam.</td>
+                <td className="p-3 font-medium text-ink">Edge Watchdog + RTC DS3231 + LittleFS</td>
+                <td className="p-3 font-mono text-[12px]">SPI Flash / I2C / Watchdog Timer</td>
+                <td className="p-3">Retensi data lokal hingga 72 jam &amp; Auto-Resume</td>
+                <td className="p-3">Store-and-forward offline (WiFi mati) &amp; sinkronisasi otomatis saat jaringan pulih.</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Sensor Kekeruhan (Turbidity)</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 32 (ADC1_CH4)</td>
-                <td className="p-3">Analog (0 - 4.5V via divider)</td>
-                <td className="p-3">0 – 1000 NTU</td>
-                <td className="p-3">Mendeteksi kekeruhan suspensi partikel pakan dan lumpur.</td>
+                <td className="p-3 font-medium text-ink">Probe Kaca pH (PH-4502C) & TDS MOSFET</td>
+                <td className="p-3 font-mono text-[12px]">GX16 + EMI RC/Ferrite (maks 3-5 m)</td>
+                <td className="p-3">pH 0-14; TDS dengan MOSFET power-switch</td>
+                <td className="p-3">MOSFET mencegah korosi elektrolisis. Probe pH berstatus Consumable 4-6 bln (DOA 30 hari; pengganti Rp195.000).</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Water Level Float Switch</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 18</td>
-                <td className="p-3">Digital (Active LOW)</td>
-                <td className="p-3">Normal / Surut</td>
-                <td className="p-3">Deteksi surut air kolam bocor atau meluap akibat hujan lebat.</td>
+                <td className="p-3 font-medium text-ink">Turbidity Epoksi + DS18B20 + Float Switch</td>
+                <td className="p-3 font-mono text-[12px]">Stilling Well PVC + 1-Wire</td>
+                <td className="p-3">Sensor kekeruhan potting epoxy tahan percikan</td>
+                <td className="p-3">Dilindungi pipa PVC berlubang dari tubrukan lele; dipantau Sensor Health Watchdog.</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Relay Optocoupler Aerator</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 25</td>
-                <td className="p-3">Digital Output</td>
-                <td className="p-3">HIGH (ON) / LOW (OFF)</td>
-                <td className="p-3">Menggerakkan saklar dinamo aerator oksigen darurat DC 12V.</td>
+                <td className="p-3 font-medium text-ink">Relay Optocoupler 4-Ch / 8-Ch</td>
+                <td className="p-3 font-mono text-[12px]">Active Signal + Hard Safety Clamp</td>
+                <td className="p-3">Starter 4-Ch; Juragan 8-Ch (aerator + pompa AC 220V)</td>
+                <td className="p-3">Mengendalikan aerator dan pompa AC 220V (hanya aktif saat PLN 220V tersedia atau via genset/inverter).</td>
               </tr>
               <tr>
-                <td className="p-3 font-medium text-ink">Layar LCD 16×2 I2C</td>
-                <td className="p-3 font-mono text-[12px]">GPIO 21 (SDA), GPIO 22 (SCL)</td>
-                <td className="p-3">I2C Bus (0x27)</td>
-                <td className="p-3">Teks 16x2 karakter</td>
-                <td className="p-3">Menampilkan nilai sensor dan status offline di pinggir kolam.</td>
+                <td className="p-3 font-medium text-ink">LCD 16x2 + Box IP65 (4 Port GX16) + Slot DO Pro</td>
+                <td className="p-3 font-mono text-[12px]">I2C (0x27) & Ekspansi I2C/GX16</td>
+                <td className="p-3">Layar diagnostik lokal pinggir kolam</td>
+                <td className="p-3">Siap ekspansi add-on Modul DO Pro untuk komoditas sensitif oksigen.</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* Bagian 2: Protokol Komunikasi MQTT */}
+      {/* Bagian 2: Cloud Always-On, MQTT TLS & WeningBot WhatsApp-First */}
       <section id="mqtt" className="bg-surface border border-line rounded-[6px] p-6 space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-line">
           <Server className="w-5 h-5 text-brand" />
           <h2 className="text-[18px] font-semibold text-ink">
-            2. Protokol Komunikasi Cloud & Broker MQTT TLS
+            2. Arsitektur Cloud Always-On, MQTT TLS & WeningBot WhatsApp-First
           </h2>
         </div>
 
         <p className="text-[13px] text-muted leading-relaxed">
-          Koneksi IoT ke cloud menggunakan broker <strong>HiveMQ Cloud</strong> terenkripsi penuh
-          dengan <strong>TLS Port 8883</strong> dan sertifikat X.509 untuk mencegah manipulasi
-          paket di jaringan nirkabel terbuka.
+          Untuk menghindari jebakan free-tier pada beban produksi, BanyuWening memakai arsitektur <strong>Always-On Cloud</strong>: broker <strong>EMQX / Mosquitto TLS Port 8883</strong>, <strong>FastAPI Always-On</strong>, dan <strong>Supabase Pro</strong>, serta kanal <strong>WeningBot WhatsApp-First</strong> (lebih dari 90% trafik memakai Rule-Based Engine Rp0 LLM dengan kuota 3 kueri AI/hari) plus Telegram dan PWA opsional.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-surface-2 rounded-[6px] border border-line">
-            <h4 className="text-[13px] font-semibold text-ink mb-2">Topik MQTT yang Digunakan:</h4>
+            <h4 className="text-[13px] font-semibold text-ink mb-2">Topik MQTT TLS (EMQX / Mosquitto):</h4>
             <ul className="space-y-2 text-[12px] text-muted">
               <li>
-                <strong className="text-ink">banyuwening/telemetry</strong> (QoS 1):
+                <strong className="text-ink">banyuwening/{"{hub_id}"}/telemetry</strong> (QoS 1):
                 <br />
-                Node ESP32 mem-publish telemetry sensor per 30 detik.
+                Core Hub mengirim telemetri multi-kolam per pond_id beserta status watchdog &amp; LittleFS buffer.
               </li>
               <li>
-                <strong className="text-ink">banyuwening/control</strong> (QoS 1):
+                <strong className="text-ink">banyuwening/{"{hub_id}"}/control</strong> (QoS 1):
                 <br />
-                Backend/operator mengirim perintah manual relay (ON/OFF/AUTO).
+                Perintah aktuator relay 4/8-Ch serta pembaruan parameter JSON setelah lolos HITL Engineer Gate.
               </li>
               <li>
-                <strong className="text-ink">banyuwening/status</strong> (QoS 1, Retained):
+                <strong className="text-ink">banyuwening/{"{hub_id}"}/status</strong> (QoS 1, Retained):
                 <br />
-                Last Will and Testament (LWT) jika node mati mendadak (Offline).
+                Status LWT, indikator daya AC, dan pemisahan mode Offline-Plus Rp0.
               </li>
             </ul>
           </div>
 
           <div className="p-4 bg-surface-2 rounded-[6px] border border-line">
-            <h4 className="text-[13px] font-semibold text-ink mb-2">Contoh Payload JSON:</h4>
+            <h4 className="text-[13px] font-semibold text-ink mb-2">Contoh Payload JSON Multi-Kolam:</h4>
             <pre className="text-[11px] font-mono text-ink bg-surface p-2.5 rounded border border-line overflow-x-auto">
 {`{
-  "device_id": "BANYUWENING-01",
-  "ts": "2026-11-12T08:30:00Z",
+  "hub_id": "BW-CORE-01",
+  "pond_id": "P01",
+  "ts": "2026-11-20T08:30:00Z",
   "seq": 18452,
   "ph": 7.12,
   "temperature_c": 28.4,
   "tds_ppm": 345,
   "turbidity_ntu": 43.0,
-  "water_level": "NORMAL",
+  "sensor_health": "OK",
+  "power_source": "PLN",
   "aerator_on": true,
   "mode": "AUTO"
 }`}
@@ -764,84 +753,68 @@ export function SuperAdminDocs() {
         </div>
       </section>
 
-      {/* Bagian 3: Machine Learning Random Forest */}
+      {/* Bagian 3: Cold-Start 4-Fase, Watchdog & HITL AI Safety Gate */}
       <section id="ml" className="bg-surface border border-line rounded-[6px] p-6 space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-line">
           <FileCode2 className="w-5 h-5 text-brand" />
           <h2 className="text-[18px] font-semibold text-ink">
-            3. Model Prediktif Machine Learning (Random Forest Classifier)
+            3. Cold-Start 4-Fase, Biologi Lele & HITL AI Safety Gate
           </h2>
         </div>
 
         <p className="text-[13px] text-muted leading-relaxed">
-          Algoritma Machine Learning yang digunakan adalah <strong>Random Forest (Scikit-learn)</strong>.
-          Model ini bertugas memprediksi risiko perburukan kualitas air kolam <strong>1–3 jam ke depan</strong>
-          sebelum ikan mengalami stres atau kematian massal.
+          Ikan lele memiliki organ pernapasan labirin (<em>arborescent</em>) sehingga perilaku naik ke permukaan (<em>piping</em>) sering membiaskan tebakan mata. Karena itu BanyuWening menolak zero-shot tanpa data kolam riil dan menjalankan protokol <strong>Cold-Start 4-Fase</strong> serta penguncian <strong>Human-in-the-Loop (HITL) Engineer Gate</strong>.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[13px]">
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">Rekayasa Fitur (Aquaculture Features)</div>
+            <div className="font-semibold text-ink mb-1">Cold-Start 4-Fase & DO Ground-Truth</div>
             <p className="text-[12px] text-muted">
-              Model mengevaluasi deviasi pH ideal (7.2), deviasi suhu ideal (28.5°C), rasio TDS,
-              dan Water Stress Index multivariat.
+              Hari 0-30 memakai Edge Fuzzy deterministik + Relative Local Anomaly Detection sambil mengkalibrasi dataset Pilot dengan 2 DO Meter Portabel &amp; Test Kit Amonia/Nitrit.
             </p>
           </div>
 
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">Klasifikasi 3 Kelas Risiko</div>
+            <div className="font-semibold text-ink mb-1">Sensor Health Watchdog</div>
             <p className="text-[12px] text-muted">
-              Output berupa probabilitas multikelas: <strong>AMAN</strong> (kondisi stabil),
-              <strong>WASPADA</strong> (tren mendekati batas kritis), dan <strong>BAHAYA</strong>
-              (ancaman kematian massal).
+              Mendeteksi nilai flatline atau stuck-at-rail (misal lensa turbidity jenuh lumut minggu ke-4-12), menandai SATURATED/FAULT, mengisolasi parameter rusak, dan mengirim pengingat bilas WA.
             </p>
           </div>
 
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">Akurasi & Target Evaluasi</div>
+            <div className="font-semibold text-ink mb-1">HITL Engineer Gate (Zero Autonomous Push)</div>
             <p className="text-[12px] text-muted">
-              Skor evaluasi pada data validasi kolam: <strong>F1-Score 1.00</strong>, <strong>Precision 1.00</strong>,
-              dan <strong>Recall 1.00</strong> pada dataset bootstrap kalibrasi akuakultur.
+              AI Supervisor hanya menghasilkan usulan JSON parameter yang wajib disetujui manual oleh Engineer, dikunci Hard Safety Bounds + Duty-Cycle Clamp, dan Dual-OTA rollback 60 detik.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Bagian 4: Failsafe Lokal */}
+      {/* Bagian 4: Failsafe Lokal, Edge Watchdog & Tata Kelola Anti-Bricking */}
       <section id="failsafe" className="bg-surface border border-line rounded-[6px] p-6 space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-line">
           <ShieldCheck className="w-5 h-5 text-brand" />
           <h2 className="text-[18px] font-semibold text-ink">
-            4. Aturan Failsafe Lokal ESP32 (PRD F-08 & F-08a)
+            4. Pemisahan WiFi Mati vs Gangguan Daya, Anti-Bricking &amp; Ketahanan Edge
           </h2>
         </div>
 
         <div className="p-4 bg-aman/10 border border-aman/20 rounded-[6px] flex items-start gap-3">
           <CheckCircle2 className="w-5 h-5 text-aman shrink-0 mt-0.5" />
           <div className="text-[13px]">
-            <h4 className="font-semibold text-ink mb-1">Prioritas Tertinggi: Keselamatan Fisik Ikan</h4>
+            <h4 className="font-semibold text-ink mb-1">Saat WiFi Mati atau SaaS Dijeda : Offline-Plus Rp0 (Anti-Bricking)</h4>
             <p className="text-muted leading-relaxed">
-              Mikrokontroler ESP32 memprogram aturan deterministik lokal di dalam memori firmware flash.
-              Bahkan jika koneksi internet WiFi, cloud broker, atau server backend mengalami gangguan,
-              ESP32 <strong>secara otonom menyalakan relay aerator</strong> jika:
+              Perangkat keras adalah milik penuh petambak. Edge Fuzzy + Store-and-Forward (LittleFS + RTC DS3231) tetap menggerakkan aerator/pompa saat pH &lt; 6,0 atau &gt; 8,8, suhu &gt; 33,0 C, atau Float Switch surut, dan tetap aktif gratis permanen walaupun langganan SaaS Smart Guard (Rp150rb/Rp225rb per siklus 3 bulan) dijeda.
             </p>
-            <ul className="list-disc list-inside mt-2 space-y-1 font-medium text-ink">
-              <li>Nilai pH drop &lt; 6.00 atau melonjak &gt; 8.80</li>
-              <li>Suhu air melampaui &gt; 33.0 °C</li>
-              <li>Pelampung level air terpicu SURUT (Float Switch aktif)</li>
-            </ul>
           </div>
         </div>
 
         <div className="p-4 bg-waspada/10 border border-waspada/20 rounded-[6px] flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-waspada shrink-0 mt-0.5" />
           <div className="text-[13px]">
-            <h4 className="font-semibold text-ink mb-1">Aturan Penolakan Perintah Cloud (Override Protection)</h4>
+            <h4 className="font-semibold text-ink mb-1">Saat Listrik PLN Bermasalah : Edge Watchdog &amp; Auto-Resume</h4>
             <p className="text-muted leading-relaxed">
-              Jika mikrokontroler lokal sedang memicu status BAHAYA (Failsafe ON), segala perintah OFF dari
-              dashboard web atau operator dari jauh <strong>akan otomatis ditolak</strong> sampai kondisi
-              fisik parameter air kembali ke ambang batas normal. Hal ini mencegah human error yang dapat
-              mematikan pasokan oksigen lele saat darurat.
+              Edge Watchdog menyimpan rekaman sensor lokal di memori LittleFS hingga 72 jam serta menandai flag status daya pada broker, sehingga Core Hub otomatis melakukan backfill dan pemulihan status relay saat pasokan listrik kembali stabil.
             </p>
           </div>
         </div>
@@ -850,10 +823,10 @@ export function SuperAdminDocs() {
       {/* Footer Proyek */}
       <div className="p-4 bg-surface border border-line rounded text-[13px] text-muted flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          Proyek Tugas Pemrograman Web Lanjutan — <strong>Institut Teknologi dan Bisnis PalComTech</strong>
+          Arsitektur Sistem BanyuWening : <strong>Smart Aquaculture IoT Multi-Kolam</strong>
         </div>
         <div>
-          Tim Pengembang: Gofran Muttaqi Likhan (Super Admin), M. Ilham Nandari, Monika Lisbet Lase
+          Sistem Monitoring &amp; Otomasi Kolam Ikan Terpadu
         </div>
       </div>
         </div>

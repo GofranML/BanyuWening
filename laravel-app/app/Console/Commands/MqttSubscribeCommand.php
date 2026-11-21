@@ -6,9 +6,7 @@ use Illuminate\Console\Command;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use App\Models\Device;
-use App\Models\SensorReading;
-use App\Models\RelayLog;
-use App\Jobs\PredictWaterQualityJob;
+use App\Services\TelemetryIngestionService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -68,65 +66,30 @@ class MqttSubscribeCommand extends Command
             return;
         }
 
-        $deviceCode = $data['device_code'] ?? 'ESP32-NODE-01';
+        $deviceCode = $data['device_code'] ?? ($data['device_id'] ?? 'ESP32-NODE-01');
         $device = Device::firstOrCreate(
             ['device_code' => $deviceCode],
             [
                 'name' => 'ESP32 Node Sensor Kolam',
                 'pond_name' => 'Kolam Terpal Sangkuriang 01',
                 'status' => 'ONLINE',
+                'transport_protocol' => 'MQTT',
                 'mode' => 'AUTO',
                 'last_heartbeat_at' => Carbon::now(),
             ]
         );
 
-        $ph = isset($data['ph']) ? (float)$data['ph'] : null;
-        $temp = isset($data['temperature_c']) ? (float)$data['temperature_c'] : (isset($data['temperature']) ? (float)$data['temperature'] : null);
-        $tds = isset($data['tds_ppm']) ? (float)$data['tds_ppm'] : (isset($data['tds']) ? (float)$data['tds'] : null);
-        $turb = isset($data['turbidity_ntu']) ? (float)$data['turbidity_ntu'] : (isset($data['turbidity']) ? (float)$data['turbidity'] : null);
-        $waterLevel = strtoupper($data['water_level'] ?? 'NORMAL');
-
-        // Aturan Failsafe Lokal ESP32 & Cloud
-        $failsafeAerator = false;
-        if (($ph !== null && ($ph < 6.0 || $ph > 8.8)) || ($temp !== null && $temp > 33.0)) {
-            $failsafeAerator = true;
+        // Jika perangkat sudah memiliki token aktif dan payload menyertakan token, verifikasi kecocokannya
+        if (!empty($data['device_token']) && $device->api_token_hash) {
+            if (!hash_equals($device->api_token_hash, hash('sha256', (string) $data['device_token']))) {
+                $this->warn("[!] Token perangkat MQTT tidak cocok untuk {$deviceCode}; paket diabaikan.");
+                return;
+            }
         }
 
-        $reading = SensorReading::create([
-            'device_id' => $device->id,
-            'recorded_at' => Carbon::now(),
-            'ph' => $ph,
-            'temperature_c' => $temp,
-            'tds_ppm' => $tds,
-            'turbidity_ntu' => $turb,
-            'water_level' => $waterLevel,
-            'aerator_on' => $failsafeAerator || ($data['aerator_on'] ?? false),
-            'mode' => $failsafeAerator ? 'FAILSAFE' : ($data['mode'] ?? 'AUTO'),
-            'battery_v' => $data['battery_v'] ?? 4.1,
-        ]);
+        $result = app(TelemetryIngestionService::class)->ingest($device, $data, 'MQTT');
+        $reading = $result['reading'];
 
-        // Perbarui status device
-        $device->update([
-            'status' => 'ONLINE',
-            'last_heartbeat_at' => Carbon::now(),
-            'aerator_on' => $reading->aerator_on,
-            'mode' => $reading->mode,
-        ]);
-
-        if ($failsafeAerator) {
-            RelayLog::create([
-                'device_id' => $device->id,
-                'action' => 'ON',
-                'mode' => 'FAILSAFE',
-                'reason' => "Failsafe aktif otomatis: pH={$ph}, Temp={$temp}°C",
-                'actor' => 'ESP32 Hardware Rule',
-                'triggered_at' => Carbon::now(),
-            ]);
-        }
-
-        // Dispatch background job untuk prediksi Machine Learning
-        PredictWaterQualityJob::dispatch($reading);
-
-        $this->info("[+] [{$reading->recorded_at->toTimeString()}] Data sensor tersimpan ID #{$reading->id} (pH: {$ph}, Suhu: {$temp}°C)");
+        $this->info("[+] [{$reading->recorded_at->toTimeString()}] Data sensor MQTT tersimpan ID #{$reading->id} (pH: {$reading->ph}, Suhu: {$reading->temperature_c}°C)");
     }
 }

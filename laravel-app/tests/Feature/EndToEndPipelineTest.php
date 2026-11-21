@@ -23,7 +23,10 @@ class EndToEndPipelineTest extends TestCase
 
     public function test_end_to_end_telemetry_to_dashboard_pipeline(): void
     {
-        // 1. SIMULASI: ESP32 mengirim paket telemetri normal
+        $device = Device::where('device_code', 'ESP32-NODE-01')->firstOrFail();
+        $deviceToken = $device->issueToken();
+
+        // 1. SIMULASI: ESP32 mengirim paket telemetri normal dengan token per alat
         $payloadNormal = [
             'device_code' => 'ESP32-NODE-01',
             'ph' => 7.20,
@@ -35,7 +38,7 @@ class EndToEndPipelineTest extends TestCase
             'mode' => 'AUTO',
         ];
 
-        $ingestResponse = $this->postJson('/api/telemetry', $payloadNormal);
+        $ingestResponse = $this->withToken($deviceToken)->postJson('/api/telemetry', $payloadNormal);
         $ingestResponse->assertStatus(201)
             ->assertJson([
                 'success' => true,
@@ -82,7 +85,10 @@ class EndToEndPipelineTest extends TestCase
 
     public function test_end_to_end_failsafe_critical_telemetry_pipeline(): void
     {
-        // 1. SIMULASI: ESP32 mengirim paket telemetri kritis (pH anjlok 5.82)
+        $device = Device::where('device_code', 'ESP32-NODE-01')->firstOrFail();
+        $deviceToken = $device->issueToken();
+
+        // 1. SIMULASI: ESP32 mengirim paket telemetri kritis (pH anjlok 5.82) dengan token per alat
         $payloadKritis = [
             'device_code' => 'ESP32-NODE-01',
             'ph' => 5.82,
@@ -94,7 +100,7 @@ class EndToEndPipelineTest extends TestCase
             'mode' => 'AUTO',
         ];
 
-        $ingestResponse = $this->postJson('/api/telemetry', $payloadKritis);
+        $ingestResponse = $this->withToken($deviceToken)->postJson('/api/telemetry', $payloadKritis);
         $ingestResponse->assertStatus(201)
             ->assertJson([
                 'success' => true,

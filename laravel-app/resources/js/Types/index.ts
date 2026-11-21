@@ -30,6 +30,9 @@ export type RiskLevel = "AMAN" | "WASPADA" | "BAHAYA";
 export type DeviceMode = "AUTO" | "MANUAL" | "FAILSAFE";
 
 export interface SensorReading {
+  id?: number;
+  device_id?: string;
+  pond_id?: string | number;
   ts: string;
   ph: number | null;
   temperature_c: number | null;
@@ -37,8 +40,12 @@ export interface SensorReading {
   turbidity_ntu: number | null;
   water_level: "NORMAL" | "LOW";
   aerator_on: boolean;
+  pump_on?: boolean;
   mode: DeviceMode;
   battery_v?: number | null;
+  sensor_health?: "OK" | "SATURATED" | "FAULT";
+  power_source?: "PLN" | "BACKUP_BUFFER" | string;
+  transport?: string;
 }
 
 export interface PredictionResult {
@@ -52,6 +59,9 @@ export interface PredictionResult {
   recommended_action: string;
   failsafe_active?: boolean;
   predicted_at?: string;
+  pond_id?: string | number;
+  is_pilot_model?: boolean;
+  hitl_approved?: boolean;
 }
 
 export interface AlertItem {
@@ -66,6 +76,9 @@ export interface AlertItem {
   email_sent?: boolean;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
+  pond_name?: string;
+  channel_primary?: "WHATSAPP" | "TELEGRAM" | "EMAIL" | "LOCAL";
+  watchdog_flag?: string | null;
 }
 
 export interface DeviceInfo {
@@ -74,8 +87,58 @@ export interface DeviceInfo {
   pond_name: string;
   firmware_version: string;
   status: string;
+  transport_protocol?: string;
   mode: DeviceMode;
   aerator_on: boolean;
+  hardware_variant?: "ENTRY_1K" | "STARTER_2K" | "JURAGAN_4K" | string;
+  pond_count?: number;
+  backup_mode?: string;
+  backup_health_pct?: number;
+  offline_plus_active?: boolean;
+  adc_channels?: number;
+  relay_channels?: number;
+}
+
+export interface ManagedDevice extends DeviceInfo {
+  id: number;
+  api_token_prefix: string | null;
+  has_token: boolean;
+  token_active: boolean;
+  token_rotated_at: string | null;
+  token_last_used_at: string | null;
+  last_heartbeat_at: string | null;
+  ws_connected_at: string | null;
+}
+
+export type RealtimeTransportMode = "CONNECTING" | "WEBSOCKET" | "HTTP_FALLBACK";
+
+export interface WebSocketProtocolSpec {
+  channel: string;
+  subprotocol: string;
+  ws_url: string;
+  direction: string;
+  purpose: string;
+  http_fallback: Record<string, string>;
+}
+
+export interface RealtimeConfig {
+  ws_base_url: string;
+  ws_stream_url: string;
+  dashboard_subprotocol: string;
+  dashboard_ticket: string | null;
+  ws_connect_timeout_ms: number;
+  http_fallback: {
+    enabled: boolean;
+    poll_interval_ms: number;
+    base_url: string;
+    endpoints: Record<string, string>;
+  };
+  protocols: Record<string, WebSocketProtocolSpec>;
+  auth: {
+    device_token_header: string;
+    device_token_alt_header: string;
+    device_token_ws_query: string;
+  };
 }
 
 export interface AeratorState {
@@ -114,6 +177,10 @@ export interface LandingContentSettings {
   copyright_text: string;
   capabilities: LandingCapability[];
   faqs: LandingFaq[];
+
+  // Optional Pitch Deck Metadata
+  pitch_deck_version?: string;
+  operational_status?: string;
 
   // Media (Images & Videos)
   hero_bg_image?: string;

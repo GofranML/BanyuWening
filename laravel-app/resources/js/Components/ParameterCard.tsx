@@ -22,7 +22,7 @@ export function ParameterCard({
   const isNumberValue = typeof value === "number" && !isNaN(value);
 
   return (
-    <div className="bg-surface border border-line rounded-[6px] p-4 flex flex-col justify-between h-full overflow-hidden transition-shadow hover:shadow-xs">
+    <div className="bg-surface border border-line rounded-[6px] p-4 flex flex-col justify-between h-full overflow-hidden">
       <div>
         <div className="text-[13px] leading-[18px] font-medium text-muted mb-1">
           {label}
@@ -48,7 +48,7 @@ export function ParameterCard({
           </>
         ) : (
           <div className="py-2.5">
-            <span className="text-[34px] md:text-[40px] leading-[1.1] font-semibold text-muted">—</span>
+            <span className="text-[34px] md:text-[40px] leading-[1.1] font-semibold text-muted">-</span>
             <div className="text-[12px] text-muted mt-1">Sensor belum terhubung</div>
           </div>
         )}

@@ -65,9 +65,9 @@ export function StatusCard({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="text-[28px] md:text-[36px] font-display font-semibold tracking-tight text-ink leading-tight">
+          <h2 className="text-[28px] md:text-[36px] font-display font-semibold tracking-tight text-ink leading-tight">
             {title}
-          </h1>
+          </h2>
           <p className={`text-[13px] md:text-[14px] mt-1 ${textClass}`}>
             {subtitle}
           </p>

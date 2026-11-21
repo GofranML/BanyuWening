@@ -90,6 +90,9 @@ class BanyuWeningMigrationTest extends TestCase
 
     public function test_api_telemetry_ingestion(): void
     {
+        $device = Device::where('device_code', 'ESP32-NODE-01')->firstOrFail();
+        $token = $device->issueToken();
+
         $payload = [
             'device_id' => 'ESP32-NODE-01',
             'ph' => 7.15,
@@ -101,7 +104,7 @@ class BanyuWeningMigrationTest extends TestCase
             'mode' => 'AUTO',
         ];
 
-        $response = $this->postJson('/api/telemetry', $payload);
+        $response = $this->withToken($token)->postJson('/api/telemetry', $payload);
         $response->assertStatus(201)
             ->assertJson([
                 'success' => true,

@@ -5,6 +5,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\SwaggerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,11 +50,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/backups/create', [DashboardController::class, 'createBackup'])->name('dashboard.backups.create');
     Route::get('/dashboard/backups/{filename}/download', [DashboardController::class, 'downloadBackup'])->name('dashboard.backups.download');
     Route::delete('/dashboard/backups/{filename}', [DashboardController::class, 'deleteBackup'])->name('dashboard.backups.delete');
+
+    // Super Admin: Manajemen Alat & Token Per Alat
+    Route::post('/dashboard/devices', [DashboardController::class, 'storeDevice'])->name('dashboard.devices.store');
+    Route::post('/dashboard/devices/{device}/rotate-token', [DashboardController::class, 'rotateDeviceToken'])->name('dashboard.devices.rotate-token');
+    Route::post('/dashboard/devices/{device}/toggle-token', [DashboardController::class, 'toggleDeviceToken'])->name('dashboard.devices.toggle-token');
+    Route::delete('/dashboard/devices/{device}', [DashboardController::class, 'destroyDevice'])->name('dashboard.devices.destroy');
 });
 
-// REST API Endpoints
-Route::prefix('api')->group(function () {
-    Route::post('/telemetry', [ApiController::class, 'ingestTelemetry'])->name('api.telemetry');
-    Route::get('/latest', [ApiController::class, 'getLatest'])->name('api.latest');
-    Route::get('/history', [ApiController::class, 'getHistory'])->name('api.history');
-});
+// Standar Dokumentasi API (Swagger UI + AsyncAPI Studio) & Penemuan Protokol Realtime (Session-Aware)
+Route::get('/api/docs', [SwaggerController::class, 'ui'])->name('api.docs');
+Route::get('/api/docs/asyncapi', [SwaggerController::class, 'asyncApiUi'])->name('api.docs.asyncapi');
+Route::get('/api/realtime/config', [ApiController::class, 'realtimeConfig'])->name('api.realtime.config');

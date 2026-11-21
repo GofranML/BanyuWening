@@ -107,31 +107,35 @@ export function ExportSection({ readings, userRole }: ExportSectionProps) {
 
       <div className="space-y-4 max-w-lg mb-6">
         <div>
-          <label className="text-[13px] font-medium text-muted block mb-2">
+          <span id="export-range-label" className="text-[13px] font-medium text-muted block mb-2">
             Pilih Rentang Data
-          </label>
-          <div className="grid grid-cols-2 gap-3">
+          </span>
+          <div className="grid grid-cols-2 gap-3" role="group" aria-labelledby="export-range-label">
             <button
+              type="button"
               onClick={() => setRangeOption("24h")}
-              className={`p-3 rounded-[6px] border text-left text-[13px] transition-all cursor-pointer ${
+              aria-pressed={rangeOption === "24h"}
+              className={`min-h-[44px] p-3 rounded-[6px] border text-left text-[13px] transition-colors cursor-pointer ${
                 rangeOption === "24h"
-                  ? "border-brand bg-brand/10 text-brand font-semibold"
+                  ? "border-brand bg-brand text-brand-ink font-semibold"
                   : "border-line bg-surface text-ink hover:bg-surface-2"
               }`}
             >
               <div className="font-semibold">24 Jam Terakhir</div>
-              <div className="text-[12px] opacity-80">288 pembacaan (interval 5 menit)</div>
+              <div className="text-[12px] opacity-90">288 pembacaan (interval 5 menit)</div>
             </button>
             <button
+              type="button"
               onClick={() => setRangeOption("all")}
-              className={`p-3 rounded-[6px] border text-left text-[13px] transition-all cursor-pointer ${
+              aria-pressed={rangeOption === "all"}
+              className={`min-h-[44px] p-3 rounded-[6px] border text-left text-[13px] transition-colors cursor-pointer ${
                 rangeOption === "all"
-                  ? "border-brand bg-brand/10 text-brand font-semibold"
+                  ? "border-brand bg-brand text-brand-ink font-semibold"
                   : "border-line bg-surface text-ink hover:bg-surface-2"
               }`}
             >
               <div className="font-semibold">Seluruh Data Tersimpan</div>
-              <div className="text-[12px] opacity-80">{readings.length} pembacaan</div>
+              <div className="text-[12px] opacity-90">{readings.length} pembacaan</div>
             </button>
           </div>
         </div>
@@ -145,16 +149,17 @@ export function ExportSection({ readings, userRole }: ExportSectionProps) {
 
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={handleExportCSV}
-          className="h-11 px-5 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold inline-flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer"
+          className="min-h-[44px] px-5 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold inline-flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-4 h-4" aria-hidden="true" />
           <span>Unduh File CSV (.csv)</span>
         </button>
 
         {downloadSuccess && (
-          <span className="inline-flex items-center gap-1.5 text-[13px] text-aman font-medium">
-            <CheckCircle2 className="w-4 h-4" />
+          <span className="inline-flex items-center gap-1.5 text-[13px] text-aman-text font-medium">
+            <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
             File berhasil diunduh
           </span>
         )}

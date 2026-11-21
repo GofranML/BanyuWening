@@ -48,4 +48,12 @@ return [
         'password' => env('MQTT_PASSWORD'),
     ],
 
+    'realtime' => [
+        'ws_host' => env('WS_HOST', '0.0.0.0'),
+        'ws_port' => (int) env('WS_PORT', 8081),
+        'ws_public_url' => env('WS_PUBLIC_URL', 'ws://127.0.0.1:8081'),
+        'http_fallback_poll_ms' => (int) env('HTTP_FALLBACK_POLL_MS', 5000),
+        'ws_connect_timeout_ms' => (int) env('WS_CONNECT_TIMEOUT_MS', 3000),
+    ],
+
 ];

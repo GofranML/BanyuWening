@@ -82,25 +82,25 @@ export function ChartsSection({ allReadings }: ChartsSectionProps) {
             <div>
               pH:{" "}
               <span className="font-semibold text-ink tnum">
-                {data.ph !== null ? Number(data.ph).toFixed(2).replace(".", ",") : "—"}
+                {data.ph !== null ? Number(data.ph).toFixed(2).replace(".", ",") : "-"}
               </span>
             </div>
             <div>
               Suhu:{" "}
               <span className="font-semibold text-ink tnum">
-                {data.temperature_c !== null ? `${Number(data.temperature_c).toFixed(1).replace(".", ",")} °C` : "—"}
+                {data.temperature_c !== null ? `${Number(data.temperature_c).toFixed(1).replace(".", ",")} °C` : "-"}
               </span>
             </div>
             <div>
               TDS:{" "}
               <span className="font-semibold text-ink tnum">
-                {data.tds_ppm !== null ? `${data.tds_ppm} ppm` : "—"}
+                {data.tds_ppm !== null ? `${data.tds_ppm} ppm` : "-"}
               </span>
             </div>
             <div>
               Kekeruhan:{" "}
               <span className="font-semibold text-ink tnum">
-                {data.turbidity_ntu !== null ? `${Number(data.turbidity_ntu).toFixed(1).replace(".", ",")} NTU` : "—"}
+                {data.turbidity_ntu !== null ? `${Number(data.turbidity_ntu).toFixed(1).replace(".", ",")} NTU` : "-"}
               </span>
             </div>
             <div>
@@ -123,30 +123,36 @@ export function ChartsSection({ allReadings }: ChartsSectionProps) {
         {/* Segmented Control */}
         <div className="inline-flex rounded-[6px] bg-surface-2 p-1 text-[13px] font-medium text-muted">
           <button
+            type="button"
             onClick={() => setRange("6h")}
-            className={`px-3 py-1 rounded-[4px] transition-all cursor-pointer ${
+            aria-pressed={range === "6h"}
+            className={`min-h-[40px] px-3 py-1 rounded-[4px] transition-colors cursor-pointer ${
               range === "6h"
-                ? "bg-surface text-ink font-semibold shadow-xs"
+                ? "bg-surface text-ink font-semibold"
                 : "hover:text-ink"
             }`}
           >
             6 Jam
           </button>
           <button
+            type="button"
             onClick={() => setRange("24h")}
-            className={`px-3 py-1 rounded-[4px] transition-all cursor-pointer ${
+            aria-pressed={range === "24h"}
+            className={`min-h-[40px] px-3 py-1 rounded-[4px] transition-colors cursor-pointer ${
               range === "24h"
-                ? "bg-surface text-ink font-semibold shadow-xs"
+                ? "bg-surface text-ink font-semibold"
                 : "hover:text-ink"
             }`}
           >
             24 Jam
           </button>
           <button
+            type="button"
             onClick={() => setRange("7d")}
-            className={`px-3 py-1 rounded-[4px] transition-all cursor-pointer ${
+            aria-pressed={range === "7d"}
+            className={`min-h-[40px] px-3 py-1 rounded-[4px] transition-colors cursor-pointer ${
               range === "7d"
-                ? "bg-surface text-ink font-semibold shadow-xs"
+                ? "bg-surface text-ink font-semibold"
                 : "hover:text-ink"
             }`}
           >
@@ -156,8 +162,9 @@ export function ChartsSection({ allReadings }: ChartsSectionProps) {
 
         {/* View Mode Toggle (Chart vs Table for accessibility) */}
         <button
+          type="button"
           onClick={() => setViewMode(viewMode === "chart" ? "table" : "chart")}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-[6px] text-[13px] font-medium text-ink hover:bg-surface-2 transition-colors self-start sm:self-auto cursor-pointer"
+          className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-[6px] text-[13px] font-medium text-ink hover:bg-surface-2 transition-colors self-start sm:self-auto cursor-pointer"
         >
           {viewMode === "chart" ? (
             <>
@@ -207,20 +214,20 @@ export function ChartsSection({ allReadings }: ChartsSectionProps) {
                     <tr key={row.id} className="hover:bg-surface-2/50">
                       <td className="py-2 px-4 tnum">{time} WIB</td>
                       <td className="py-2 px-4 tnum">
-                        {row.ph !== null ? Number(row.ph).toFixed(2).replace(".", ",") : "—"}
+                        {row.ph !== null ? Number(row.ph).toFixed(2).replace(".", ",") : "-"}
                       </td>
                       <td className="py-2 px-4 tnum">
                         {row.temperature_c !== null
                           ? Number(row.temperature_c).toFixed(1).replace(".", ",")
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="py-2 px-4 tnum">
-                        {row.tds_ppm !== null ? row.tds_ppm : "—"}
+                        {row.tds_ppm !== null ? row.tds_ppm : "-"}
                       </td>
                       <td className="py-2 px-4 tnum">
                         {row.turbidity_ntu !== null
                           ? Number(row.turbidity_ntu).toFixed(1).replace(".", ",")
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="py-2 px-4">
                         <span
@@ -313,7 +320,7 @@ export function ChartsSection({ allReadings }: ChartsSectionProps) {
           {/* 3. Grafik TDS */}
           <div className="bg-surface border border-line rounded-[6px] p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-semibold text-ink">TDS — Zat Terlarut (ppm)</span>
+              <span className="text-[13px] font-semibold text-ink">TDS: Zat Terlarut (ppm)</span>
               <span className="text-[12px] text-muted">Ideal: &lt; 400 ppm (kritis &gt; 800)</span>
             </div>
             <div className="h-[140px] w-full">

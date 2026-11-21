@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 
 createInertiaApp({
-    title: (title) => title ? `${title} — BanyuWening` : 'BanyuWening — Monitoring Kualitas Air Kolam IoT & ML',
+    title: (title) => title ? `${title} : BanyuWening` : 'BanyuWening : Smart Aquaculture IoT Multi-Kolam & AI Decision Support',
     resolve: (name) => {
         const pages = import.meta.glob('./Pages/**/*.tsx', { eager: true });
         const page = pages[`./Pages/${name}.tsx`];

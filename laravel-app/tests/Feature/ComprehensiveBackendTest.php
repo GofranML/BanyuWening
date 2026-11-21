@@ -151,14 +151,23 @@ class ComprehensiveBackendTest extends TestCase
 
     public function test_api_telemetry_validates_required_fields(): void
     {
-        // Payload tanpa device_code
-        $response = $this->postJson('/api/telemetry', [
+        // Tanpa token per alat -> 401 Unauthorized
+        $this->postJson('/api/telemetry', [
             'ph' => 7.0,
             'temperature_c' => 28.0,
+        ])->assertStatus(401);
+
+        // Dengan token valid tetapi nilai fisik keluar rentang -> 422 Validation Error
+        $device = Device::where('device_code', 'ESP32-NODE-01')->firstOrFail();
+        $token = $device->issueToken();
+
+        $response = $this->withToken($token)->postJson('/api/telemetry', [
+            'ph' => 99.0,
+            'temperature_c' => -10.0,
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['device_code']);
+            ->assertJsonValidationErrors(['ph', 'temperature_c']);
     }
 
     public function test_login_validation_and_throttling(): void

@@ -106,21 +106,24 @@ export function AeratorControlDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 transition-opacity"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"
+      onClick={() => {
+        if (!loading) onClose();
+      }}
     >
       {/* Modal Surface */}
       <div
-        className="w-full sm:max-w-lg bg-surface border border-line rounded-t-[12px] sm:rounded-[8px] p-6 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="w-full sm:max-w-lg bg-surface border border-line rounded-t-[12px] sm:rounded-[8px] p-6 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-line mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center">
-              <Power className="w-4 h-4" />
+              <Power className="w-4 h-4" aria-hidden="true" />
             </div>
             <div>
               <h3 id="dialog-title" className="text-[16px] font-semibold text-ink">
@@ -138,27 +141,29 @@ export function AeratorControlDialog({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={loading}
-            className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface-2 transition-colors disabled:opacity-50"
+            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded text-muted hover:text-ink hover:bg-surface-2 transition-colors disabled:opacity-50 cursor-pointer"
             aria-label="Tutup dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Action Selection */}
         <div className="space-y-4">
           <div>
-            <label className="text-[13px] font-medium text-muted block mb-2">
+            <span id="control-action-label" className="text-[13px] font-medium text-muted block mb-2">
               Pilih Aksi Kendali
-            </label>
-            <div className="grid grid-cols-3 gap-2">
+            </span>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="control-action-label">
               <button
                 type="button"
                 onClick={() => setSelectedAction("ON")}
                 disabled={loading}
-                className={`py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-all ${
+                aria-pressed={selectedAction === "ON"}
+                className={`min-h-[44px] py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-colors cursor-pointer ${
                   selectedAction === "ON"
                     ? "border-brand bg-brand text-brand-ink"
                     : "border-line bg-surface text-ink hover:bg-surface-2"
@@ -170,7 +175,8 @@ export function AeratorControlDialog({
                 type="button"
                 onClick={() => setSelectedAction("OFF")}
                 disabled={loading}
-                className={`py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-all ${
+                aria-pressed={selectedAction === "OFF"}
+                className={`min-h-[44px] py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-colors cursor-pointer ${
                   selectedAction === "OFF"
                     ? "border-brand bg-brand text-brand-ink"
                     : "border-line bg-surface text-ink hover:bg-surface-2"
@@ -182,7 +188,8 @@ export function AeratorControlDialog({
                 type="button"
                 onClick={() => setSelectedAction("AUTO")}
                 disabled={loading}
-                className={`py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-all ${
+                aria-pressed={selectedAction === "AUTO"}
+                className={`min-h-[44px] py-2.5 px-3 rounded-[6px] border text-[13px] font-semibold transition-colors cursor-pointer ${
                   selectedAction === "AUTO"
                     ? "border-brand bg-brand text-brand-ink"
                     : "border-line bg-surface text-ink hover:bg-surface-2"
@@ -196,10 +203,10 @@ export function AeratorControlDialog({
           {/* Duration selection (only for manual ON / OFF) */}
           {selectedAction !== "AUTO" && (
             <div>
-              <label className="text-[13px] font-medium text-muted block mb-2">
+              <span id="control-duration-label" className="text-[13px] font-medium text-muted block mb-2">
                 Durasi Kendali Manual (Otomatis kembali setelah waktu habis)
-              </label>
-              <div className="grid grid-cols-4 gap-2">
+              </span>
+              <div className="grid grid-cols-4 gap-2" role="group" aria-labelledby="control-duration-label">
                 {[
                   { label: "15 m", val: 15 },
                   { label: "30 m", val: 30 },
@@ -211,10 +218,11 @@ export function AeratorControlDialog({
                     type="button"
                     onClick={() => setDurationMin(item.val)}
                     disabled={loading}
-                    className={`py-2 px-2 text-center rounded-[6px] border text-[13px] font-medium tnum transition-all ${
+                    aria-pressed={durationMin === item.val}
+                    className={`min-h-[44px] py-2 px-2 text-center rounded-[6px] border text-[13px] font-medium tnum transition-colors cursor-pointer ${
                       durationMin === item.val
-                        ? "border-brand bg-brand/10 text-brand font-semibold"
-                        : "border-line bg-surface text-muted hover:bg-surface-2"
+                        ? "border-brand bg-brand text-brand-ink font-semibold"
+                        : "border-line bg-surface text-ink hover:bg-surface-2"
                     }`}
                   >
                     {item.label}

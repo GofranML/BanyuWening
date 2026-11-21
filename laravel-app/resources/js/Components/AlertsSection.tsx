@@ -61,8 +61,10 @@ export function AlertsSection({
         ].map((f) => (
           <button
             key={f.key}
+            type="button"
             onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-[6px] text-[13px] font-semibold border transition-all ${
+            aria-pressed={filter === f.key}
+            className={`min-h-[44px] px-3.5 py-2 rounded-[6px] text-[13px] font-semibold border transition-colors ${
               filter === f.key
                 ? "bg-brand text-brand-ink border-brand"
                 : "bg-surface text-muted border-line hover:bg-surface-2"
@@ -157,8 +159,8 @@ export function AlertsSection({
                           </span>
                         )}
                         {item.telegram_sent && (
-                          <span className="inline-flex items-center gap-1 text-[#229ED9]">
-                            <Send className="w-3 h-3" />
+                          <span className="inline-flex items-center gap-1 text-brand font-medium">
+                            <Send className="w-3 h-3" aria-hidden="true" />
                             Notifikasi Telegram terkirim
                           </span>
                         )}
@@ -177,10 +179,11 @@ export function AlertsSection({
                       </div>
                     ) : canAcknowledge ? (
                       <button
+                        type="button"
                         onClick={() => handleAcknowledge(item.id)}
-                        className="h-9 px-3 border border-line rounded-[6px] text-[13px] font-semibold text-ink hover:bg-surface-2 transition-colors inline-flex items-center gap-1.5"
+                        className="min-h-[44px] px-3.5 py-2 border border-line rounded-[6px] text-[13px] font-semibold text-ink hover:bg-surface-2 transition-colors inline-flex items-center gap-1.5"
                       >
-                        <Check className="w-3.5 h-3.5 text-muted" />
+                        <Check className="w-3.5 h-3.5 text-muted" aria-hidden="true" />
                         <span>Tandai sudah ditangani</span>
                       </button>
                     ) : (

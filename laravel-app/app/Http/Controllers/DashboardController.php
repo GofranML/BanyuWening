@@ -15,14 +15,21 @@ use App\Models\DispatchLog;
 use App\Models\LandingContent;
 use App\Services\NotificationService;
 use App\Services\MachineLearningService;
+use App\Services\RealtimeBroadcaster;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index(NotificationService $notificationService, MachineLearningService $mlService): Response
+    public function index(
+        Request $request,
+        NotificationService $notificationService,
+        MachineLearningService $mlService,
+        RealtimeBroadcaster $broadcaster
+    ): Response
     {
         $user = Auth::user();
         $device = Device::first();
@@ -158,6 +165,11 @@ class DashboardController extends Controller
             ];
         }
 
+        $devices = [];
+        if ($user && $user->isAdmin()) {
+            $devices = Device::orderBy('id')->get()->map(fn (Device $d) => $this->serializeDeviceForAdmin($d))->values()->all();
+        }
+
         return Inertia::render('Dashboard', [
             'user' => [
                 'id' => $user->id,
@@ -180,6 +192,7 @@ class DashboardController extends Controller
                 'water_level' => $latest->water_level,
                 'aerator_on' => (bool)$latest->aerator_on,
                 'mode' => $latest->mode,
+                'transport' => $latest->transport ?? 'HTTP',
             ] : null,
             'prediction' => $prediction ? [
                 'risk' => $prediction->risk,
@@ -201,6 +214,7 @@ class DashboardController extends Controller
                 'pond_name' => $device?->pond_name ?? 'Kolam Terpal Sangkuriang 01',
                 'firmware_version' => $device?->firmware_version ?? 'v1.4.2-failsafe',
                 'status' => $latest ? ($device?->status ?? 'ONLINE') : 'STANDBY',
+                'transport_protocol' => $device?->transport_protocol ?? 'STANDBY',
                 'mode' => $device?->mode ?? 'AUTO',
                 'aerator_on' => (bool)($device?->aerator_on ?? false),
             ],
@@ -210,6 +224,8 @@ class DashboardController extends Controller
                 'dailyDuration' => $latest ? '3 jam 20 menit' : '0 menit (Standby)',
             ],
             'users' => $users,
+            'devices' => $devices,
+            'realtimeConfig' => $broadcaster->getRealtimeConfig($user, $request->getSchemeAndHttpHost()),
             'notificationConfig' => $notificationConfig,
             'dispatchLogs' => $dispatchLogs,
             'landingContent' => $landingContent,
@@ -218,24 +234,40 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function controlAerator(Request $request)
+    public function controlAerator(Request $request, RealtimeBroadcaster $broadcaster)
     {
         $validated = $request->validate([
             'action' => ['required', 'in:ON,OFF,AUTO'],
             'duration' => ['nullable', 'integer'],
+            'duration_minutes' => ['nullable', 'integer'],
+            'device_code' => ['nullable', 'string'],
         ]);
 
-        $device = Device::first();
+        $device = !empty($validated['device_code'])
+            ? Device::where('device_code', $validated['device_code'])->first()
+            : Device::first();
         $action = $validated['action'];
         $user = Auth::user();
 
         $isOn = $action === 'ON';
         $mode = $action === 'AUTO' ? 'AUTO' : 'MANUAL';
+        $durationSec = $validated['duration'] ?? (isset($validated['duration_minutes']) ? $validated['duration_minutes'] * 60 : 1800);
 
         if ($device) {
+            $commandPayload = [
+                'command_id' => 'cmd-' . Str::lower(Str::random(10)),
+                'action' => $action,
+                'aerator_on' => $isOn,
+                'mode' => $mode,
+                'duration_seconds' => $durationSec,
+                'issued_by' => $user ? "{$user->name} ({$user->role})" : 'Operator',
+                'issued_at' => now()->toIso8601String(),
+            ];
+
             $device->update([
                 'aerator_on' => $isOn,
                 'mode' => $mode,
+                'pending_command' => $commandPayload,
             ]);
 
             RelayLog::create([
@@ -244,9 +276,12 @@ class DashboardController extends Controller
                 'mode' => $mode,
                 'reason' => 'Perintah kontrol dari Dashboard Web',
                 'actor' => $user ? "{$user->name} ({$user->role})" : 'Operator',
-                'duration_seconds' => $validated['duration'] ?? 1800,
+                'duration_seconds' => $durationSec,
                 'triggered_at' => now(),
             ]);
+
+            // Push instan ke kanal WebSocket banyuwening.control.v1 (juga tersedia via HTTP Fallback /api/http/commands)
+            $broadcaster->publish('control', 'control.command', $commandPayload, $device->device_code);
         }
 
         // Simpan juga ke reading terakhir
@@ -746,5 +781,163 @@ class DashboardController extends Controller
         }
 
         return back()->with('error', 'File backup tidak ditemukan.');
+    }
+
+    /**
+     * Super Admin: Daftarkan node alat IoT baru dan terbitkan token unik per alat.
+     */
+    public function storeDevice(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        $validated = $request->validate([
+            'device_code' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_-]+$/', 'unique:devices,device_code'],
+            'name' => ['required', 'string', 'max:120'],
+            'pond_name' => ['required', 'string', 'max:120'],
+            'firmware_version' => ['nullable', 'string', 'max:40'],
+        ]);
+
+        $device = Device::create([
+            'device_code' => strtoupper($validated['device_code']),
+            'name' => $validated['name'],
+            'pond_name' => $validated['pond_name'],
+            'firmware_version' => ($validated['firmware_version'] ?? null) ?: 'edge-ws-fallback',
+            'mqtt_topic' => 'banyuwening/' . Str::lower($validated['device_code']) . '/telemetry',
+            'status' => 'STANDBY',
+            'transport_protocol' => 'STANDBY',
+            'mode' => 'AUTO',
+            'aerator_on' => false,
+        ]);
+
+        $plainToken = $device->issueToken();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Perangkat {$device->device_code} terdaftar dan token baru diterbitkan.",
+                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+                'plain_token' => $plainToken,
+            ], 201);
+        }
+
+        return back()
+            ->with('success', "Perangkat {$device->device_code} berhasil didaftarkan.")
+            ->with('issued_device_token', [
+                'device_code' => $device->device_code,
+                'token' => $plainToken,
+            ]);
+    }
+
+    /**
+     * Super Admin: Rotasi (generate ulang) token unik per alat. Token lama langsung tidak berlaku.
+     */
+    public function rotateDeviceToken(Request $request, Device $device)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        $plainToken = $device->issueToken();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Token untuk {$device->device_code} berhasil dirotasi. Token lama langsung dinonaktifkan.",
+                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+                'plain_token' => $plainToken,
+            ]);
+        }
+
+        return back()
+            ->with('success', "Token untuk {$device->device_code} berhasil dirotasi.")
+            ->with('issued_device_token', [
+                'device_code' => $device->device_code,
+                'token' => $plainToken,
+            ]);
+    }
+
+    /**
+     * Super Admin: Nonaktifkan (cabut) atau aktifkan kembali token perangkat.
+     */
+    public function toggleDeviceToken(Request $request, Device $device)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        if ($device->token_active) {
+            $device->revokeToken();
+            $msg = "Token perangkat {$device->device_code} telah dicabut (nonaktif).";
+        } else {
+            $device->activateToken();
+            $msg = "Token perangkat {$device->device_code} diaktifkan kembali.";
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+            ]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Super Admin: Hapus perangkat (mencegah penghapusan jika hanya tersisa 1 perangkat utama).
+     */
+    public function destroyDevice(Request $request, Device $device)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        if (Device::count() <= 1) {
+            $msg = 'Minimal harus ada satu perangkat utama yang terdaftar di sistem.';
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $msg], 422)
+                : back()->with('error', $msg);
+        }
+
+        $code = $device->device_code;
+        $device->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Perangkat {$code} dan tokennya berhasil dihapus.",
+            ]);
+        }
+
+        return back()->with('success', "Perangkat {$code} berhasil dihapus.");
+    }
+
+    private function serializeDeviceForAdmin(Device $d): array
+    {
+        return [
+            'id' => $d->id,
+            'device_code' => $d->device_code,
+            'name' => $d->name,
+            'pond_name' => $d->pond_name,
+            'firmware_version' => $d->firmware_version,
+            'status' => $d->status,
+            'transport_protocol' => $d->transport_protocol ?? 'STANDBY',
+            'mode' => $d->mode,
+            'aerator_on' => (bool) $d->aerator_on,
+            'api_token_prefix' => $d->api_token_prefix,
+            'has_token' => (bool) $d->api_token_hash,
+            'token_active' => (bool) $d->token_active,
+            'token_rotated_at' => $d->token_rotated_at?->toIso8601String(),
+            'token_last_used_at' => $d->token_last_used_at?->toIso8601String(),
+            'last_heartbeat_at' => $d->last_heartbeat_at?->toIso8601String(),
+            'ws_connected_at' => $d->ws_connected_at?->toIso8601String(),
+        ];
     }
 }

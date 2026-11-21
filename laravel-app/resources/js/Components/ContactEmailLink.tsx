@@ -9,7 +9,7 @@ interface ContactEmailLinkProps {
 }
 
 export function ContactEmailLink({
-  email = "BanyuWening@example.com",
+  email = "banyuwening@example.id",
   className = "",
   showIcon = false,
   label,
@@ -43,7 +43,7 @@ export function ContactEmailLink({
       rel={target ? "noopener noreferrer" : undefined}
       className={`inline-flex items-center gap-1.5 transition-colors ${className}`}
     >
-      {showIcon && <Mail className="w-3.5 h-3.5" />}
+      {showIcon && <Mail className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
       <span>{label || email}</span>
     </a>
   );

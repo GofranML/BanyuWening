@@ -49,6 +49,83 @@ const PRESET_VIDEOS = [
   { label: "Time-lapse Kolam WebM", path: "/pics/kolam-timelapse.webm" },
 ];
 
+const V2_DEFAULTS = {
+  hero_tag: "Sistem Monitoring & Otomasi Kualitas Air Kolam",
+  hero_title: "BANYUWENING",
+  hero_subtitle:
+    "Platform IoT akuakultur presisi dengan kecerdasan Edge Fuzzy lokal dan kontrol pompa otomatis untuk menjaga kualitas air kolam lele 24 jam penuh.",
+  intro_statement_1: "Satu Core Hub pintar",
+  intro_statement_2: "menjaga hingga 4 kolam lele,",
+  intro_statement_3: "saat WiFi kolam terputus,",
+  intro_statement_4: "atau cuaca buruk tengah malam.",
+  intro_statement_5: "Tanpa mengunci alat petambak.",
+  intro_desc:
+    "Arsitektur 1 Core Hub untuk 1-4 Modul Kolam dengan Edge Fuzzy + LittleFS Store-and-Forward, Sensor Health Watchdog, dan WeningBot WhatsApp-First. Mode Offline-Plus Rp0 aktif permanen.",
+  contact_email: "banyuwening@example.id",
+  contact_phone: "+62 8566-9548-964",
+  institution_name: "Institut Teknologi dan Bisnis PalComTech",
+  institution_url: "https://palcomtech.ac.id/",
+  cta_text:
+    "Uji langsung respons Edge Fuzzy multi-kolam, Sensor Health Watchdog, dan simulasi pemantauan kualitas air kolam lele secara real-time.",
+  cta_button_text: "Buka Versi Demo",
+  copyright_text:
+    "© 2026 BanyuWening · Smart Aquaculture for a Sustainable Future.",
+  capabilities: [
+    {
+      title: "Arsitektur 1 Core Hub : 1-4 Kolam",
+      desc: "Satu Core Hub (ESP32-WROOM, 2-3x ADS1115 16-bit, MCP23017, Box IP65) memantau hingga 4 kolam berdempetan milik satu pemilik via kabel shielded maksimal 3-5 m dan soket GX16.",
+      tag: "Modular Multi-Kolam",
+    },
+    {
+      title: "Edge Fuzzy & Anti-Bricking Rp0",
+      desc: "Saat WiFi kolam terputus, Edge Fuzzy, RTC DS3231, dan LittleFS Store-and-Forward tetap menggerakkan aerator atau pompa. Mode Offline-Plus aktif permanen Rp0 walau SaaS dijeda.",
+      tag: "Offline-Plus",
+    },
+    {
+      title: "Edge Watchdog & Auto-Resume",
+      desc: "Watchdog perangkat keras menjaga siklus pemantauan tetap konsisten, menyimpan log sementara di memori LittleFS 72 jam saat koneksi terputus, dan mengirim notifikasi ke WhatsApp ketika daya maupun jaringan pulih.",
+      tag: "Edge Autonomy",
+    },
+    {
+      title: "Sensor Health Watchdog & Stilling Well",
+      desc: "Mendeteksi nilai flatline atau lensa turbidity jenuh lumut (SATURATED/FAULT), mengisolasi parameter rusak otomatis, serta melindungi probe dalam pipa PVC dengan MOSFET power-switch TDS.",
+      tag: "Ketahanan Lumpur",
+    },
+    {
+      title: "Cloud Random Forest & HITL Safety Gate",
+      desc: "EMQX TLS, FastAPI Always-On, dan Supabase Pro memprediksi risiko air 1-3 jam ke depan. Setiap usulan JSON AI maupun Dual-OTA rollback 60 detik wajib lolos Human-in-the-Loop Engineer Gate.",
+      tag: "Always-On AI",
+    },
+    {
+      title: "WeningBot WhatsApp-First & Paket Panen",
+      desc: "Entry Rp1,65 jt, Starter 2K Rp2,45 jt, Juragan 4K Rp4,15 jt (PO DP 50% + Lunas 50%). SaaS Smart Guard Rp150rb/Rp225rb per siklus 3 bulan; >90% bot WA memakai Rule-Based Engine Rp0 LLM.",
+      tag: "Ekonomi UMKM",
+    },
+  ] as LandingCapability[],
+  faqs: [
+    {
+      q: "Mengapa tidak menyertakan sensor DO dan Amonia di paket Rp2,45 juta, serta bagaimana mengatasi organ labirin ikan lele?",
+      a: "Sensor DO optik/galvanik industri beserta probe amonia (NH3) menambah biaya di atas Rp2-4 juta dan menuntut perawatan membran rumit bagi UMKM. Untuk keterjangkauan, kami memakai proxy multivariat (suhu, turbiditas, TDS, pH, siklus diurnal) dengan Sensor Health Watchdog dan menyediakan slot ekspansi I2C/GX16 untuk add-on Modul DO Pro. Khusus bias perilaku naik ke permukaan akibat organ labirin lele, kalibrasi dilakukan dengan alat ukur DO Portabel dan Test Kit Amonia/Nitrit.",
+    },
+    {
+      q: "Bagaimana ketahanan sistem jika WiFi kolam atau jaringan internet terputus tengah malam?",
+      a: "Core Hub menjalankan inferensi Edge Fuzzy langsung di mikrokontroler lokal bersama RTC DS3231 dan penyimpanan LittleFS Store-and-Forward. Saat WiFi terputus, log pembacaan tetap terekam hingga ribuan entri sementara relay aerator maupun pompa tetap dikendalikan secara lokal dengan batas pengaman duty-cycle (Mode Offline-Plus Rp0 permanen).",
+    },
+    {
+      q: "Bagaimana pemisahan garansi perangkat keras dan probe kaca pH di lapangan?",
+      a: "Kami memisahkan secara tegas antara garansi elektronik Core Hub dan modul kering IP65 selama 12 bulan dengan probe kaca pH (PH-4502C) dan elektroda TDS sebagai komponen habis pakai (consumable). Umur pakai riil probe di air budidaya adalah 4-6 bulan dengan garansi DOA 30 hari, sedangkan probe pengganti resmi tersedia secara transparan Rp195.000/probe.",
+    },
+    {
+      q: "Apa jaminan arsitektur agar perangkat petambak tidak pernah terkunci?",
+      a: "Perangkat keras BanyuWening dibeli penuh oleh petambak dan berjalan dengan kebijakan Anti-Bricking: mode Offline-Plus Rp0 permanen memastikan pembacaan sensor lokal, relay keselamatan aerator, dan kontrol pompa tetap aktif walaupun langganan SaaS Smart Guard dijeda.",
+    },
+    {
+      q: "Bagaimana biaya infrastruktur cloud & WeningBot WhatsApp tetap efisien untuk banyak kolam?",
+      a: "Lebih dari 90% interaksi harian WeningBot WhatsApp memakai Rule-Based Engine lokal tanpa beban biaya LLM tambahan, dipadukan dengan broker EMQX TLS dan FastAPI yang hanya mengirim ringkasan telemetri dan peringatan kritis langsung ke WhatsApp petambak.",
+    },
+  ] as LandingFaq[],
+};
+
 export function SuperAdminContentManagement({
   landingContent: initialContent,
 }: SuperAdminContentManagementProps) {
@@ -64,37 +141,35 @@ export function SuperAdminContentManagement({
     setter: (val: string) => void;
   } | null>(null);
 
-  // Form State — Teks Hero
+  // Form State : Teks Hero
   const [heroTag, setHeroTag] = useState(
-    initialContent?.hero_tag || "Sistem Monitoring & Otomasi Kualitas Air Kolam"
+    initialContent?.hero_tag || V2_DEFAULTS.hero_tag
   );
   const [heroTitle, setHeroTitle] = useState(
-    initialContent?.hero_title || "BANYUWENING"
+    initialContent?.hero_title || V2_DEFAULTS.hero_title
   );
   const [heroSubtitle, setHeroSubtitle] = useState(
-    initialContent?.hero_subtitle ||
-      "Pemantauan kualitas air kolam 24/7 dengan prediksi risiko dini, otomasi aerator, dan pengaman lokal tanpa internet"
+    initialContent?.hero_subtitle || V2_DEFAULTS.hero_subtitle
   );
 
   // Narasi Intro Tangga
   const [introStatement1, setIntroStatement1] = useState(
-    initialContent?.intro_statement_1 || "Jaga kolam lele 500 ekor"
+    initialContent?.intro_statement_1 || V2_DEFAULTS.intro_statement_1
   );
   const [introStatement2, setIntroStatement2] = useState(
-    initialContent?.intro_statement_2 || "walau tengah malam,"
+    initialContent?.intro_statement_2 || V2_DEFAULTS.intro_statement_2
   );
   const [introStatement3, setIntroStatement3] = useState(
-    initialContent?.intro_statement_3 || "saat pH turun tajam"
+    initialContent?.intro_statement_3 || V2_DEFAULTS.intro_statement_3
   );
   const [introStatement4, setIntroStatement4] = useState(
-    initialContent?.intro_statement_4 || "dan oksigen menipis."
+    initialContent?.intro_statement_4 || V2_DEFAULTS.intro_statement_4
   );
   const [introStatement5, setIntroStatement5] = useState(
-    initialContent?.intro_statement_5 || "BanyuWening tidak tidur."
+    initialContent?.intro_statement_5 || V2_DEFAULTS.intro_statement_5
   );
   const [introDesc, setIntroDesc] = useState(
-    initialContent?.intro_desc ||
-      "Sistem IoT pemantauan kualitas air yang membaca pH, suhu, TDS, dan kekeruhan tiap 30 detik untuk kolam budidaya lele, patin, dan nila."
+    initialContent?.intro_desc || V2_DEFAULTS.intro_desc
   );
 
   // Helper format nomor WhatsApp: +62 8566-9548-964 (tiap 4 angka otomatis dipisahkan dengan tanda '-')
@@ -132,64 +207,37 @@ export function SuperAdminContentManagement({
 
   // Kontak & Email
   const [contactEmail, setContactEmail] = useState(
-    initialContent?.contact_email || "BanyuWening@example.com"
+    initialContent?.contact_email || V2_DEFAULTS.contact_email
   );
   const [contactPhone, setContactPhone] = useState(
-    formatWhatsAppNumber(initialContent?.contact_phone || "+62 8566-9548-964")
+    formatWhatsAppNumber(initialContent?.contact_phone || V2_DEFAULTS.contact_phone)
   );
   const [institutionName, setInstitutionName] = useState(
-    initialContent?.institution_name || "Institut Teknologi dan Bisnis PalComTech"
+    initialContent?.institution_name || V2_DEFAULTS.institution_name
   );
   const [institutionUrl, setInstitutionUrl] = useState(
-    initialContent?.institution_url || "https://palcomtech.ac.id/"
+    initialContent?.institution_url || V2_DEFAULTS.institution_url
   );
 
   // CTA & Footer
   const [ctaText, setCtaText] = useState(
-    initialContent?.cta_text ||
-      "Sistem ini dikembangkan oleh mahasiswa Institut Teknologi dan Bisnis PalComTech untuk membantu pembudidaya ikan air tawar di Indonesia."
+    initialContent?.cta_text || V2_DEFAULTS.cta_text
   );
   const [ctaButtonText, setCtaButtonText] = useState(
-    initialContent?.cta_button_text || "Masuk ke Versi Demo"
+    initialContent?.cta_button_text || V2_DEFAULTS.cta_button_text
   );
   const [copyrightText, setCopyrightText] = useState(
-    initialContent?.copyright_text ||
-      "© 2026 BanyuWening · Institut Teknologi dan Bisnis PalComTech."
+    initialContent?.copyright_text || V2_DEFAULTS.copyright_text
   );
 
   // Fitur List
   const [capabilities, setCapabilities] = useState<LandingCapability[]>(
-    initialContent?.capabilities || [
-      {
-        title: "Pemantauan Kontinu 24/7",
-        desc: "Sensor pH, suhu DS18B20, TDS, dan turbiditas membaca setiap 30 detik tanpa jeda melebihi 2 menit.",
-        tag: "Hardware ESP32",
-      },
-      {
-        title: "Failsafe Mandiri Tanpa Internet",
-        desc: "Mikrokontroler memiliki aturan deterministik lokal. Jika pH < 6.0 atau suhu > 33°C, aerator seketika aktif walau koneksi WiFi kolam terputus.",
-        tag: "Keandalan Lokal",
-      },
-      {
-        title: "Prediksi Dini Risiko 1–3 Jam",
-        desc: "Model Random Forest mengevaluasi pola laju perubahan air (dpH/dt, dTemp/dt) untuk mendeteksi potensi krisis sebelum ikan mengalami stres.",
-        tag: "Machine Learning",
-      },
-    ]
+    initialContent?.capabilities || V2_DEFAULTS.capabilities
   );
 
   // FAQ List
   const [faqs, setFaqs] = useState<LandingFaq[]>(
-    initialContent?.faqs || [
-      {
-        q: "Apakah sistem tetap bekerja jika koneksi WiFi atau internet di kolam terputus?",
-        a: "Ya. ESP32 dilengkapi aturan keselamatan deterministik (Failsafe Lokal). Walaupun jaringan internet atau cloud terputus, mikrokontroler secara mandiri akan langsung menyalakan relay aerator jika pH anjlok di bawah 6,0 atau suhu melewati 33°C.",
-      },
-      {
-        q: "Mengapa BanyuWening tidak menggunakan sensor Dissolved Oxygen (DO)?",
-        a: "Sensor Dissolved Oxygen (DO) industri berkualitas memerlukan kalibrasi larutan elektrolit yang rumit bagi pembudidaya kolam air tawar. BanyuWening mengombinasikan sensor pH, suhu, TDS, dan turbiditas dengan algoritma prediksi ML sebagai indikator komprehensif kesehatan ekosistem air.",
-      },
-    ]
+    initialContent?.faqs || V2_DEFAULTS.faqs
   );
 
   // Media State (Gambar & Video)
@@ -364,29 +412,24 @@ export function SuperAdminContentManagement({
       return;
     }
 
-    setHeroTag("Sistem Monitoring & Otomasi Kualitas Air Kolam");
-    setHeroTitle("BANYUWENING");
-    setHeroSubtitle(
-      "Pemantauan kualitas air kolam 24/7 dengan prediksi risiko dini, otomasi aerator, dan pengaman lokal tanpa internet"
-    );
-    setIntroStatement1("Jaga kolam lele 500 ekor");
-    setIntroStatement2("walau tengah malam,");
-    setIntroStatement3("saat pH turun tajam");
-    setIntroStatement4("dan oksigen menipis.");
-    setIntroStatement5("BanyuWening tidak tidur.");
-    setIntroDesc(
-      "Sistem IoT pemantauan kualitas air yang membaca pH, suhu, TDS, dan kekeruhan tiap 30 detik untuk kolam budidaya lele, patin, dan nila."
-    );
-    setContactEmail("BanyuWening@example.com");
-    setContactPhone("+62 812-7890-1122");
-    setInstitutionName("Institut Teknologi dan Bisnis PalComTech");
-    setCtaText(
-      "Sistem ini dikembangkan oleh mahasiswa Institut Teknologi dan Bisnis PalComTech untuk membantu pembudidaya ikan air tawar di Indonesia."
-    );
-    setCtaButtonText("Masuk ke Versi Demo");
-    setCopyrightText(
-      "© 2026 BanyuWening · Institut Teknologi dan Bisnis PalComTech."
-    );
+    setHeroTag(V2_DEFAULTS.hero_tag);
+    setHeroTitle(V2_DEFAULTS.hero_title);
+    setHeroSubtitle(V2_DEFAULTS.hero_subtitle);
+    setIntroStatement1(V2_DEFAULTS.intro_statement_1);
+    setIntroStatement2(V2_DEFAULTS.intro_statement_2);
+    setIntroStatement3(V2_DEFAULTS.intro_statement_3);
+    setIntroStatement4(V2_DEFAULTS.intro_statement_4);
+    setIntroStatement5(V2_DEFAULTS.intro_statement_5);
+    setIntroDesc(V2_DEFAULTS.intro_desc);
+    setContactEmail(V2_DEFAULTS.contact_email);
+    setContactPhone(V2_DEFAULTS.contact_phone);
+    setInstitutionName(V2_DEFAULTS.institution_name);
+    setInstitutionUrl(V2_DEFAULTS.institution_url);
+    setCtaText(V2_DEFAULTS.cta_text);
+    setCtaButtonText(V2_DEFAULTS.cta_button_text);
+    setCopyrightText(V2_DEFAULTS.copyright_text);
+    setCapabilities(V2_DEFAULTS.capabilities);
+    setFaqs(V2_DEFAULTS.faqs);
 
     // Media defaults
     setHeroBgImage("/pics/aerasi.jpg");
@@ -922,7 +965,7 @@ export function SuperAdminContentManagement({
                 <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
                     <span>Tahap 05</span>
-                    <span className="text-ink">Kabari (Telegram)</span>
+                    <span className="text-ink">Kabari (WA & Telegram)</span>
                   </div>
                   <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
                     <img

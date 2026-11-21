@@ -56,7 +56,12 @@ import type {
   LandingContentSettings,
   BackupItem,
   SecurityStats,
+  ManagedDevice,
+  RealtimeConfig,
+  RealtimeTransportMode,
 } from "@/Types";
+
+import { BanyuWeningRealtimeClient } from "@/lib/realtime-client";
 
 import {
   getOverallStatus,
@@ -92,6 +97,8 @@ interface DashboardProps {
   device: DeviceInfo;
   aeratorState: AeratorState;
   users: User[];
+  devices?: ManagedDevice[];
+  realtimeConfig?: RealtimeConfig;
   notificationConfig?: any;
   dispatchLogs?: any[];
   landingContent?: LandingContentSettings;
@@ -101,13 +108,15 @@ interface DashboardProps {
 
 export default function Dashboard({
   user: propUser,
-  currentReading,
-  prediction,
-  allReadings = [],
-  alerts = [],
+  currentReading: initialCurrentReading,
+  prediction: initialPrediction,
+  allReadings: initialAllReadings = [],
+  alerts: initialAlerts = [],
   device: propDevice,
   aeratorState: initialAeratorState,
   users = [],
+  devices: initialDevices = [],
+  realtimeConfig: initialRealtimeConfig,
   landingContent: initialLandingContent,
   backups: initialBackups = [],
   securityStats: initialSecurityStats,
@@ -116,6 +125,11 @@ export default function Dashboard({
   const landingContent = initialLandingContent || pageProps.landingContent;
   const backups = initialBackups.length > 0 ? initialBackups : pageProps.backups || [];
   const securityStats = initialSecurityStats || pageProps.securityStats;
+  const managedDevices: ManagedDevice[] =
+    initialDevices.length > 0 ? initialDevices : pageProps.devices || [];
+  const realtimeConfig: RealtimeConfig | undefined =
+    initialRealtimeConfig || pageProps.realtimeConfig;
+
   const user: User = propUser || pageProps.user || pageProps.auth?.user || {
     id: 1,
     name: "Administrator",
@@ -127,15 +141,25 @@ export default function Dashboard({
     phone: "",
   };
 
-  const device: DeviceInfo = propDevice || {
+  const defaultDevice: DeviceInfo = propDevice || {
     device_code: "ESP32-NODE-01",
     name: "Node Sensor Kolam 01",
     pond_name: "Kolam Terpal Sangkuriang 01",
     firmware_version: "v1.4.2-failsafe",
     status: "ONLINE",
+    transport_protocol: "STANDBY",
     mode: "AUTO",
     aerator_on: false,
   };
+
+  // Live Realtime State (diperbarui via WebSocket multi-protokol atau otomatis via HTTP Fallback)
+  const [currentReading, setCurrentReading] = useState<SensorReading>(initialCurrentReading);
+  const [prediction, setPrediction] = useState<PredictionResult>(initialPrediction);
+  const [allReadings, setAllReadings] = useState<SensorReading[]>(initialAllReadings);
+  const [alerts, setAlerts] = useState<AlertItem[]>(initialAlerts);
+  const [device, setDevice] = useState<DeviceInfo>(defaultDevice);
+  const [realtimeMode, setRealtimeMode] = useState<RealtimeTransportMode>("CONNECTING");
+  const [transportReason, setTransportReason] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<TabId>(
     user.role === "PEMILIK" ? "laporan-pemilik" : "ringkasan"
@@ -151,6 +175,77 @@ export default function Dashboard({
       dailyDuration: "0 jam 0 menit",
     }
   );
+
+  // Sinkronisasi props Inertia saat reload parsial / navigasi
+  useEffect(() => {
+    setCurrentReading(initialCurrentReading);
+  }, [initialCurrentReading]);
+
+  useEffect(() => {
+    setPrediction(initialPrediction);
+  }, [initialPrediction]);
+
+  useEffect(() => {
+    setAllReadings(initialAllReadings);
+  }, [initialAllReadings]);
+
+  useEffect(() => {
+    setAlerts(initialAlerts);
+  }, [initialAlerts]);
+
+  useEffect(() => {
+    if (propDevice) setDevice(propDevice);
+  }, [propDevice]);
+
+  // Realtime WebSocket-first + Automatic HTTP Fallback lifecycle
+  useEffect(() => {
+    if (!realtimeConfig) return;
+
+    const client = new BanyuWeningRealtimeClient(realtimeConfig, {
+      onModeChange: (mode, reason) => {
+        setRealtimeMode(mode);
+        if (reason) setTransportReason(reason);
+      },
+      onTelemetry: (reading, devicePatch) => {
+        setCurrentReading(reading);
+        setAllReadings((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.ts === reading.ts) return prev;
+          return [...prev.slice(-287), reading];
+        });
+        if (devicePatch) {
+          setDevice((prev) => ({ ...prev, ...devicePatch }));
+        }
+        setAeratorState((prev) => ({
+          ...prev,
+          isOn: Boolean(reading.aerator_on),
+          mode: reading.mode || prev.mode,
+        }));
+      },
+      onPrediction: (nextPrediction, nextAlert) => {
+        setPrediction(nextPrediction);
+        if (nextAlert) {
+          setAlerts((prev) => {
+            if (prev.some((a) => a.id === nextAlert.id)) return prev;
+            return [nextAlert, ...prev].slice(0, 50);
+          });
+        }
+      },
+      onAlertsRefresh: (nextAlerts) => {
+        setAlerts(nextAlerts);
+      },
+      onControlUpdate: (ctrl) => {
+        setAeratorState((prev) => ({
+          ...prev,
+          isOn: typeof ctrl.aerator_on === "boolean" ? ctrl.aerator_on : prev.isOn,
+          mode: ctrl.mode || prev.mode,
+        }));
+      },
+    });
+
+    client.start();
+    return () => client.stop();
+  }, [realtimeConfig]);
 
   // Dark mode effect
   useEffect(() => {
@@ -458,6 +553,19 @@ export default function Dashboard({
                   <ShieldCheck className="w-4 h-4 shrink-0" />
                   <span className="truncate whitespace-nowrap">Keamanan & Backup</span>
                 </button>
+
+                <button
+                  onClick={() => setActiveTab("dokumentasi-api")}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                    activeTab === "dokumentasi-api"
+                      ? "bg-brand text-brand-ink font-semibold"
+                      : "text-ink hover:bg-surface-2"
+                  }`}
+                  title="Swagger UI, WebSocket & Token Per Alat"
+                >
+                  <Code2 className="w-4 h-4 shrink-0" />
+                  <span className="truncate whitespace-nowrap">API Swagger &amp; Token Alat</span>
+                </button>
               </>
             )}
 
@@ -742,6 +850,17 @@ export default function Dashboard({
               >
                 Keamanan & Backup
               </button>
+
+              <button
+                onClick={() => setActiveTab("dokumentasi-api")}
+                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                  activeTab === "dokumentasi-api"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "bg-surface-2 text-ink"
+                }`}
+              >
+                API &amp; Token Alat
+              </button>
             </>
           )}
 
@@ -776,15 +895,31 @@ export default function Dashboard({
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1280px] w-full mx-auto">
           {/* Status Bar Operasional Kolam */}
           <div className="mb-6 p-3 bg-surface border border-line rounded-[6px] flex flex-wrap items-center justify-between gap-3 text-[12px]">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${device.status === "ONLINE" ? "bg-aman animate-pulse" : "bg-muted"}`} />
               <span className="font-semibold text-ink">
                 {device.status === "ONLINE" ? "Node Sensor ESP32 Terhubung:" : "Status Node Sensor ESP32:"}
               </span>
               <span className="text-muted">
                 {device.status === "ONLINE"
-                  ? "Protokol MQTT TLS (Port 8883) · Update Tiap 30 Detik"
+                  ? `Transport Alat: ${device.transport_protocol || "HTTP"} · Update Realtime`
                   : "Standby (Menunggu Pengiriman Data Telemetri Pertama dari Node ESP32)"}
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold ${
+                  realtimeMode === "WEBSOCKET"
+                    ? "bg-emerald-500/10 text-emerald-700"
+                    : realtimeMode === "HTTP_FALLBACK"
+                    ? "bg-amber-500/10 text-amber-700"
+                    : "bg-surface-2 text-muted"
+                }`}
+                title={transportReason || "Status kanal realtime dashboard"}
+              >
+                {realtimeMode === "WEBSOCKET"
+                  ? "WS Multi-Protokol Aktif"
+                  : realtimeMode === "HTTP_FALLBACK"
+                  ? "HTTP Fallback Aktif"
+                  : "Menghubungkan WS..."}
               </span>
             </div>
             <div className="text-muted">
@@ -818,6 +953,16 @@ export default function Dashboard({
               securityStats={securityStats}
               backups={backups}
               onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {/* TAB: DOKUMENTASI API SWAGGER UI, WEBSOCKET & TOKEN ALAT (Khusus Super Admin) */}
+          {role === "ADMIN" && activeTab === "dokumentasi-api" && (
+            <SuperAdminApiDocs
+              devices={managedDevices}
+              realtimeConfig={realtimeConfig}
+              activeTransport={realtimeMode}
+              transportReason={transportReason}
             />
           )}
 
@@ -905,7 +1050,7 @@ export default function Dashboard({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <ParameterCard
                     label="pH"
-                    value={currentReading ? currentReading.ph : "—"}
+                    value={currentReading ? currentReading.ph : "-"}
                     unit=""
                     status={paramStatus.ph}
                     statusLabel={getStatusLabel(paramStatus.ph)}
@@ -914,7 +1059,7 @@ export default function Dashboard({
 
                   <ParameterCard
                     label="Suhu"
-                    value={currentReading ? currentReading.temperature_c : "—"}
+                    value={currentReading ? currentReading.temperature_c : "-"}
                     unit="°C"
                     status={paramStatus.temperature_c}
                     statusLabel={getStatusLabel(paramStatus.temperature_c)}
@@ -923,7 +1068,7 @@ export default function Dashboard({
 
                   <ParameterCard
                     label="TDS (Zat Terlarut)"
-                    value={currentReading ? currentReading.tds_ppm : "—"}
+                    value={currentReading ? currentReading.tds_ppm : "-"}
                     unit="ppm"
                     status={paramStatus.tds_ppm}
                     statusLabel={getStatusLabel(paramStatus.tds_ppm)}
@@ -932,7 +1077,7 @@ export default function Dashboard({
 
                   <ParameterCard
                     label="Kekeruhan"
-                    value={currentReading ? currentReading.turbidity_ntu : "—"}
+                    value={currentReading ? currentReading.turbidity_ntu : "-"}
                     unit="NTU"
                     status={paramStatus.turbidity_ntu}
                     statusLabel={getStatusLabel(paramStatus.turbidity_ntu)}

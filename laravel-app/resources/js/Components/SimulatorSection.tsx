@@ -1,224 +1,368 @@
-import { useState, useId } from "react";
-import { Fan, CheckCircle2, TriangleAlert, OctagonX, RotateCcw } from "lucide-react";
+import { useState, useRef, memo } from "react";
+import { Calculator } from "lucide-react";
+import {
+  motion,
+  useScroll,
+  useSpring,
+  useTransform,
+  useReducedMotion,
+} from "motion/react";
 
-export function SimulatorSection() {
-  const [ph, setPh] = useState<number>(7.2);
-  const [temp, setTemp] = useState<number>(28.5);
-  const [tds, setTds] = useState<number>(360);
-  const phId = useId();
-  const tempId = useId();
-  const tdsId = useId();
+type PackageId = "entry" | "starter" | "juragan";
+type SaasPlanId = "smart_guard" | "offline_plus";
 
-  // Evaluate rules
-  const isPhCritical = ph < 6.0 || ph > 8.8;
-  const isPhWarning = !isPhCritical && (ph < 6.5 || ph > 8.5);
+interface PackageSpec {
+  id: PackageId;
+  name: string;
+  shortLabel: string;
+  composition: string;
+  ponds: number;
+  hwPrice: number;
+  saasCyclePrice: number;
+  probeCount: number;
+  preventedLossMinYear: number;
+  preventedLossMaxYear: number;
+  paybackMonthsMin: string;
+  paybackMonthsMax: string;
+  hardwareDetail: string;
+}
 
-  const isTempCritical = temp > 33.0 || temp < 22.0;
-  const isTempWarning = !isTempCritical && (temp > 32.0 || temp < 26.0);
+const PACKAGES: Record<PackageId, PackageSpec> = {
+  entry: {
+    id: "entry",
+    name: "Paket Entry (1H + 1M)",
+    shortLabel: "Entry 1K",
+    composition: "1 Core Hub + 1 Modul Sensor Kolam",
+    ponds: 1,
+    hwPrice: 1650000,
+    saasCyclePrice: 150000,
+    probeCount: 1,
+    preventedLossMinYear: 3000000,
+    preventedLossMaxYear: 3500000,
+    paybackMonthsMin: "6,2",
+    paybackMonthsMax: "7,2",
+    hardwareDetail:
+      "2x ADS1115 (8-Ch ADC), Relay 4-Ch, LittleFS + RTC DS3231, kabel shielded maks 3-5 m",
+  },
+  starter: {
+    id: "starter",
+    name: "Paket Starter 2K (1H + 2M)",
+    shortLabel: "Starter 2K",
+    composition: "1 Core Hub + 2 Modul Sensor Kolam",
+    ponds: 2,
+    hwPrice: 2450000,
+    saasCyclePrice: 150000,
+    probeCount: 2,
+    preventedLossMinYear: 6000000,
+    preventedLossMaxYear: 7000000,
+    paybackMonthsMin: "4,5",
+    paybackMonthsMax: "5,2",
+    hardwareDetail:
+      "2x ADS1115 + MCP23017, Relay 4-Ch (2 aktuator/kolam), LittleFS Buffer, GX16",
+  },
+  juragan: {
+    id: "juragan",
+    name: "Paket Juragan 4K (1H + 4M + Exp)",
+    shortLabel: "Juragan 4K",
+    composition: "1 Core Hub + 4 Modul Sensor + Expansion Kit",
+    ponds: 4,
+    hwPrice: 4150000,
+    saasCyclePrice: 225000,
+    probeCount: 4,
+    preventedLossMinYear: 12000000,
+    preventedLossMaxYear: 14000000,
+    paybackMonthsMin: "3,8",
+    paybackMonthsMax: "4,4",
+    hardwareDetail:
+      "3x ADS1115 (12-Ch ADC) + MCP23017, Relay 8-Ch (aerator + pompa/kolam), Edge Watchdog",
+  },
+};
 
-  const isTdsCritical = tds > 800;
-  const isTdsWarning = !isTdsCritical && tds > 600;
+const PROBE_REPLACEMENT_PRICE = 195000;
 
-  const isCritical = isPhCritical || isTempCritical || isTdsCritical;
-  const isWarning = !isCritical && (isPhWarning || isTempWarning || isTdsWarning);
+function formatIdr(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
-  // Aerator turns ON automatically if critical or warning
-  const aeratorActive = isCritical || isWarning;
+/**
+ * Interactive Year-1 TCO, harvest cycle SaaS plan, and ROI calculator section.
+ */
+function SimulatorSectionInner() {
+  const [selectedPackage, setSelectedPackage] = useState<PackageId>("starter");
+  const [saasPlan, setSaasPlan] = useState<SaasPlanId>("smart_guard");
 
-  const getExplanation = () => {
-    if (isCritical) {
-      if (isPhCritical) {
-        return `Aturan F-08: pH ${ph.toFixed(1).replace(".", ",")} berada di luar batas aman (<6,0 atau >8,8). Relay aerator seketika ON (failsafe lokal).`;
-      }
-      if (isTempCritical) {
-        return `Aturan F-08: Suhu ${temp.toFixed(1).replace(".", ",")} °C ekstrem (>33 °C atau <22 °C). Relay aerator dinyalakan untuk sirkulasi air.`;
-      }
-      return `Aturan PRD: TDS ${tds} ppm melebihi 800 ppm. Peringatan bahaya dikirim ke Telegram.`;
-    }
-    if (isWarning) {
-      return "Kondisi mendekati batas toleransi. Sistem cloud bersiap menyalakan aerator pencegahan.";
-    }
-    return "Semua parameter dalam rentang ideal kolam lele (pH 6,5–8,5, Suhu 26–32 °C). Aerator mode hemat energi.";
-  };
+  const sectionRef = useRef<HTMLElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
-  const handleReset = () => {
-    setPh(7.2);
-    setTemp(28.5);
-    setTds(360);
-  };
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.92", "end 0.12"],
+  });
+  const smoothScroll = useSpring(scrollYProgress, {
+    stiffness: 110,
+    damping: 26,
+    mass: 0.35,
+  });
+
+  const headerY = useTransform(smoothScroll, [0, 0.28, 0.78, 1], [36, 0, 0, -24]);
+  const headerOpacity = useTransform(smoothScroll, [0, 0.22, 0.82, 1], [0.15, 1, 1, 0.25]);
+  const consoleY = useTransform(smoothScroll, [0.04, 0.34, 0.78, 1], [42, 0, 0, -28]);
+  const consoleScale = useTransform(smoothScroll, [0.04, 0.34, 0.78, 1], [0.965, 1, 1, 0.985]);
+  const consoleOpacity = useTransform(smoothScroll, [0.04, 0.28, 0.82, 1], [0.15, 1, 1, 0.25]);
+
+  const pkg = PACKAGES[selectedPackage];
+  const dp50 = Math.round(pkg.hwPrice * 0.5);
+  const pelunasan50 = pkg.hwPrice - dp50;
+  const saasYear1 = saasPlan === "smart_guard" ? pkg.saasCyclePrice * 4 : 0;
+  const probeCostYear1 = pkg.probeCount * PROBE_REPLACEMENT_PRICE;
+  const totalAllInYear1 = pkg.hwPrice + saasYear1 + probeCostYear1;
+
+  const netBenefitMin = pkg.preventedLossMinYear - totalAllInYear1;
+  const netBenefitMax = pkg.preventedLossMaxYear - totalAllInYear1;
+  const roiMinPct = ((netBenefitMin / totalAllInYear1) * 100).toFixed(1).replace(".", ",");
+  const roiMaxPct = ((netBenefitMax / totalAllInYear1) * 100).toFixed(1).replace(".", ",");
+
+  const entryCostForPayback =
+    saasPlan === "smart_guard" ? pkg.hwPrice + pkg.saasCyclePrice : pkg.hwPrice;
+  const paybackCyclesMin = (entryCostForPayback / (pkg.preventedLossMaxYear / 4))
+    .toFixed(2)
+    .replace(".", ",");
+  const paybackCyclesMax = (entryCostForPayback / (pkg.preventedLossMinYear / 4))
+    .toFixed(2)
+    .replace(".", ",");
 
   return (
-    <section className="py-24 px-4 md:px-8 border-t border-line/40 bg-[#0c1c1a]">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <span className="text-[12px] font-semibold tracking-[0.08em] uppercase text-[#8CC2BA] block mb-2">
-            Simulator Interaktif
-          </span>
-          <h2 className="font-display text-[28px] md:text-[38px] leading-[1.2] text-[#E8ECE9] mb-3">
-            Uji Respon Failsafe Kolam
-          </h2>
-          <p className="text-[15px] leading-[24px] text-[#9DB0AB] max-w-xl mx-auto">
-            Geser nilai sensor untuk melihat bagaimana aturan deterministik ESP32
-            menentukan status air dan menyalakan aerator secara otomatis.
-          </p>
-        </div>
-
-        {/* Interactive Box */}
-        <div className="bg-[#142e2b] border border-[#234b46] rounded-[8px] p-6 md:p-8 shadow-xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            {/* Left: Sliders */}
-            <div className="space-y-6">
-              {/* Slider pH */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label htmlFor={phId} className="text-[14px] font-medium text-[#E8ECE9]">
-                    Tingkat Keasaman (pH)
-                  </label>
-                  <span className="text-[16px] font-bold tnum text-[#8CC2BA]">
-                    {ph.toFixed(1).replace(".", ",")}
-                  </span>
-                </div>
-                <input
-                  id={phId}
-                  type="range"
-                  min="5.0"
-                  max="9.5"
-                  step="0.1"
-                  value={ph}
-                  onChange={(e) => setPh(parseFloat(e.target.value))}
-                  aria-label="Tingkat Keasaman pH"
-                  className="w-full h-2 bg-[#1b3d39] rounded-lg appearance-none cursor-pointer accent-[#8CC2BA]"
-                />
-                <div className="flex justify-between text-[11px] text-[#6b8984] mt-1">
-                  <span>5.0 (Sangat Asam)</span>
-                  <span className="text-[#8CC2BA]">Ideal 6.5 - 8.5</span>
-                  <span>9.5 (Basa)</span>
-                </div>
-              </div>
-
-              {/* Slider Suhu */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label htmlFor={tempId} className="text-[14px] font-medium text-[#E8ECE9]">
-                    Suhu Air (°C)
-                  </label>
-                  <span className="text-[16px] font-bold tnum text-[#8CC2BA]">
-                    {temp.toFixed(1).replace(".", ",")} °C
-                  </span>
-                </div>
-                <input
-                  id={tempId}
-                  type="range"
-                  min="20.0"
-                  max="36.0"
-                  step="0.5"
-                  value={temp}
-                  onChange={(e) => setTemp(parseFloat(e.target.value))}
-                  aria-label="Suhu Air dalam Celsius"
-                  className="w-full h-2 bg-[#1b3d39] rounded-lg appearance-none cursor-pointer accent-[#8CC2BA]"
-                />
-                <div className="flex justify-between text-[11px] text-[#6b8984] mt-1">
-                  <span>20 °C (Dingin)</span>
-                  <span className="text-[#8CC2BA]">Ideal 26 - 32 °C</span>
-                  <span>36 °C (Panas)</span>
-                </div>
-              </div>
-
-              {/* Slider TDS */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label htmlFor={tdsId} className="text-[14px] font-medium text-[#E8ECE9]">
-                    TDS — Zat Terlarut (ppm)
-                  </label>
-                  <span className="text-[16px] font-bold tnum text-[#8CC2BA]">
-                    {tds} ppm
-                  </span>
-                </div>
-                <input
-                  id={tdsId}
-                  type="range"
-                  min="200"
-                  max="900"
-                  step="10"
-                  value={tds}
-                  onChange={(e) => setTds(parseInt(e.target.value))}
-                  aria-label="TDS Zat Terlarut ppm"
-                  className="w-full h-2 bg-[#1b3d39] rounded-lg appearance-none cursor-pointer accent-[#8CC2BA]"
-                />
-                <div className="flex justify-between text-[11px] text-[#6b8984] mt-1">
-                  <span>200 ppm</span>
-                  <span className="text-[#8CC2BA]">Ideal &lt; 400</span>
-                  <span>900 ppm (Tinggi)</span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-1.5 text-[13px] text-[#9DB0AB] hover:text-[#E8ECE9] transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Kembalikan ke Nilai Normal</span>
-              </button>
+    <section
+      ref={sectionRef}
+      id="simulator"
+      className="min-h-[100svh] flex flex-col justify-center py-28 md:py-36 lg:py-40 px-6 md:px-12 lg:px-16 bg-[#0c1c1a] text-[#E8ECE9] scroll-mt-20 md:scroll-mt-24 overflow-x-clip"
+    >
+      <div className="w-full">
+        <motion.div
+          style={shouldReduceMotion ? undefined : { y: headerY, opacity: headerOpacity }}
+          className="mb-12 md:mb-16 flex flex-col lg:flex-row lg:items-end justify-between gap-6 will-change-transform"
+        >
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#8CC2BA] mb-4">
+              <Calculator className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>Kalkulator Paket &amp; ROI</span>
             </div>
+            <h2 className="font-display text-[clamp(34px,4.5vw,64px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#E8ECE9] mb-4 text-balance">
+              Kalkulator Paket &amp; ROI Petambak
+            </h2>
+            <p className="text-[17px] md:text-[19px] leading-[1.65] max-w-[62ch] text-[#B5C4C0]">
+              Hitung estimasi investasi perangkat Tahun-1, pilihan skema siklus panen, dan proyeksi pengembalian modal (ROI) kolam lele Anda.
+            </p>
+          </div>
+        </motion.div>
 
-            {/* Right: Real-time Response Card */}
-            <div className="bg-[#0e2220] border border-[#1f433f] rounded-[8px] p-6 text-center flex flex-col justify-between h-full">
+        <motion.div
+          style={
+            shouldReduceMotion
+              ? undefined
+              : { y: consoleY, scale: consoleScale, opacity: consoleOpacity }
+          }
+          className="bg-[#122926] border border-white/10 rounded-3xl p-7 sm:p-9 lg:p-12 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.55)] will-change-transform"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
+            {/* Package & Plan Selector */}
+            <div className="lg:col-span-5 flex flex-col justify-between space-y-8">
               <div>
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#9DB0AB] block mb-2">
-                  Status Respon Kolam
-                </span>
-
-                {/* Status Badge */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[14px] font-bold mb-4">
-                  {isCritical ? (
-                    <span className="inline-flex items-center gap-1.5 bg-[#FF9C92]/15 text-[#FF9C92] px-3 py-1 rounded-full border border-[#FF9C92]/30">
-                      <OctagonX className="w-4 h-4" />
-                      KONDISI BAHAYA
-                    </span>
-                  ) : isWarning ? (
-                    <span className="inline-flex items-center gap-1.5 bg-[#F2C46B]/15 text-[#F2C46B] px-3 py-1 rounded-full border border-[#F2C46B]/30">
-                      <TriangleAlert className="w-4 h-4" />
-                      WASPADA
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 bg-[#7FD3A0]/15 text-[#7FD3A0] px-3 py-1 rounded-full border border-[#7FD3A0]/30">
-                      <CheckCircle2 className="w-4 h-4" />
-                      KONDISI AMAN
-                    </span>
-                  )}
+                <div className="text-[15px] md:text-[16px] font-semibold text-[#E8ECE9] mb-4">
+                  1. Pilih Paket Hardware Multi-Kolam
                 </div>
+                <div className="space-y-4">
+                  {(Object.values(PACKAGES) as PackageSpec[]).map((item) => {
+                    const isSelected = selectedPackage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedPackage(item.id)}
+                        className={`w-full min-h-[124px] p-5 md:p-6 lg:p-7 rounded-2xl text-left transition-all duration-200 flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-[#1a3e3a] text-[#E8ECE9] ring-1 ring-[#8CC2BA]/45 shadow-[0_14px_34px_-12px_rgba(0,0,0,0.45)]"
+                            : "bg-[#0e2220] text-[#E8ECE9] hover:bg-[#16302D]"
+                        }`}
+                      >
+                        <div className="w-full flex items-center justify-between gap-3">
+                          <span className="text-[17px] md:text-[19px] font-semibold leading-snug">
+                            {item.name}
+                          </span>
+                          <span className="text-[20px] md:text-[24px] font-bold tnum text-[#8CC2BA] shrink-0">
+                            {formatIdr(item.hwPrice)}
+                          </span>
+                        </div>
+                        <div className="text-[14px] md:text-[15px] text-[#B5C4C0] mt-2">
+                          {item.composition} ({item.ponds} kolam)
+                        </div>
+                        <div className="text-[13px] md:text-[14px] leading-[1.55] text-[#9DB0AB] mt-1.5">
+                          {item.hardwareDetail}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                {/* Aerator Fan Graphic */}
-                <div className="my-4 flex flex-col items-center">
-                  <div
-                    className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                      aeratorActive
-                        ? "bg-[#8CC2BA]/20 text-[#8CC2BA] border border-[#8CC2BA]"
-                        : "bg-[#183935] text-[#55645F] border border-[#254b46]"
+              <div>
+                <div className="text-[15px] md:text-[16px] font-semibold text-[#E8ECE9] mb-4">
+                  2. Pilih Skema SaaS Siklus Panen (3 Bulanan)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    aria-pressed={saasPlan === "smart_guard"}
+                    onClick={() => setSaasPlan("smart_guard")}
+                    className={`min-h-[144px] p-5 md:p-6 rounded-2xl text-left transition-all duration-200 flex flex-col justify-between ${
+                      saasPlan === "smart_guard"
+                        ? "bg-[#1a3e3a] text-[#E8ECE9] ring-1 ring-[#8CC2BA]/45 shadow-[0_14px_34px_-12px_rgba(0,0,0,0.45)]"
+                        : "bg-[#0e2220] text-[#E8ECE9] hover:bg-[#16302D]"
                     }`}
                   >
-                    <Fan
-                      className={`w-8 h-8 ${aeratorActive ? "animate-spin" : ""}`}
-                      style={{ animationDuration: "1.2s" }}
-                    />
+                    <div>
+                      <div className="text-[16px] md:text-[17px] font-semibold">Smart Guard</div>
+                      <div className="text-[18px] md:text-[20px] text-[#8CC2BA] font-bold tnum mt-1">
+                        {formatIdr(pkg.saasCyclePrice)} / siklus
+                      </div>
+                    </div>
+                    <div className="text-[13px] md:text-[14px] leading-[1.5] text-[#9DB0AB] mt-3">
+                      RF 1-3 jam, WA AI, auto-backfill, OTA
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-pressed={saasPlan === "offline_plus"}
+                    onClick={() => setSaasPlan("offline_plus")}
+                    className={`min-h-[144px] p-5 md:p-6 rounded-2xl text-left transition-all duration-200 flex flex-col justify-between ${
+                      saasPlan === "offline_plus"
+                        ? "bg-[#1a3e3a] text-[#E8ECE9] ring-1 ring-[#8CC2BA]/45 shadow-[0_14px_34px_-12px_rgba(0,0,0,0.45)]"
+                        : "bg-[#0e2220] text-[#E8ECE9] hover:bg-[#16302D]"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-[16px] md:text-[17px] font-semibold">Offline-Plus</div>
+                      <div className="text-[18px] md:text-[20px] text-[#7FD3A0] font-bold tnum mt-1">
+                        Rp0 permanen
+                      </div>
+                    </div>
+                    <div className="text-[13px] md:text-[14px] leading-[1.5] text-[#9DB0AB] mt-3">
+                      Anti-Bricking: Edge Fuzzy &amp; LCD tetap aktif
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Output Financial Breakdown */}
+            <div
+              data-ui="simulator-roi-summary"
+              className="lg:col-span-7 bg-[#0b1b19] border border-white/10 rounded-2xl p-7 sm:p-9 lg:p-10 flex flex-col justify-between space-y-8"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-[20px] md:text-[24px] font-semibold text-[#E8ECE9]">
+                    Rincian Ekonomi Petambak Tahun-1 ({pkg.shortLabel})
                   </div>
-                  <span className="text-[13px] font-semibold text-[#E8ECE9] mt-2">
-                    Relay Aerator:{" "}
-                    <span className={aeratorActive ? "text-[#8CC2BA]" : "text-[#9DB0AB]"}>
-                      {aeratorActive ? "MENYALA (ON)" : "MATI (OFF)"}
+                  <p className="text-[14px] md:text-[15px] text-[#9DB0AB] mt-1.5">
+                    Sudah memasukkan biaya ganti probe kaca pH consumable per 6 bulan
+                  </p>
+                </div>
+                <span className="px-3.5 py-2 rounded-xl text-[13px] font-semibold bg-[#16302D] text-[#8CC2BA] shrink-0">
+                  Skema PO: DP 50% + Lunas 50%
+                </span>
+              </div>
+
+              {/* Cost Breakdown Rows */}
+              <div className="space-y-4">
+                <div className="divide-y divide-white/10 border-t border-b border-white/10 text-[15px] md:text-[16px]">
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <span className="text-[#B5C4C0]">
+                      Hardware {pkg.shortLabel} (DP 50% {formatIdr(dp50)} + Pelunasan{" "}
+                      {formatIdr(pelunasan50)})
                     </span>
+                    <span className="font-semibold tnum text-[#E8ECE9] shrink-0">
+                      {formatIdr(pkg.hwPrice)}
+                    </span>
+                  </div>
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <span className="text-[#B5C4C0]">
+                      {saasPlan === "smart_guard"
+                        ? `SaaS Smart Guard (4 siklus x ${formatIdr(pkg.saasCyclePrice)})`
+                        : "SaaS Offline-Plus (Anti-Bricking permanen)"}
+                    </span>
+                    <span className="font-semibold tnum text-[#E8ECE9] shrink-0">
+                      {formatIdr(saasYear1)}
+                    </span>
+                  </div>
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <span className="text-[#B5C4C0]">
+                      Consumable Probe pH ({pkg.probeCount} probe x{" "}
+                      {formatIdr(PROBE_REPLACEMENT_PRICE)} di bln ke-6)
+                    </span>
+                    <span className="font-semibold tnum text-[#E8ECE9] shrink-0">
+                      {formatIdr(probeCostYear1)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#142e2b] border border-[#8CC2BA]/25 px-6 py-5 flex items-center justify-between gap-4">
+                  <span className="text-[16px] md:text-[18px] font-semibold text-[#E8ECE9]">
+                    Total Biaya All-In Tahun-1
+                  </span>
+                  <span className="text-[22px] md:text-[28px] font-bold tnum text-[#8CC2BA] shrink-0">
+                    {formatIdr(totalAllInYear1)}
                   </span>
                 </div>
               </div>
 
-              {/* Explanation Text */}
-              <div className="p-3 bg-[#132c29] border border-[#214742] rounded-[6px] text-[12px] leading-[18px] text-[#9DB0AB] text-left mt-2">
-                {getExplanation()}
+              {/* ROI & Payback Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-6 md:p-7 rounded-2xl bg-[#142e2b] border border-white/8 min-h-[148px] flex flex-col justify-between">
+                  <div className="text-[20px] md:text-[24px] font-bold tnum leading-tight text-[#E8ECE9]">
+                    {formatIdr(pkg.preventedLossMinYear)} - {formatIdr(pkg.preventedLossMaxYear)}
+                  </div>
+                  <div className="text-[13px] md:text-[14px] leading-[1.5] text-[#9DB0AB] mt-3">
+                    Kerugian SR -20% dicegah/thn (4 siklus)
+                  </div>
+                </div>
+
+                <div className="p-6 md:p-7 rounded-2xl bg-[#142e2b] border border-white/8 min-h-[148px] flex flex-col justify-between">
+                  <div className="text-[20px] md:text-[24px] font-bold tnum leading-tight text-[#7FD3A0]">
+                    {roiMinPct}% - {roiMaxPct}%
+                  </div>
+                  <div className="text-[13px] md:text-[14px] leading-[1.5] text-[#E8ECE9] tnum mt-3">
+                    Net ROI: +{formatIdr(netBenefitMin)} s.d. +{formatIdr(netBenefitMax)}
+                  </div>
+                </div>
+
+                <div className="p-6 md:p-7 rounded-2xl bg-[#142e2b] border border-white/8 min-h-[148px] flex flex-col justify-between">
+                  <div className="text-[20px] md:text-[24px] font-bold tnum leading-tight text-[#8CC2BA]">
+                    {saasPlan === "smart_guard"
+                      ? `~${pkg.paybackMonthsMin}-${pkg.paybackMonthsMax} bulan`
+                      : `${paybackCyclesMin}-${paybackCyclesMax} siklus`}
+                  </div>
+                  <div className="text-[13px] md:text-[14px] leading-[1.5] text-[#9DB0AB] mt-3">
+                    Payback ({paybackCyclesMin}-{paybackCyclesMax} siklus atas biaya masuk)
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 md:p-6 rounded-2xl bg-[#142e2b]/80 border border-white/6 text-[13px] md:text-[14px] leading-[1.65] text-[#9DB0AB]">
+                Basis perhitungan: 1 kolam terpal 1.000 ekor, SR dasar 85% (panen 170 kg x Rp22.000/kg = Rp3.740.000/siklus). Garansi elektronik Core Hub dan modul kering IP65 berlaku 12 bulan; probe kaca pH adalah consumable (garansi DOA 30 hari, umur pakai 4-6 bulan di kolam budidaya).
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
 }
+
+export const SimulatorSection = memo(SimulatorSectionInner);

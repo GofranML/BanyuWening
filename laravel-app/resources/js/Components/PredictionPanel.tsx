@@ -39,10 +39,10 @@ export function PredictionPanel({ prediction, isDetailed = false }: PredictionPa
 
   const riskColor =
     prediction.risk === "AMAN"
-      ? "text-aman"
+      ? "text-aman-text"
       : prediction.risk === "WASPADA"
-      ? "text-waspada"
-      : "text-bahaya";
+      ? "text-waspada-text"
+      : "text-bahaya-text";
 
   const RiskIcon =
     prediction.risk === "AMAN"
@@ -89,7 +89,7 @@ export function PredictionPanel({ prediction, isDetailed = false }: PredictionPa
           </div>
           <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-aman transition-all duration-300"
+              className="h-full bg-aman transition-[width] duration-300"
               style={{ width: `${pctAman}%` }}
             />
           </div>
@@ -103,7 +103,7 @@ export function PredictionPanel({ prediction, isDetailed = false }: PredictionPa
           </div>
           <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-waspada transition-all duration-300"
+              className="h-full bg-waspada transition-[width] duration-300"
               style={{ width: `${pctWaspada}%` }}
             />
           </div>
@@ -117,7 +117,7 @@ export function PredictionPanel({ prediction, isDetailed = false }: PredictionPa
           </div>
           <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-bahaya transition-all duration-300"
+              className="h-full bg-bahaya transition-[width] duration-300"
               style={{ width: `${pctBahaya}%` }}
             />
           </div>

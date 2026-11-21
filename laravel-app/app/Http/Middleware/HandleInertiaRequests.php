@@ -56,8 +56,9 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'info' => fn () => $request->session()->get('info'),
+                'issuedDeviceToken' => fn () => $request->session()->get('issued_device_token'),
             ],
-            'contactEmail' => \App\Models\LandingContent::getValue('contact_email', 'BanyuWening@example.com'),
+            'contactEmail' => \App\Models\LandingContent::getValue('contact_email', 'banyuwening@example.id'),
         ];
     }
 }
