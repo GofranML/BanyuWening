@@ -1123,34 +1123,28 @@ const PipelineCard = memo(function PipelineCard({
   smoothPipeline: MotionValue<number>;
 }) {
   const stepCenter = idx / (PIPELINE_STEPS.length - 1);
+  const deadzoneSigned = (d: number) => {
+    const a = Math.abs(d);
+    if (a <= 0.32) return 0;
+    const t = Math.min(1, (a - 0.32) / 0.36);
+    return Math.sign(d) * t * t * (3 - 2 * t);
+  };
   const opacity = useTransform(smoothPipeline, (p) => {
     const absD = Math.abs((p - stepCenter) * 4);
-    if (absD <= 0.14) return 1;
-    if (absD >= 0.48) return 0;
-    const t = (absD - 0.14) / 0.34;
+    if (absD <= 0.32) return 1;
+    if (absD >= 0.68) return 0;
+    const t = (absD - 0.32) / 0.36;
     return 1 - t * t * (3 - 2 * t);
   });
   const visibility = useTransform(opacity, (v) => (v < 0.01 ? "hidden" : "visible"));
-  const x = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (stepCenter - p) * 4)) * 22
-  );
-  const y = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (stepCenter - p) * 4)) * 280
-  );
-  const rotateX = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (p - stepCenter) * 4)) * 6.5
-  );
+  const x = useTransform(smoothPipeline, (p) => deadzoneSigned((stepCenter - p) * 4) * 14);
+  const y = useTransform(smoothPipeline, (p) => deadzoneSigned((stepCenter - p) * 4) * 22);
+  const rotateX = useTransform(smoothPipeline, (p) => deadzoneSigned((p - stepCenter) * 4) * 3.5);
   const scale = useTransform(
     smoothPipeline,
-    (p) => 1 - Math.min(0.8, Math.abs((p - stepCenter) * 4)) * 0.085
+    (p) => 1 - Math.abs(deadzoneSigned((p - stepCenter) * 4)) * 0.04
   );
-  const ghostY = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (p - stepCenter) * 4)) * 96
-  );
+  const ghostY = useTransform(smoothPipeline, (p) => deadzoneSigned((p - stepCenter) * 4) * 28);
 
   return (
     <motion.article
@@ -1180,7 +1174,7 @@ const PipelineCard = memo(function PipelineCard({
         </motion.span>
 
         <div className="lg:col-span-6 lg:h-full min-h-0 flex items-center justify-center shrink-0">
-          <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] max-h-[24vh] sm:max-h-[30vh] lg:aspect-auto lg:h-full lg:max-h-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] border border-white/10 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
+          <div className="relative w-full aspect-[16/10] max-h-[24vh] sm:max-h-[30vh] lg:max-h-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] border border-white/10 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
             <img
               src={st.img}
               alt={st.title}
@@ -1235,7 +1229,7 @@ const PipelineRailStep = memo(function PipelineRailStep({
 
   return (
     <motion.div
-      className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-medium"
+      className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-medium whitespace-nowrap shrink-0"
       style={{ opacity }}
     >
       <span
@@ -1272,7 +1266,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
   const meterScaleX = useTransform(smoothPipeline, [0, 1], [0.1, 1]);
 
   return (
-    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-4 sm:px-6 md:px-12 lg:px-16 pt-14 sm:pt-16 md:pt-20 pb-3 sm:pb-5">
+    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-4 sm:px-6 md:px-12 lg:px-16 pt-16 sm:pt-18 md:pt-20 pb-3 sm:pb-5">
       {/* Layer 0: Full-Bleed WebGL 5-Point Mesh Gradient + 3D Perspective Floor Grid */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <HelloWorldMeshCanvas className="h-full w-full" />
