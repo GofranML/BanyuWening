@@ -1,2 +1,9 @@
 User-agent: *
-Disallow:
+Allow: /
+Allow: /demo
+Disallow: /dashboard
+Disallow: /login
+Disallow: /logout
+Disallow: /api/
+
+Sitemap: https://banyuwening.ciptasol.cloud/sitemap.xml
