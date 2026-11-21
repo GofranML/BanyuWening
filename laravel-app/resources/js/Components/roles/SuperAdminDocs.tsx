@@ -16,11 +16,9 @@ import {
   Check,
   X,
   Activity,
-  Rocket,
   Save,
 } from "lucide-react";
 import { SuperAdminApiDocs } from "@/Components/roles/SuperAdminApiDocs";
-import { SuperAdminOtaProtocolPanel } from "@/Components/roles/SuperAdminOtaProtocolPanel";
 import { SuperAdminMlOpsPanel } from "@/Components/roles/SuperAdminMlOpsPanel";
 import {
   UserPermissionsEditor,
@@ -37,7 +35,7 @@ import {
   type UserPermissions,
 } from "@/Types";
 
-type DocSubTab = "arsitektur" | "peran-akun" | "ota-esp32" | "ml-rf-ops" | "api";
+type DocSubTab = "arsitektur" | "peran-akun" | "ml-rf-ops" | "api";
 
 interface SuperAdminDocsProps {
   users?: User[];
@@ -117,15 +115,16 @@ export function SuperAdminDocs({
       <div>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-brand text-[12px] font-semibold mb-2">
           <BookOpen className="w-3.5 h-3.5" />
-          <span>Dokumentasi Terpadu Khusus Super Admin: Arsitektur, RBAC, Dual-OTA ESP32, RF MLOps &amp; API</span>
+          <span>Dokumentasi Terpadu Khusus Super Admin: Arsitektur, RBAC, RF MLOps &amp; API</span>
         </div>
         <h1 className="text-[26px] md:text-[30px] font-display text-ink leading-tight">
           Dokumentasi Lengkap Sistem BanyuWening
         </h1>
         <p className="text-[14px] text-muted mt-1 max-w-3xl">
           Pusat kendali &amp; spesifikasi teknis eksklusif Super Administrator: arsitektur Modular Multi-Kolam,
-          Protokol Dual-OTA Firmware ESP32 (<code>banyuwening.ota.v1</code>), Endpoint &amp; Dashboard Performa
-          Random Forest + AI Agent Self-Learning, serta Swagger/AsyncAPI Studio.
+          hak akses pengguna (RBAC), Endpoint &amp; Dashboard Performa Random Forest + AI Agent Self-Learning,
+          serta Swagger/AsyncAPI Studio. Untuk update firmware per perangkat, gunakan menu{" "}
+          <strong>Update Firmware Per Alat</strong> di sidebar.
         </p>
       </div>
 
@@ -156,18 +155,6 @@ export function SuperAdminDocs({
         </button>
 
         <button
-          onClick={() => setActiveSubTab("ota-esp32")}
-          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-            activeSubTab === "ota-esp32"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Rocket className="w-4 h-4 shrink-0" />
-          <span>3. Protokol Firmware OTA ESP32</span>
-        </button>
-
-        <button
           onClick={() => setActiveSubTab("ml-rf-ops")}
           className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "ml-rf-ops"
@@ -176,7 +163,7 @@ export function SuperAdminDocs({
           }`}
         >
           <Activity className="w-4 h-4 shrink-0" />
-          <span>4. Performa RF &amp; Agent AI Self-Learning</span>
+          <span>3. Performa RF &amp; Agent AI Self-Learning</span>
         </button>
 
         <button
@@ -188,17 +175,11 @@ export function SuperAdminDocs({
           }`}
         >
           <Code2 className="w-4 h-4 shrink-0" />
-          <span>5. REST API, Swagger &amp; AsyncAPI</span>
+          <span>4. REST API, Swagger &amp; AsyncAPI</span>
         </button>
       </div>
 
-      {activeSubTab === "ota-esp32" ? (
-        <SuperAdminOtaProtocolPanel
-          initialOverview={otaOverview}
-          realtimeConfig={realtimeConfig}
-          users={users}
-        />
-      ) : activeSubTab === "ml-rf-ops" ? (
+      {activeSubTab === "ml-rf-ops" ? (
         <SuperAdminMlOpsPanel initialOverview={mlOverview} devices={devices} />
       ) : activeSubTab === "api" ? (
         <SuperAdminApiDocs
