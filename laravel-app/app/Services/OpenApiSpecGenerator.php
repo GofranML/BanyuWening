@@ -13,17 +13,21 @@ class OpenApiSpecGenerator
     {
         $origin = rtrim($httpOrigin, '/');
         $realtime = $this->broadcaster->getRealtimeConfig(null, $origin);
+        $wsBaseUrl = $realtime['ws_base_url'];
 
         return [
             'openapi' => '3.0.3',
             'info' => [
-                'title' => 'BanyuWening IoT & Realtime Aquaculture API',
-                'version' => '2.3.0',
+                'title' => 'BanyuWening IoT, Dual-OTA & Random Forest MLOps API',
+                'version' => '2.4.0',
                 'description' => implode("\n\n", [
                     'Standar dokumentasi OpenAPI 3.0.3 / Swagger UI untuk platform pemantauan kualitas air kolam lele **BanyuWening**.',
                     '### Arsitektur Transportasi Hybrid (WebSocket-First + HTTP Fallback)',
-                    '- **Jalur Utama Kecepatan Tinggi (WebSocket Multi-Protokol)**: menggunakan 4 sub-protokol khusus (`banyuwening.telemetry.v1`, `banyuwening.control.v1`, `banyuwening.alerts.v1`, `banyuwening.heartbeat.v1`) di `' . $realtime['ws_base_url'] . '` untuk latensi milidetik.',
-                    '- **Jalur Cadangan Otomatis (HTTP Fallback)**: jika koneksi WebSocket gagal atau terputus di jaringan lapangan, node ESP32 dan dashboard otomatis beralih ke endpoint `/api/http/*`, `/api/latest`, dan `/api/alerts/recent` tanpa kehilangan data.',
+                    '- **Jalur Utama Kecepatan Tinggi (WebSocket Multi-Protokol)**: menggunakan 5 sub-protokol khusus (`banyuwening.telemetry.v1`, `banyuwening.control.v1`, `banyuwening.alerts.v1`, `banyuwening.heartbeat.v1`, `banyuwening.ota.v1`) di `' . $wsBaseUrl . '` untuk latensi milidetik.',
+                    '- **Jalur Cadangan Otomatis (HTTP Fallback)**: jika koneksi WebSocket gagal atau terputus di jaringan lapangan, node ESP32 dan dashboard otomatis beralih ke endpoint `/api/http/*`, `/api/http/ota/*`, `/api/latest`, dan `/api/alerts/recent` tanpa kehilangan data.',
+                    '### Protokol Dual-OTA & Random Forest API',
+                    '- **Dual-OTA ESP32**: signed manifest HMAC-SHA256 + SHA-256 checksum verification + auto-rollback 60 detik (`/api/http/ota/*` & `/ws/ota`).',
+                    '- **Random Forest ML API & Self-Learning**: inferensi on-demand/batch, monitoring performa & latensi, serta siklus evaluasi/training AI Agent (`/api/ml/*`).',
                     '### Autentikasi Token Per Alat',
                     'Setiap node alat IoT memiliki token unik (`bw_dev_...`) yang disimpan sebagai hash SHA-256 dan hanya berlaku untuk `device_code` miliknya (mencegah spoofing antar-alat). Kirim via header `Authorization: Bearer <token>` atau `X-Device-Token: <token>`.',
                     '### Catatan Standar Parameter (SNI 8228.4:2015)',
@@ -48,6 +52,14 @@ class OpenApiSpecGenerator
                 [
                     'name' => 'Device Control & Heartbeat (HTTP Fallback)',
                     'description' => 'Pengganti HTTP untuk protokol WebSocket banyuwening.control.v1 dan banyuwening.heartbeat.v1.',
+                ],
+                [
+                    'name' => 'ESP32 Dual-OTA Firmware Protocol',
+                    'description' => 'HTTP Fallback protokol pembaruan firmware Over-The-Air ESP32 (`banyuwening.ota.v1`) dengan manifest bertanda tangan HMAC-SHA256, SHA-256 binary checksum, dan pelaporan auto-rollback.',
+                ],
+                [
+                    'name' => 'Random Forest ML & Performance',
+                    'description' => 'Inferensi Random Forest on-demand/batch, status model aktif, riwayat prediksi, serta metrik trafik performa & AI self-learning.',
                 ],
                 [
                     'name' => 'Monitoring & History',
@@ -80,7 +92,7 @@ class OpenApiSpecGenerator
                 ],
                 'schemas' => $this->schemas(),
             ],
-            'paths' => $this->paths(),
+            'paths' => $this->paths($wsBaseUrl),
         ];
     }
 
@@ -151,6 +163,69 @@ class OpenApiSpecGenerator
                     'mode' => ['type' => 'string', 'enum' => ['AUTO', 'MANUAL', 'FAILSAFE'], 'example' => 'MANUAL'],
                 ],
             ],
+            'OtaStatusPayload' => [
+                'type' => 'object',
+                'required' => ['status'],
+                'properties' => [
+                    'rollout_id' => ['type' => 'integer', 'example' => 1],
+                    'to_version' => ['type' => 'string', 'example' => 'v1.5.0-ota'],
+                    'status' => [
+                        'type' => 'string',
+                        'enum' => ['NOTIFIED', 'DOWNLOADING', 'VERIFYING', 'FLASHING', 'REBOOTING', 'HEALTH_CHECK', 'COMPLETED', 'FAILED', 'ROLLED_BACK'],
+                        'example' => 'COMPLETED',
+                    ],
+                    'progress_pct' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100, 'example' => 100],
+                    'active_partition' => ['type' => 'string', 'example' => 'ota_1'],
+                    'boot_health_ok' => ['type' => 'boolean', 'example' => true],
+                    'error_message' => ['type' => 'string', 'nullable' => true],
+                ],
+            ],
+            'MlPredictPayload' => [
+                'type' => 'object',
+                'required' => ['ph', 'temperature_c'],
+                'properties' => [
+                    'ph' => ['type' => 'number', 'format' => 'float', 'minimum' => 0, 'maximum' => 14, 'example' => 7.15],
+                    'temperature_c' => ['type' => 'number', 'format' => 'float', 'minimum' => 0, 'maximum' => 50, 'example' => 28.4],
+                    'tds_ppm' => ['type' => 'number', 'format' => 'float', 'minimum' => 0, 'maximum' => 10000, 'example' => 355.0],
+                    'turbidity_ntu' => ['type' => 'number', 'format' => 'float', 'minimum' => 0, 'maximum' => 1000, 'example' => 36.2],
+                    'water_level' => ['type' => 'string', 'enum' => ['NORMAL', 'LOW', 'SURUT', 'MELIMPAH'], 'example' => 'NORMAL'],
+                    'persist' => ['type' => 'boolean', 'example' => true, 'description' => 'Simpan hasil prediksi ke riwayat database (default true).'],
+                ],
+            ],
+            'MlBatchPredictPayload' => [
+                'type' => 'object',
+                'required' => ['readings'],
+                'properties' => [
+                    'persist' => ['type' => 'boolean', 'example' => false],
+                    'readings' => [
+                        'type' => 'array',
+                        'minItems' => 1,
+                        'maxItems' => 100,
+                        'items' => ['$ref' => '#/components/schemas/MlPredictPayload'],
+                    ],
+                ],
+            ],
+            'MlPredictionResponse' => [
+                'type' => 'object',
+                'properties' => [
+                    'success' => ['type' => 'boolean', 'example' => true],
+                    'device_code' => ['type' => 'string', 'example' => 'ESP32-NODE-01'],
+                    'persisted' => ['type' => 'boolean', 'example' => true],
+                    'prediction' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'risk' => ['type' => 'string', 'enum' => ['AMAN', 'WASPADA', 'BAHAYA'], 'example' => 'AMAN'],
+                            'p_aman' => ['type' => 'number', 'example' => 0.99],
+                            'p_waspada' => ['type' => 'number', 'example' => 0.01],
+                            'p_bahaya' => ['type' => 'number', 'example' => 0.0],
+                            'model_version' => ['type' => 'string', 'example' => '1.0.0-rf'],
+                            'latency_ms' => ['type' => 'integer', 'example' => 145],
+                            'is_fallback' => ['type' => 'boolean', 'example' => false],
+                            'recommended_action' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+            ],
             'ErrorResponse' => [
                 'type' => 'object',
                 'properties' => [
@@ -170,7 +245,7 @@ class OpenApiSpecGenerator
         ];
     }
 
-    private function paths(): array
+    private function paths(string $wsBaseUrl): array
     {
         $unauthorized = [
             'description' => 'Token perangkat hilang, tidak valid, atau sudah dicabut',
@@ -212,7 +287,7 @@ class OpenApiSpecGenerator
                 'post' => [
                     'tags' => ['Telemetry (HTTP & Fallback)'],
                     'summary' => 'HTTP Fallback untuk WebSocket banyuwening.telemetry.v1',
-                    'description' => 'Dipanggil otomatis oleh ESP32 saat koneksi `ws://host:8081/ws/telemetry` gagal atau terputus. Mencatat transport sebagai `HTTP_FALLBACK` dan tetap mengembalikan perintah aerator terbaru.',
+                    'description' => 'Dipanggil otomatis oleh ESP32 saat koneksi `' . $wsBaseUrl . '/ws/telemetry` gagal atau terputus. Mencatat transport sebagai `HTTP_FALLBACK` dan tetap mengembalikan perintah aerator terbaru.',
                     'security' => $this->deviceSecurity(),
                     'requestBody' => [
                         'required' => true,
@@ -277,7 +352,7 @@ class OpenApiSpecGenerator
                 'get' => [
                     'tags' => ['Device Control & Heartbeat (HTTP Fallback)'],
                     'summary' => 'Polling perintah relay aerator (HTTP Fallback banyuwening.control.v1)',
-                    'description' => 'Diambil secara periodik oleh alat saat `ws://host:8081/ws/control` tidak terhubung untuk mengetahui perintah aerator terkini atau perintah tertunda dari operator.',
+                    'description' => 'Diambil secara periodik oleh alat saat `' . $wsBaseUrl . '/ws/control` tidak terhubung untuk mengetahui perintah aerator terkini atau perintah tertunda dari operator.',
                     'security' => $this->deviceSecurity(),
                     'responses' => [
                         '200' => ['description' => 'Status target relay & perintah tertunda untuk alat ini'],
@@ -302,6 +377,151 @@ class OpenApiSpecGenerator
                     'responses' => [
                         '200' => ['description' => 'Konfirmasi eksekusi tercatat'],
                         '401' => $unauthorized,
+                    ],
+                ],
+            ],
+            '/api/http/ota/check' => [
+                'get' => [
+                    'tags' => ['ESP32 Dual-OTA Firmware Protocol'],
+                    'summary' => 'Cek ketersediaan pembaruan firmware Dual-OTA & signed manifest',
+                    'description' => 'HTTP Fallback untuk `' . $wsBaseUrl . '/ws/ota` (`banyuwening.ota.v1`). Mengembalikan manifest berisi `sha256`, `signature_hmac_sha256`, `rollback_timeout_s`, dan URL unduhan binary.',
+                    'security' => $this->deviceSecurity(),
+                    'responses' => [
+                        '200' => ['description' => 'Status ketersediaan OTA & manifest'],
+                        '401' => $unauthorized,
+                    ],
+                ],
+            ],
+            '/api/http/ota/download/{version}' => [
+                'get' => [
+                    'tags' => ['ESP32 Dual-OTA Firmware Protocol'],
+                    'summary' => 'Unduh binary firmware .bin ESP32',
+                    'description' => 'Mengalirkan file binary `.bin` dengan header `X-Firmware-Sha256` dan `X-Firmware-Signature` agar ESP32 memverifikasi keutuhan sebelum flashing ke partisi `ota_0`/`ota_1`.',
+                    'security' => $this->deviceSecurity(),
+                    'parameters' => [
+                        [
+                            'name' => 'version',
+                            'in' => 'path',
+                            'required' => true,
+                            'schema' => ['type' => 'string', 'example' => 'v1.5.0-ota'],
+                        ],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Stream binary application/octet-stream'],
+                        '401' => $unauthorized,
+                        '404' => ['description' => 'Rilis firmware tidak ditemukan'],
+                    ],
+                ],
+            ],
+            '/api/http/ota/status' => [
+                'post' => [
+                    'tags' => ['ESP32 Dual-OTA Firmware Protocol'],
+                    'summary' => 'Laporkan progres flashing, boot health check 60s, atau auto-rollback',
+                    'description' => 'ESP32 mengirim pembaruan state (`DOWNLOADING`, `VERIFYING`, `FLASHING`, `REBOOTING`, `HEALTH_CHECK`, `COMPLETED`, `ROLLED_BACK`) yang otomatis memperbarui `devices.firmware_version` bila sukses atau mempertahankan versi lama saat rollback.',
+                    'security' => $this->deviceSecurity(),
+                    'requestBody' => [
+                        'required' => true,
+                        'content' => [
+                            'application/json' => [
+                                'schema' => ['$ref' => '#/components/schemas/OtaStatusPayload'],
+                            ],
+                        ],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Status OTA berhasil dicatat'],
+                        '401' => $unauthorized,
+                        '404' => ['description' => 'Rollout OTA tidak ditemukan'],
+                    ],
+                ],
+            ],
+            '/api/ml/status' => [
+                'get' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Status model Random Forest aktif & kebijakan AI Self-Learning',
+                    'responses' => [
+                        '200' => ['description' => 'Informasi model aktif, konfigurasi agen, dan siklus evaluasi terakhir'],
+                    ],
+                ],
+            ],
+            '/api/ml/predict' => [
+                'post' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Inferensi Random Forest on-demand untuk satu sampel parameter air',
+                    'description' => 'Menjalankan model Random Forest aktif beserta pengaman failsafe deterministik SNI 8228.4:2015, mencatat `latency_ms`, dan mengembalikan probabilitas kelas `AMAN/WASPADA/BAHAYA`.',
+                    'security' => $this->deviceSecurity(),
+                    'requestBody' => [
+                        'required' => true,
+                        'content' => [
+                            'application/json' => [
+                                'schema' => ['$ref' => '#/components/schemas/MlPredictPayload'],
+                            ],
+                        ],
+                    ],
+                    'responses' => [
+                        '200' => [
+                            'description' => 'Hasil inferensi Random Forest',
+                            'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/MlPredictionResponse']]],
+                        ],
+                        '401' => $unauthorized,
+                        '422' => ['description' => 'Validasi payload gagal'],
+                    ],
+                ],
+            ],
+            '/api/ml/predict/batch' => [
+                'post' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Inferensi batch Random Forest hingga 100 sampel sekaligus',
+                    'security' => $this->deviceSecurity(),
+                    'requestBody' => [
+                        'required' => true,
+                        'content' => [
+                            'application/json' => [
+                                'schema' => ['$ref' => '#/components/schemas/MlBatchPredictPayload'],
+                            ],
+                        ],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Daftar hasil inferensi batch'],
+                        '401' => $unauthorized,
+                    ],
+                ],
+            ],
+            '/api/ml/predictions' => [
+                'get' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Riwayat hasil prediksi Random Forest',
+                    'parameters' => [
+                        ['name' => 'limit', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer', 'default' => 50, 'maximum' => 200]],
+                        ['name' => 'risk', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string', 'enum' => ['AMAN', 'WASPADA', 'BAHAYA']]],
+                        ['name' => 'device_code', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string', 'example' => 'ESP32-NODE-01']],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Daftar prediksi terbaru'],
+                    ],
+                ],
+            ],
+            '/api/ml/predictions/latest' => [
+                'get' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Prediksi Random Forest terbaru',
+                    'parameters' => [
+                        ['name' => 'device_code', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string', 'example' => 'ESP32-NODE-01']],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Prediksi terakhir'],
+                    ],
+                ],
+            ],
+            '/api/ml/performance' => [
+                'get' => [
+                    'tags' => ['Random Forest ML & Performance'],
+                    'summary' => 'Metrik trafik inferensi, latensi, confusion matrix & performa Random Forest',
+                    'parameters' => [
+                        ['name' => 'hours', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer', 'default' => 24, 'description' => 'Jendela jam (0 = seluruh histori)']],
+                        ['name' => 'device_code', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string']],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Ringkasan KPI, seri trafik, tren evaluasi agen AI, confusion matrix, dan feature importances'],
                     ],
                 ],
             ],
@@ -368,7 +588,7 @@ class OpenApiSpecGenerator
                 'get' => [
                     'tags' => ['Realtime & WebSocket Discovery'],
                     'summary' => 'Konfigurasi WebSocket Multi-Protokol & Endpoint HTTP Fallback',
-                    'description' => 'Mengembalikan URL WebSocket untuk ke-4 sub-protokol (`banyuwening.telemetry.v1`, `banyuwening.control.v1`, `banyuwening.alerts.v1`, `banyuwening.heartbeat.v1`), interval HTTP fallback, serta tiket stream dashboard jika pengguna sedang login.',
+                    'description' => 'Mengembalikan URL WebSocket untuk ke-5 sub-protokol (`banyuwening.telemetry.v1`, `banyuwening.control.v1`, `banyuwening.alerts.v1`, `banyuwening.heartbeat.v1`, `banyuwening.ota.v1`), interval HTTP fallback, serta tiket stream dashboard jika pengguna sedang login.',
                     'responses' => [
                         '200' => ['description' => 'Metadata protokol realtime dan fallback'],
                     ],

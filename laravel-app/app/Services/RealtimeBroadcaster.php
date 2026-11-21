@@ -47,6 +47,17 @@ class RealtimeBroadcaster
                 'ping' => 'POST /api/http/heartbeat',
             ],
         ],
+        'ota' => [
+            'subprotocol' => 'banyuwening.ota.v1',
+            'path' => '/ws/ota',
+            'direction' => 'bidirectional',
+            'purpose' => 'Distribusi manifest pembaruan firmware Dual-OTA ESP32 bertanda tangan HMAC-SHA256 dan pelaporan status flashing/auto-rollback.',
+            'http_fallback' => [
+                'check' => 'GET /api/http/ota/check',
+                'download' => 'GET /api/http/ota/download/{version}',
+                'status' => 'POST /api/http/ota/status',
+            ],
+        ],
     ];
 
     public const DASHBOARD_SUBPROTOCOL = 'banyuwening.dashboard.v1';
@@ -173,6 +184,11 @@ class RealtimeBroadcaster
                     'heartbeat' => $httpBase . '/api/http/heartbeat',
                     'commands_poll' => $httpBase . '/api/http/commands',
                     'commands_ack' => $httpBase . '/api/http/commands/ack',
+                    'ota_check' => $httpBase . '/api/http/ota/check',
+                    'ota_status' => $httpBase . '/api/http/ota/status',
+                    'ml_status' => $httpBase . '/api/ml/status',
+                    'ml_predict' => $httpBase . '/api/ml/predict',
+                    'ml_performance' => $httpBase . '/api/ml/performance',
                     'latest' => $httpBase . '/api/latest',
                     'history' => $httpBase . '/api/history',
                     'alerts_recent' => $httpBase . '/api/alerts/recent',

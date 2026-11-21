@@ -126,4 +126,9 @@ class Device extends Model
     {
         return $this->hasMany(RelayLog::class);
     }
+
+    public function firmwareRollouts(): HasMany
+    {
+        return $this->hasMany(FirmwareRollout::class);
+    }
 }

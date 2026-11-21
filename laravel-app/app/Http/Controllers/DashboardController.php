@@ -14,7 +14,9 @@ use App\Models\RelayLog;
 use App\Models\DispatchLog;
 use App\Models\LandingContent;
 use App\Services\NotificationService;
+use App\Services\FirmwareOtaService;
 use App\Services\MachineLearningService;
+use App\Services\MlSelfLearningAgentService;
 use App\Services\RealtimeBroadcaster;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Auth;
@@ -90,26 +92,21 @@ class DashboardController extends Controller
         $backups = [];
         $securityStats = null;
 
-        if ($user && $user->isAdmin()) {
-            $landingContent = LandingContent::getAllSettings();
-            $users = User::latest()->get()->map(function ($u) {
-                return [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'email' => $u->email,
-                    'role' => $u->role,
-                    'title' => $u->title,
-                    'pond_name' => $u->pond_name,
-                    'pondName' => $u->pond_name,
-                    'avatar_initials' => $u->avatar_initials ?? 'BW',
-                    'avatarInitials' => $u->avatar_initials ?? 'BW',
-                    'created_at' => $u->created_at->format('Y-m-d'),
-                    'createdAt' => $u->created_at->format('Y-m-d'),
-                    'phone' => $u->phone,
-                    'two_factor_enabled' => (bool) $u->hasTwoFactor(),
-                ];
-            });
+        $canManageUsers = $user && ($user->isAdmin() || $user->hasPermission('manage_users'));
+        $canManageLanding = $user && ($user->isAdmin() || $user->hasPermission('manage_landing'));
+        $canManageNotif = $user && ($user->isAdmin() || $user->hasPermission('manage_notifications'));
+        $canManageBackups = $user && ($user->isAdmin() || $user->hasPermission('manage_backups'));
+        $canViewDocsApi = $user && ($user->isAdmin() || $user->hasPermission('view_docs_api'));
 
+        if ($canManageLanding) {
+            $landingContent = LandingContent::getAllSettings();
+        }
+
+        if ($canManageUsers) {
+            $users = User::latest()->get()->map(fn (User $u) => $this->serializeUserForAdmin($u))->values()->all();
+        }
+
+        if ($canManageNotif) {
             $notificationConfig = $notificationService->getSettings();
             $dispatchLogs = DispatchLog::latest()->take(50)->get()->map(function ($l) {
                 return [
@@ -123,7 +120,9 @@ class DashboardController extends Controller
                     'details' => $l->details,
                 ];
             });
+        }
 
+        if ($canManageBackups) {
             $backupDir = storage_path('app/backups');
             if (!file_exists($backupDir)) {
                 mkdir($backupDir, 0755, true);
@@ -166,8 +165,12 @@ class DashboardController extends Controller
         }
 
         $devices = [];
-        if ($user && $user->isAdmin()) {
+        $otaOverview = null;
+        $mlOverview = null;
+        if ($canViewDocsApi) {
             $devices = Device::orderBy('id')->get()->map(fn (Device $d) => $this->serializeDeviceForAdmin($d))->values()->all();
+            $otaOverview = app(FirmwareOtaService::class)->getOverview();
+            $mlOverview = app(MlSelfLearningAgentService::class)->getPerformanceMetrics(24);
         }
 
         return Inertia::render('Dashboard', [
@@ -181,6 +184,9 @@ class DashboardController extends Controller
                 'avatar_initials' => $user->avatar_initials ?? 'BW',
                 'phone' => $user->phone ?? '',
                 'two_factor_enabled' => (bool) $user->hasTwoFactor(),
+                'permissions' => $user->resolvedPermissions(),
+                'custom_permissions' => $user->custom_permissions,
+                'has_custom_permissions' => $user->hasCustomPermissions(),
             ],
             'currentReading' => $latest ? [
                 'id' => $latest->id,
@@ -225,6 +231,8 @@ class DashboardController extends Controller
             ],
             'users' => $users,
             'devices' => $devices,
+            'otaOverview' => $otaOverview,
+            'mlOverview' => $mlOverview,
             'realtimeConfig' => $broadcaster->getRealtimeConfig($user, $request->getSchemeAndHttpHost()),
             'notificationConfig' => $notificationConfig,
             'dispatchLogs' => $dispatchLogs,
@@ -236,6 +244,11 @@ class DashboardController extends Controller
 
     public function controlAerator(Request $request, RealtimeBroadcaster $broadcaster)
     {
+        $user = Auth::user();
+        if (!$user || !$user->hasPermission('control_aerator')) {
+            abort(403, 'Akun Anda tidak memiliki hak akses kendali aerator.');
+        }
+
         $validated = $request->validate([
             'action' => ['required', 'in:ON,OFF,AUTO'],
             'duration' => ['nullable', 'integer'],
@@ -247,7 +260,6 @@ class DashboardController extends Controller
             ? Device::where('device_code', $validated['device_code'])->first()
             : Device::first();
         $action = $validated['action'];
-        $user = Auth::user();
 
         $isOn = $action === 'ON';
         $mode = $action === 'AUTO' ? 'AUTO' : 'MANUAL';
@@ -299,6 +311,9 @@ class DashboardController extends Controller
     public function acknowledgeAlert(Alert $alert)
     {
         $user = Auth::user();
+        if (!$user || !$user->hasPermission('ack_alerts')) {
+            abort(403, 'Akun Anda tidak memiliki hak akses konfirmasi peringatan.');
+        }
 
         $alert->update([
             'acknowledged_at' => now(),
@@ -311,7 +326,7 @@ class DashboardController extends Controller
     public function storeUser(Request $request)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -322,6 +337,7 @@ class DashboardController extends Controller
             'role' => ['required', 'in:ADMIN,OPERATOR,ANALIS,PEMILIK'],
             'pond_name' => ['nullable', 'string'],
             'phone' => ['nullable', 'string'],
+            'custom_permissions' => ['nullable', 'array'],
         ]);
 
         $titleMap = [
@@ -336,6 +352,8 @@ class DashboardController extends Controller
             ->take(2)
             ->join('');
 
+        $customPerms = User::sanitizeCustomPermissions($request->input('custom_permissions'), $validated['role']);
+
         User::create([
             'name' => $validated['name'],
             'email' => strtolower($validated['email']),
@@ -345,6 +363,7 @@ class DashboardController extends Controller
             'pond_name' => $validated['pond_name'] ?? 'Kolam Terpal 01',
             'avatar_initials' => strtoupper($initials) ?: 'BW',
             'phone' => $validated['phone'] ?? '-',
+            'custom_permissions' => $customPerms,
         ]);
 
         return back()->with('success', "Pengguna {$validated['name']} berhasil ditambahkan!");
@@ -353,7 +372,7 @@ class DashboardController extends Controller
     public function destroyUser($id)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -380,7 +399,7 @@ class DashboardController extends Controller
     public function updateUser(Request $request, $id)
     {
         $admin = Auth::user();
-        if (!$admin || !$admin->isAdmin()) {
+        if (!$admin || (!$admin->isAdmin() && !$admin->hasPermission('manage_users'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -395,6 +414,8 @@ class DashboardController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'password' => ['nullable', 'string', 'min:5'],
             'reset_2fa' => ['nullable', 'boolean'],
+            'custom_permissions' => ['nullable', 'array'],
+            'reset_permissions' => ['nullable', 'boolean'],
         ]);
 
         if ($targetUser->email === 'admin@banyuwening.id' && $validated['role'] !== 'ADMIN') {
@@ -432,9 +453,62 @@ class DashboardController extends Controller
             $targetUser->two_factor_recovery_codes = null;
         }
 
+        if ($request->boolean('reset_permissions')) {
+            $targetUser->custom_permissions = null;
+        } elseif ($request->has('custom_permissions')) {
+            $targetUser->custom_permissions = User::sanitizeCustomPermissions(
+                $request->input('custom_permissions'),
+                $validated['role']
+            );
+        }
+
         $targetUser->save();
 
         return back()->with('success', "Akun {$targetUser->name} berhasil diperbarui!");
+    }
+
+    /**
+     * Super Admin: Kustomisasi hak akses granular per pengguna (atau reset ke default role).
+     */
+    public function updateUserPermissions(Request $request, $id)
+    {
+        $admin = Auth::user();
+        if (!$admin || (!$admin->isAdmin() && !$admin->hasPermission('manage_users'))) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        $numericId = (int) str_replace('usr-', '', (string) $id);
+        $targetUser = User::findOrFail($numericId);
+
+        $request->validate([
+            'reset' => ['nullable', 'boolean'],
+            'permissions' => ['nullable', 'array'],
+        ]);
+
+        if ($request->boolean('reset')) {
+            $targetUser->custom_permissions = null;
+        } else {
+            $targetUser->custom_permissions = User::sanitizeCustomPermissions(
+                $request->input('permissions', []),
+                $targetUser->role
+            );
+        }
+
+        $targetUser->save();
+
+        $msg = $targetUser->hasCustomPermissions()
+            ? "Hak akses khusus untuk {$targetUser->name} berhasil disimpan."
+            : "Hak akses {$targetUser->name} disetel sesuai standar peran {$targetUser->role}.";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'user' => $this->serializeUserForAdmin($targetUser->fresh()),
+            ]);
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function updateProfile(Request $request)
@@ -568,7 +642,7 @@ class DashboardController extends Controller
     public function saveNotificationConfig(Request $request, NotificationService $service)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -579,7 +653,7 @@ class DashboardController extends Controller
     public function testNotification(Request $request, NotificationService $service)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -615,7 +689,7 @@ class DashboardController extends Controller
     public function clearDispatchLogs()
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -626,7 +700,7 @@ class DashboardController extends Controller
     public function uploadLandingMedia(Request $request)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_landing'))) {
             return response()->json(['error' => 'Akses terbatas untuk Super Administrator.'], 403);
         }
 
@@ -659,7 +733,7 @@ class DashboardController extends Controller
     public function saveLandingContent(Request $request)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_landing'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -707,7 +781,7 @@ class DashboardController extends Controller
     public function createBackup(Request $request)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -751,7 +825,7 @@ class DashboardController extends Controller
     public function downloadBackup(string $filename)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -768,7 +842,7 @@ class DashboardController extends Controller
     public function deleteBackup(string $filename)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -789,7 +863,7 @@ class DashboardController extends Controller
     public function storeDevice(Request $request)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -837,7 +911,7 @@ class DashboardController extends Controller
     public function rotateDeviceToken(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -866,7 +940,7 @@ class DashboardController extends Controller
     public function toggleDeviceToken(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -895,7 +969,7 @@ class DashboardController extends Controller
     public function destroyDevice(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -917,6 +991,28 @@ class DashboardController extends Controller
         }
 
         return back()->with('success', "Perangkat {$code} berhasil dihapus.");
+    }
+
+    private function serializeUserForAdmin(User $u): array
+    {
+        return [
+            'id' => $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'role' => $u->role,
+            'title' => $u->title,
+            'pond_name' => $u->pond_name,
+            'pondName' => $u->pond_name,
+            'avatar_initials' => $u->avatar_initials ?? 'BW',
+            'avatarInitials' => $u->avatar_initials ?? 'BW',
+            'created_at' => $u->created_at?->format('Y-m-d'),
+            'createdAt' => $u->created_at?->format('Y-m-d'),
+            'phone' => $u->phone,
+            'two_factor_enabled' => (bool) $u->hasTwoFactor(),
+            'permissions' => $u->resolvedPermissions(),
+            'custom_permissions' => $u->custom_permissions,
+            'has_custom_permissions' => $u->hasCustomPermissions(),
+        ];
     }
 
     private function serializeDeviceForAdmin(Device $d): array

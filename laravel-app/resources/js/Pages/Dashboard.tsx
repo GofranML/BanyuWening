@@ -21,7 +21,6 @@ import {
   Globe,
   UserCog,
   ShieldCheck,
-  Code2,
 } from "lucide-react";
 
 import { StatusCard } from "@/Components/StatusCard";
@@ -39,26 +38,29 @@ import { SuperAdminUserManagement } from "@/Components/roles/SuperAdminUserManag
 import { SuperAdminNotificationConfig } from "@/Components/roles/SuperAdminNotificationConfig";
 import { SuperAdminContentManagement } from "@/Components/roles/SuperAdminContentManagement";
 import { SuperAdminSecurityBackup } from "@/Components/roles/SuperAdminSecurityBackup";
-import { SuperAdminApiDocs } from "@/Components/roles/SuperAdminApiDocs";
 import { OperatorTutorial } from "@/Components/roles/OperatorTutorial";
 import { AnalisDetailedData } from "@/Components/roles/AnalisDetailedData";
 import { PemilikProcessedData } from "@/Components/roles/PemilikProcessedData";
 import { UserProfileSettings } from "@/Components/UserProfileSettings";
 
-import type {
-  User,
-  SensorReading,
-  PredictionResult,
-  AlertItem,
-  DeviceInfo,
-  AeratorState,
-  UserRole,
-  LandingContentSettings,
-  BackupItem,
-  SecurityStats,
-  ManagedDevice,
-  RealtimeConfig,
-  RealtimeTransportMode,
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  type User,
+  type SensorReading,
+  type PredictionResult,
+  type AlertItem,
+  type DeviceInfo,
+  type AeratorState,
+  type LandingContentSettings,
+  type BackupItem,
+  type SecurityStats,
+  type ManagedDevice,
+  type MlPerformanceOverview,
+  type OtaOverview,
+  type PermissionKey,
+  type RealtimeConfig,
+  type RealtimeTransportMode,
+  type UserPermissions,
 } from "@/Types";
 
 import { BanyuWeningRealtimeClient } from "@/lib/realtime-client";
@@ -83,7 +85,6 @@ type TabId =
   | "manajemen-konten"
   | "konfigurasi-bot"
   | "keamanan-backup"
-  | "dokumentasi-api"
   | "tutorial"
   | "analisis-lengkap"
   | "laporan-pemilik";
@@ -98,6 +99,8 @@ interface DashboardProps {
   aeratorState: AeratorState;
   users: User[];
   devices?: ManagedDevice[];
+  otaOverview?: OtaOverview | null;
+  mlOverview?: MlPerformanceOverview | null;
   realtimeConfig?: RealtimeConfig;
   notificationConfig?: any;
   dispatchLogs?: any[];
@@ -116,6 +119,8 @@ export default function Dashboard({
   aeratorState: initialAeratorState,
   users = [],
   devices: initialDevices = [],
+  otaOverview: initialOtaOverview,
+  mlOverview: initialMlOverview,
   realtimeConfig: initialRealtimeConfig,
   landingContent: initialLandingContent,
   backups: initialBackups = [],
@@ -127,6 +132,10 @@ export default function Dashboard({
   const securityStats = initialSecurityStats || pageProps.securityStats;
   const managedDevices: ManagedDevice[] =
     initialDevices.length > 0 ? initialDevices : pageProps.devices || [];
+  const otaOverview: OtaOverview | null =
+    initialOtaOverview !== undefined ? initialOtaOverview : pageProps.otaOverview || null;
+  const mlOverview: MlPerformanceOverview | null =
+    initialMlOverview !== undefined ? initialMlOverview : pageProps.mlOverview || null;
   const realtimeConfig: RealtimeConfig | undefined =
     initialRealtimeConfig || pageProps.realtimeConfig;
 
@@ -162,7 +171,11 @@ export default function Dashboard({
   const [transportReason, setTransportReason] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<TabId>(
-    user.role === "PEMILIK" ? "laporan-pemilik" : "ringkasan"
+    user.role === "PEMILIK" && (user.permissions?.view_owner_report ?? true)
+      ? "laporan-pemilik"
+      : (user.permissions?.view_summary ?? true)
+      ? "ringkasan"
+      : "profil"
   );
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isControlModalOpen, setIsControlModalOpen] = useState<boolean>(false);
@@ -262,6 +275,17 @@ export default function Dashboard({
   };
 
   const role = user.role;
+  const resolvedPerms: UserPermissions = {
+    ...(DEFAULT_ROLE_PERMISSIONS[role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+    ...(user.permissions || {}),
+  };
+  const hasPerm = (key: PermissionKey): boolean => Boolean(resolvedPerms[key]);
+  const hasAnyAdminMenu =
+    hasPerm("view_docs_api") ||
+    hasPerm("manage_users") ||
+    hasPerm("manage_landing") ||
+    hasPerm("manage_notifications") ||
+    hasPerm("manage_backups");
   const overall = getOverallStatus(currentReading, prediction);
   const paramStatus = getParameterStatus(currentReading);
 
@@ -374,8 +398,8 @@ export default function Dashboard({
 
           {/* Navigation Menu */}
           <nav className="space-y-1" aria-label="Menu Navigasi Utama">
-            {/* Khusus Pemilik: Menu Laporan Eksekutif ditaruh paling atas */}
-            {role === "PEMILIK" && (
+            {/* Laporan Eksekutif Kolam */}
+            {hasPerm("view_owner_report") && (
               <button
                 onClick={() => setActiveTab("laporan-pemilik")}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -390,52 +414,58 @@ export default function Dashboard({
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab("ringkasan")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                activeTab === "ringkasan"
-                  ? "bg-brand text-brand-ink font-semibold"
-                  : "text-ink hover:bg-surface-2"
-              }`}
-              title="Ringkasan Realtime"
-            >
-              <LayoutDashboard className="w-4 h-4 shrink-0" />
-              <span className="truncate whitespace-nowrap">Ringkasan Realtime</span>
-            </button>
+            {hasPerm("view_summary") && (
+              <button
+                onClick={() => setActiveTab("ringkasan")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                  activeTab === "ringkasan"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "text-ink hover:bg-surface-2"
+                }`}
+                title="Ringkasan Realtime"
+              >
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                <span className="truncate whitespace-nowrap">Ringkasan Realtime</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("grafik")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                activeTab === "grafik"
-                  ? "bg-brand text-brand-ink font-semibold"
-                  : "text-ink hover:bg-surface-2"
-              }`}
-              title="Grafik Riwayat"
-            >
-              <LineChart className="w-4 h-4 shrink-0" />
-              <span className="truncate whitespace-nowrap">Grafik Riwayat</span>
-            </button>
+            {hasPerm("view_charts") && (
+              <button
+                onClick={() => setActiveTab("grafik")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                  activeTab === "grafik"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "text-ink hover:bg-surface-2"
+                }`}
+                title="Grafik Riwayat"
+              >
+                <LineChart className="w-4 h-4 shrink-0" />
+                <span className="truncate whitespace-nowrap">Grafik Riwayat</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("peringatan")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                activeTab === "peringatan"
-                  ? "bg-brand text-brand-ink font-semibold"
-                  : "text-ink hover:bg-surface-2"
-              }`}
-              title="Peringatan & Log"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Bell className="w-4 h-4 shrink-0" />
-                <span className="truncate whitespace-nowrap">Peringatan & Log</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-brand-ink/20 font-bold shrink-0 ml-2">
-                {alerts.length}
-              </span>
-            </button>
+            {hasPerm("view_alerts") && (
+              <button
+                onClick={() => setActiveTab("peringatan")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                  activeTab === "peringatan"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "text-ink hover:bg-surface-2"
+                }`}
+                title="Peringatan & Log"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Bell className="w-4 h-4 shrink-0" />
+                  <span className="truncate whitespace-nowrap">Peringatan & Log</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-brand-ink/20 font-bold shrink-0 ml-2">
+                  {alerts.length}
+                </span>
+              </button>
+            )}
 
-            {/* Aerator: Untuk Operator dan Admin */}
-            {(role === "OPERATOR" || role === "ADMIN") && (
+            {/* Aerator */}
+            {hasPerm("control_aerator") && (
               <button
                 onClick={() => setActiveTab("aerator")}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -450,8 +480,8 @@ export default function Dashboard({
               </button>
             )}
 
-            {/* Prediksi ML: Untuk Analis dan Admin */}
-            {(role === "ANALIS" || role === "ADMIN") && (
+            {/* Prediksi ML */}
+            {hasPerm("view_predictions") && (
               <button
                 onClick={() => setActiveTab("prediksi")}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -466,8 +496,8 @@ export default function Dashboard({
               </button>
             )}
 
-            {/* Ekspor CSV: Untuk Analis dan Admin */}
-            {(role === "ANALIS" || role === "ADMIN") && (
+            {/* Ekspor CSV */}
+            {hasPerm("export_csv") && (
               <button
                 onClick={() => setActiveTab("ekspor")}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -482,95 +512,92 @@ export default function Dashboard({
               </button>
             )}
 
-            {/* MENU KHUSUS SUPER ADMINISTRATOR: Dokumentasi, Akun, Bot */}
-            {role === "ADMIN" && (
+            {/* MENU ADMINISTRASI & SUPER ADMIN */}
+            {hasAnyAdminMenu && (
               <>
                 <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted">
                   Menu Super Admin
                 </div>
 
-                <button
-                  onClick={() => setActiveTab("dokumentasi")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "dokumentasi"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Dokumentasi Lengkap"
-                >
-                  <BookOpen className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Dokumentasi Lengkap</span>
-                </button>
+                {hasPerm("view_docs_api") && (
+                  <button
+                    onClick={() => setActiveTab("dokumentasi")}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "dokumentasi"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Dokumentasi Lengkap, OTA ESP32, RF MLOps & API Swagger"
+                  >
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Dokumentasi Lengkap</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("manajemen-akun")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "manajemen-akun"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Buat & Kelola Akun"
-                >
-                  <Users className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Buat & Kelola Akun</span>
-                </button>
+                {hasPerm("manage_users") && (
+                  <button
+                    onClick={() => setActiveTab("manajemen-akun")}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "manajemen-akun"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Buat & Kelola Akun serta Kustom Hak Akses"
+                  >
+                    <Users className="w-4 h-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Buat & Kelola Akun</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("manajemen-konten")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "manajemen-konten"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Manajemen Konten Landing"
-                >
-                  <Globe className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Manajemen Konten Landing</span>
-                </button>
+                {hasPerm("manage_landing") && (
+                  <button
+                    onClick={() => setActiveTab("manajemen-konten")}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "manajemen-konten"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Manajemen Konten Landing"
+                  >
+                    <Globe className="w-4 h-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Manajemen Konten Landing</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("konfigurasi-bot")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "konfigurasi-bot"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Konfigurasi Bot & Notifikasi"
-                >
-                  <Bot className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Konfigurasi Bot & Notifikasi</span>
-                </button>
+                {hasPerm("manage_notifications") && (
+                  <button
+                    onClick={() => setActiveTab("konfigurasi-bot")}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "konfigurasi-bot"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Konfigurasi Bot & Notifikasi"
+                  >
+                    <Bot className="w-4 h-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Konfigurasi Bot & Notifikasi</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab("keamanan-backup")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "keamanan-backup"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Keamanan & Backup Basis Data"
-                >
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Keamanan & Backup</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("dokumentasi-api")}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                    activeTab === "dokumentasi-api"
-                      ? "bg-brand text-brand-ink font-semibold"
-                      : "text-ink hover:bg-surface-2"
-                  }`}
-                  title="Swagger UI, WebSocket & Token Per Alat"
-                >
-                  <Code2 className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">API Swagger &amp; Token Alat</span>
-                </button>
+                {hasPerm("manage_backups") && (
+                  <button
+                    onClick={() => setActiveTab("keamanan-backup")}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "keamanan-backup"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Keamanan & Backup Basis Data"
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Keamanan & Backup</span>
+                  </button>
+                )}
               </>
             )}
 
-            {/* MENU KHUSUS OPERATOR: Tutorial SOP */}
-            {role === "OPERATOR" && (
+            {/* MENU PANDUAN LAPANGAN: Tutorial SOP */}
+            {hasPerm("view_tutorial") && (
               <>
                 <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted">
                   Panduan Lapangan
@@ -591,8 +618,8 @@ export default function Dashboard({
               </>
             )}
 
-            {/* MENU KHUSUS ANALIS: Analisis Lengkap */}
-            {role === "ANALIS" && (
+            {/* MENU KAJIAN AKUAKULTUR: Analisis Lengkap */}
+            {hasPerm("view_analis_data") && (
               <>
                 <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted">
                   Kajian Akuakultur
@@ -709,7 +736,7 @@ export default function Dashboard({
             <UserCog className="w-3.5 h-3.5" />
             <span>Profil & 2FA</span>
           </button>
-          {role === "PEMILIK" && (
+          {hasPerm("view_owner_report") && (
             <button
               onClick={() => setActiveTab("laporan-pemilik")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -722,40 +749,46 @@ export default function Dashboard({
             </button>
           )}
 
-          <button
-            onClick={() => setActiveTab("ringkasan")}
-            className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === "ringkasan"
-                ? "bg-brand text-brand-ink font-semibold"
-                : "bg-surface-2 text-ink"
-            }`}
-          >
-            Ringkasan
-          </button>
+          {hasPerm("view_summary") && (
+            <button
+              onClick={() => setActiveTab("ringkasan")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "ringkasan"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Ringkasan
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab("grafik")}
-            className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === "grafik"
-                ? "bg-brand text-brand-ink font-semibold"
-                : "bg-surface-2 text-ink"
-            }`}
-          >
-            Grafik
-          </button>
+          {hasPerm("view_charts") && (
+            <button
+              onClick={() => setActiveTab("grafik")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "grafik"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Grafik
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab("peringatan")}
-            className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === "peringatan"
-                ? "bg-brand text-brand-ink font-semibold"
-                : "bg-surface-2 text-ink"
-            }`}
-          >
-            Peringatan ({alerts.length})
-          </button>
+          {hasPerm("view_alerts") && (
+            <button
+              onClick={() => setActiveTab("peringatan")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "peringatan"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Peringatan ({alerts.length})
+            </button>
+          )}
 
-          {(role === "OPERATOR" || role === "ADMIN") && (
+          {hasPerm("control_aerator") && (
             <button
               onClick={() => setActiveTab("aerator")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -768,7 +801,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {(role === "ANALIS" || role === "ADMIN") && (
+          {hasPerm("view_predictions") && (
             <button
               onClick={() => setActiveTab("prediksi")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -781,7 +814,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {(role === "ANALIS" || role === "ADMIN") && (
+          {hasPerm("export_csv") && (
             <button
               onClick={() => setActiveTab("ekspor")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -794,77 +827,72 @@ export default function Dashboard({
             </button>
           )}
 
-          {role === "ADMIN" && (
-            <>
-              <button
-                onClick={() => setActiveTab("dokumentasi")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "dokumentasi"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                Dokumentasi
-              </button>
-
-              <button
-                onClick={() => setActiveTab("manajemen-akun")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "manajemen-akun"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                Kelola Akun
-              </button>
-
-              <button
-                onClick={() => setActiveTab("manajemen-konten")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "manajemen-konten"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                Konten Landing
-              </button>
-
-              <button
-                onClick={() => setActiveTab("konfigurasi-bot")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "konfigurasi-bot"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                Konfigurasi Bot
-              </button>
-
-              <button
-                onClick={() => setActiveTab("keamanan-backup")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "keamanan-backup"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                Keamanan & Backup
-              </button>
-
-              <button
-                onClick={() => setActiveTab("dokumentasi-api")}
-                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                  activeTab === "dokumentasi-api"
-                    ? "bg-brand text-brand-ink font-semibold"
-                    : "bg-surface-2 text-ink"
-                }`}
-              >
-                API &amp; Token Alat
-              </button>
-            </>
+          {hasPerm("view_docs_api") && (
+            <button
+              onClick={() => setActiveTab("dokumentasi")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "dokumentasi"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Dokumentasi
+            </button>
           )}
 
-          {role === "OPERATOR" && (
+          {hasPerm("manage_users") && (
+            <button
+              onClick={() => setActiveTab("manajemen-akun")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "manajemen-akun"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Kelola Akun
+            </button>
+          )}
+
+          {hasPerm("manage_landing") && (
+            <button
+              onClick={() => setActiveTab("manajemen-konten")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "manajemen-konten"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Konten Landing
+            </button>
+          )}
+
+          {hasPerm("manage_notifications") && (
+            <button
+              onClick={() => setActiveTab("konfigurasi-bot")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "konfigurasi-bot"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Konfigurasi Bot
+            </button>
+          )}
+
+          {hasPerm("manage_backups") && (
+            <button
+              onClick={() => setActiveTab("keamanan-backup")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "keamanan-backup"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Keamanan & Backup
+            </button>
+          )}
+
+          {hasPerm("view_tutorial") && (
             <button
               onClick={() => setActiveTab("tutorial")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -877,7 +905,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {role === "ANALIS" && (
+          {hasPerm("view_analis_data") && (
             <button
               onClick={() => setActiveTab("analisis-lengkap")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -930,47 +958,53 @@ export default function Dashboard({
           {/* TAB: PENGATURAN PROFIL & 2FA (Semua Role) */}
           {activeTab === "profil" && <UserProfileSettings user={user} />}
 
-          {/* TAB: LAPORAN PEMILIK (Khusus Role Pemilik) */}
-          {activeTab === "laporan-pemilik" && <PemilikProcessedData />}
+          {/* TAB: LAPORAN PEMILIK */}
+          {activeTab === "laporan-pemilik" && hasPerm("view_owner_report") && <PemilikProcessedData />}
 
-          {/* TAB: DOKUMENTASI PROYEK (Khusus Super Admin) */}
-          {activeTab === "dokumentasi" && <SuperAdminDocs />}
-
-          {/* TAB: MANAJEMEN AKUN (Khusus Super Admin) */}
-          {activeTab === "manajemen-akun" && <SuperAdminUserManagement users={users} />}
-
-          {/* TAB: MANAJEMEN KONTEN LANDING (Khusus Super Admin) */}
-          {activeTab === "manajemen-konten" && (
-            <SuperAdminContentManagement landingContent={landingContent} />
-          )}
-
-          {/* TAB: KONFIGURASI BOT & NOTIFIKASI (Khusus Super Admin) */}
-          {activeTab === "konfigurasi-bot" && <SuperAdminNotificationConfig />}
-
-          {/* TAB: KEAMANAN & BACKUP BASIS DATA (Khusus Super Admin) */}
-          {role === "ADMIN" && activeTab === "keamanan-backup" && (
-            <SuperAdminSecurityBackup
-              securityStats={securityStats}
-              backups={backups}
-              onNavigateTab={setActiveTab}
-            />
-          )}
-
-          {/* TAB: DOKUMENTASI API SWAGGER UI, WEBSOCKET & TOKEN ALAT (Khusus Super Admin) */}
-          {role === "ADMIN" && activeTab === "dokumentasi-api" && (
-            <SuperAdminApiDocs
+          {/* TAB: DOKUMENTASI LENGKAP (Termasuk RBAC Granular, OTA ESP32, RF MLOps, Swagger/AsyncAPI & Token Alat) */}
+          {activeTab === "dokumentasi" && hasPerm("view_docs_api") && (
+            <SuperAdminDocs
+              users={users}
               devices={managedDevices}
               realtimeConfig={realtimeConfig}
               activeTransport={realtimeMode}
               transportReason={transportReason}
+              otaOverview={otaOverview}
+              mlOverview={mlOverview}
             />
           )}
 
-          {/* TAB: TUTORIAL ALAT & SOP (Khusus Operator) */}
-          {activeTab === "tutorial" && <OperatorTutorial />}
+          {/* TAB: MANAJEMEN AKUN */}
+          {activeTab === "manajemen-akun" && hasPerm("manage_users") && (
+            <SuperAdminUserManagement users={users} />
+          )}
 
-          {/* TAB: PEMBACAAN DATA LENGKAP (Khusus Analis) */}
-          {activeTab === "analisis-lengkap" && <AnalisDetailedData allReadings={allReadings} />}
+          {/* TAB: MANAJEMEN KONTEN LANDING */}
+          {activeTab === "manajemen-konten" && hasPerm("manage_landing") && (
+            <SuperAdminContentManagement landingContent={landingContent} />
+          )}
+
+          {/* TAB: KONFIGURASI BOT & NOTIFIKASI */}
+          {activeTab === "konfigurasi-bot" && hasPerm("manage_notifications") && (
+            <SuperAdminNotificationConfig />
+          )}
+
+          {/* TAB: KEAMANAN & BACKUP BASIS DATA */}
+          {activeTab === "keamanan-backup" && hasPerm("manage_backups") && (
+            <SuperAdminSecurityBackup
+              securityStats={securityStats}
+              backups={backups}
+              onNavigateTab={(tab) => setActiveTab(tab as TabId)}
+            />
+          )}
+
+          {/* TAB: TUTORIAL ALAT & SOP */}
+          {activeTab === "tutorial" && hasPerm("view_tutorial") && <OperatorTutorial />}
+
+          {/* TAB: PEMBACAAN DATA LENGKAP */}
+          {activeTab === "analisis-lengkap" && hasPerm("view_analis_data") && (
+            <AnalisDetailedData allReadings={allReadings} />
+          )}
 
           {/* TAB: RINGKASAN REALTIME */}
           {activeTab === "ringkasan" && (
@@ -1159,7 +1193,7 @@ export default function Dashboard({
                     </div>
                     <div className="flex items-center justify-between pt-2.5 border-t border-line/50 text-[11px] text-muted">
                       <span>Model Random Forest</span>
-                      {(role === "ANALIS" || role === "ADMIN") ? (
+                      {hasPerm("view_predictions") ? (
                         <button
                           onClick={() => setActiveTab("prediksi")}
                           className="font-medium text-brand hover:underline cursor-pointer"
@@ -1207,9 +1241,9 @@ export default function Dashboard({
                   </p>
 
                   <div className="flex items-center gap-3">
-                    {role === "PEMILIK" ? (
+                    {!hasPerm("control_aerator") ? (
                       <span className="text-[12px] text-muted italic">
-                        Mode pantau saja (Read-only). Kendali aerator dikelola oleh Operator lapangan.
+                        Mode pantau saja (Read-only). Hak akses kendali aerator tidak aktif untuk akun ini.
                       </span>
                     ) : (
                       <button
@@ -1273,11 +1307,11 @@ export default function Dashboard({
                 </p>
               </div>
 
-              {role === "ADMIN" && (
+              {hasPerm("manage_notifications") && (
                 <div className="p-3 bg-surface border border-line rounded-[6px] flex flex-wrap items-center justify-between gap-3 text-[13px]">
                   <div className="flex items-center gap-2 text-ink">
                     <Bot className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>Konfigurasi bot pengirim notifikasi (Telegram, WhatsApp, Email) dapat disesuaikan di menu Super Admin.</span>
+                    <span>Konfigurasi bot pengirim notifikasi (Telegram, WhatsApp, Email) dapat disesuaikan di menu Konfigurasi Bot.</span>
                   </div>
                   <button
                     onClick={() => setActiveTab("konfigurasi-bot")}
@@ -1292,13 +1326,13 @@ export default function Dashboard({
               <AlertsSection
                 initialAlerts={alerts}
                 currentUserName={`${user.name} (${user.role})`}
-                canAcknowledge={role !== "PEMILIK"}
+                canAcknowledge={hasPerm("ack_alerts")}
               />
             </div>
           )}
 
           {/* TAB: KONTROL AERATOR */}
-          {activeTab === "aerator" && (role === "OPERATOR" || role === "ADMIN") && (
+          {activeTab === "aerator" && hasPerm("control_aerator") && (
             <div className="space-y-6">
               <div>
                 <h1 className="text-[24px] leading-[30px] font-display mb-1">
@@ -1361,7 +1395,7 @@ export default function Dashboard({
           )}
 
           {/* TAB: PREDIKSI ML */}
-          {activeTab === "prediksi" && (role === "ANALIS" || role === "ADMIN") && (
+          {activeTab === "prediksi" && hasPerm("view_predictions") && (
             <div className="space-y-6">
               <div>
                 <h1 className="text-[24px] leading-[30px] font-display mb-1">
@@ -1379,7 +1413,7 @@ export default function Dashboard({
           )}
 
           {/* TAB: EKSPOR CSV */}
-          {activeTab === "ekspor" && (role === "ANALIS" || role === "ADMIN") && (
+          {activeTab === "ekspor" && hasPerm("export_csv") && (
             <div className="space-y-6">
               <div>
                 <h1 className="text-[24px] leading-[30px] font-display mb-1">

@@ -7,19 +7,34 @@ import {
   CheckCircle2,
   Mail,
   Building2,
-  AlertCircle,
   Pencil,
   ShieldCheck,
   ShieldAlert,
   X,
   KeyRound,
-  RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
-import type { User, UserRole } from "@/Types";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  type User,
+  type UserPermissions,
+  type UserRole,
+} from "@/Types";
+import {
+  countCustomOverrides,
+  UserPermissionsEditor,
+} from "@/Components/roles/UserPermissionsEditor";
 import { getRoleBadgeLabel } from "@/lib/formatters";
 
 interface SuperAdminUserManagementProps {
   users: User[];
+}
+
+function getEffectivePermissions(u: { role: UserRole; permissions?: UserPermissions }): UserPermissions {
+  return {
+    ...(DEFAULT_ROLE_PERMISSIONS[u.role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+    ...(u.permissions || {}),
+  };
 }
 
 export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProps) {
@@ -34,6 +49,10 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
   const [role, setRole] = useState<UserRole>("OPERATOR");
   const [pondName, setPondName] = useState("");
   const [phone, setPhone] = useState("");
+  const [showCreatePerms, setShowCreatePerms] = useState(false);
+  const [createPerms, setCreatePerms] = useState<UserPermissions>({
+    ...DEFAULT_ROLE_PERMISSIONS.OPERATOR,
+  });
 
   // Edit Modal states
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -44,6 +63,17 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
   const [editPhone, setEditPhone] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [editReset2fa, setEditReset2fa] = useState(false);
+  const [showEditPerms, setShowEditPerms] = useState(false);
+  const [editPerms, setEditPerms] = useState<UserPermissions>({
+    ...DEFAULT_ROLE_PERMISSIONS.OPERATOR,
+  });
+
+  // Dedicated Permission Modal state
+  const [permTargetUser, setPermTargetUser] = useState<User | null>(null);
+  const [permDraft, setPermDraft] = useState<UserPermissions>({
+    ...DEFAULT_ROLE_PERMISSIONS.OPERATOR,
+  });
+  const [isSavingPerms, setIsSavingPerms] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -75,6 +105,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         title: titleByRole[role],
         pond_name: pondName.trim() || "Kolam Terpal 01",
         phone: phone.trim() || "-",
+        custom_permissions: showCreatePerms ? (createPerms as Record<string, boolean>) : undefined,
       },
       {
         preserveScroll: true,
@@ -86,6 +117,8 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
           setRole("OPERATOR");
           setPondName("");
           setPhone("");
+          setShowCreatePerms(false);
+          setCreatePerms({ ...DEFAULT_ROLE_PERMISSIONS.OPERATOR });
           setIsFormOpen(false);
           setIsSubmitting(false);
         },
@@ -106,6 +139,8 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
     setEditPhone(u.phone || "");
     setEditPassword("");
     setEditReset2fa(false);
+    setShowEditPerms(false);
+    setEditPerms(getEffectivePermissions(u));
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
@@ -127,6 +162,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         phone: editPhone.trim() || "-",
         password: editPassword.trim() || undefined,
         reset_2fa: editReset2fa,
+        custom_permissions: showEditPerms ? (editPerms as Record<string, boolean>) : undefined,
       },
       {
         preserveScroll: true,
@@ -138,6 +174,39 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         onError: (errors) => {
           setIsSubmitting(false);
           alert(Object.values(errors).join("\n") || "Gagal memperbarui pengguna.");
+        },
+      }
+    );
+  };
+
+  const handleOpenPermissionsModal = (u: User) => {
+    setPermTargetUser(u);
+    setPermDraft(getEffectivePermissions(u));
+  };
+
+  const handleSavePermissionsModal = (resetToRoleDefault = false) => {
+    if (!permTargetUser) return;
+    setIsSavingPerms(true);
+    router.post(
+      `/dashboard/users/${permTargetUser.id}/permissions`,
+      {
+        reset: resetToRoleDefault,
+        permissions: resetToRoleDefault ? {} : (permDraft as Record<string, boolean>),
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          showToast(
+            resetToRoleDefault
+              ? `Hak akses ${permTargetUser.name} dikembalikan ke standar peran ${permTargetUser.role}.`
+              : `Hak akses khusus ${permTargetUser.name} berhasil disimpan!`
+          );
+          setPermTargetUser(null);
+          setIsSavingPerms(false);
+        },
+        onError: (errors) => {
+          setIsSavingPerms(false);
+          alert(Object.values(errors).join("\n") || "Gagal menyimpan hak akses pengguna.");
         },
       }
     );
@@ -260,7 +329,11 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
+                onChange={(e) => {
+                  const nextRole = e.target.value as UserRole;
+                  setRole(nextRole);
+                  setCreatePerms({ ...DEFAULT_ROLE_PERMISSIONS[nextRole] });
+                }}
                 className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand cursor-pointer"
               >
                 <option value="OPERATOR">Operator Kolam (Kendali Relay & Manual)</option>
@@ -295,6 +368,32 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                 className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
               />
             </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCreatePerms(!showCreatePerms)}
+              className="text-[12px] font-semibold text-brand hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>
+                {showCreatePerms
+                  ? "Sembunyikan Kustomisasi Hak Akses Spesifik"
+                  : "Kustomisasi Hak Akses Spesifik untuk Pengguna Ini (Opsional)"}
+              </span>
+            </button>
+
+            {showCreatePerms && (
+              <div className="mt-3 p-4 rounded-[6px] bg-surface-2/60 border border-line">
+                <UserPermissionsEditor
+                  targetRole={role}
+                  value={createPerms}
+                  onChange={setCreatePerms}
+                  compact={true}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
@@ -377,7 +476,11 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                   <select
                     value={editRole}
                     disabled={editingUser.email === "admin@banyuwening.id"}
-                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    onChange={(e) => {
+                      const nextRole = e.target.value as UserRole;
+                      setEditRole(nextRole);
+                      setEditPerms({ ...DEFAULT_ROLE_PERMISSIONS[nextRole] });
+                    }}
                     className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand cursor-pointer disabled:opacity-50"
                   >
                     <option value="OPERATOR">Operator Kolam (Kendali Relay & Manual)</option>
@@ -470,9 +573,62 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                     </label>
                   )}
                 </div>
+
+                {/* Custom Per-User Permissions inside Edit Modal */}
+                <div className="md:col-span-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPerms(!showEditPerms)}
+                    className="text-[12px] font-semibold text-brand hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>
+                      {showEditPerms
+                        ? "Tutup Panel Kustomisasi Hak Akses"
+                        : "Atur Kustom Hak Akses Pengguna Ini"}
+                    </span>
+                  </button>
+                  {showEditPerms && (
+                    <div className="mt-3 max-h-[320px] overflow-y-auto p-3 rounded-[6px] bg-surface-2/60 border border-line">
+                      <UserPermissionsEditor
+                        targetRole={editRole}
+                        targetEmail={editingUser.email}
+                        value={editPerms}
+                        onChange={setEditPerms}
+                        compact={true}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCreatePerms(!showCreatePerms)}
+              className="text-[12px] font-semibold text-brand hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>
+                {showCreatePerms
+                  ? "Sembunyikan Kustomisasi Hak Akses Spesifik"
+                  : "Kustomisasi Hak Akses Spesifik untuk Pengguna Ini (Opsional)"}
+              </span>
+            </button>
+
+            {showCreatePerms && (
+              <div className="mt-3 p-4 rounded-[6px] bg-surface-2/60 border border-line">
+                <UserPermissionsEditor
+                  targetRole={role}
+                  value={createPerms}
+                  onChange={setCreatePerms}
+                  compact={true}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
@@ -489,6 +645,64 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KUSTOMISASI HAK AKSES PER PENGGUNA */}
+      {permTargetUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface border border-line rounded-[10px] shadow-2xl max-w-3xl w-full p-6 space-y-5 animate-scaleUp my-8">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-brand/15 text-brand flex items-center justify-center">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-semibold text-ink">
+                    Kustomisasi Hak Akses: {permTargetUser.name}
+                  </h3>
+                  <p className="text-[12px] text-muted">
+                    {permTargetUser.email} · Peran dasar: <strong>{getRoleBadgeLabel(permTargetUser.role)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPermTargetUser(null)}
+                className="p-1.5 text-muted hover:text-ink rounded-full hover:bg-surface-2 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto pr-1">
+              <UserPermissionsEditor
+                targetRole={permTargetUser.role}
+                targetEmail={permTargetUser.email}
+                value={permDraft}
+                onChange={setPermDraft}
+                onReset={() => handleSavePermissionsModal(true)}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <button
+                type="button"
+                onClick={() => setPermTargetUser(null)}
+                className="h-9 px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isSavingPerms}
+                onClick={() => handleSavePermissionsModal(false)}
+                className="h-9 px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>{isSavingPerms ? "Menyimpan..." : "Simpan Hak Akses Pengguna"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -551,6 +765,19 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                       {getRoleBadgeLabel(u.role)}
                     </span>
                     <div className="text-[11px] text-muted mt-0.5">{u.title}</div>
+                    {(() => {
+                      const overrideCount = countCustomOverrides(u.role, getEffectivePermissions(u));
+                      return overrideCount > 0 || u.has_custom_permissions ? (
+                        <span className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                          <SlidersHorizontal className="w-2.5 h-2.5" />
+                          <span>Kustom ({overrideCount || "aktif"} izin)</span>
+                        </span>
+                      ) : (
+                        <span className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] text-muted bg-surface-2 border border-line">
+                          Default Role
+                        </span>
+                      );
+                    })()}
                   </td>
 
                   <td className="p-3">
@@ -581,6 +808,15 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
 
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => handleOpenPermissionsModal(u)}
+                        className="px-2 py-1 text-[11px] font-semibold text-brand bg-brand/10 hover:bg-brand/20 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
+                        title={`Kustomisasi hak akses spesifik untuk ${u.name}`}
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Hak Akses</span>
+                      </button>
+
                       <button
                         onClick={() => handleOpenEdit(u)}
                         className="p-1.5 text-muted hover:text-brand hover:bg-brand/10 rounded transition-colors cursor-pointer"

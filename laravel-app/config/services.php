@@ -38,6 +38,13 @@ return [
     'ml' => [
         'python_path' => env('ML_PYTHON_PATH', 'C:\\Users\\epann\\AppData\\Local\\Programs\\Python\\Python310\\python.exe'),
         'predict_script' => env('ML_PREDICT_SCRIPT', base_path('../ml/src/predict.py')),
+        'agent_script' => env('ML_AGENT_SCRIPT', base_path('../ml/src/self_learning_agent.py')),
+    ],
+
+    'ai_agent' => [
+        'llm_api_url' => env('AI_AGENT_LLM_URL'),
+        'llm_api_key' => env('AI_AGENT_LLM_KEY'),
+        'llm_model' => env('AI_AGENT_LLM_MODEL', 'gemini-2.0-flash'),
     ],
 
     'mqtt' => [

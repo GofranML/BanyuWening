@@ -50,6 +50,9 @@ class HandleInertiaRequests extends Middleware
                     'avatar_initials' => $user->avatar_initials ?? 'BW',
                     'phone' => $user->phone ?? '',
                     'two_factor_enabled' => (bool) $user->hasTwoFactor(),
+                    'permissions' => $user->resolvedPermissions(),
+                    'custom_permissions' => $user->custom_permissions,
+                    'has_custom_permissions' => $user->hasCustomPermissions(),
                 ] : null,
             ],
             'flash' => [

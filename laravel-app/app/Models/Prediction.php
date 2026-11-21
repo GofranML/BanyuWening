@@ -21,6 +21,9 @@ class Prediction extends Model
         'triggers',
         'recommended_action',
         'failsafe_active',
+        'latency_ms',
+        'is_fallback',
+        'source',
         'predicted_at',
     ];
 
@@ -32,6 +35,8 @@ class Prediction extends Model
             'p_bahaya' => 'float',
             'triggers' => 'array',
             'failsafe_active' => 'boolean',
+            'latency_ms' => 'integer',
+            'is_fallback' => 'boolean',
             'predicted_at' => 'datetime',
         ];
     }

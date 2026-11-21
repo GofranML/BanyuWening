@@ -337,6 +337,7 @@
                             <option value="control">/ws/control · banyuwening.control.v1 (Relay Aktuator)</option>
                             <option value="alerts">/ws/alerts · banyuwening.alerts.v1 (Prediksi ML &amp; Alarm)</option>
                             <option value="heartbeat">/ws/heartbeat · banyuwening.heartbeat.v1 (Keepalive)</option>
+                            <option value="ota">/ws/ota · banyuwening.ota.v1 (Dual-OTA Firmware ESP32)</option>
                             <option value="stream">/ws/stream · banyuwening.dashboard.v1 (Dashboard Multiplex)</option>
                         </select>
                     </div>
@@ -481,6 +482,17 @@
                         { label: 'Heartbeat Normal', body: { type: 'heartbeat', rssi: -59, uptime_s: 3600, free_heap: 204800, battery_v: 4.15 } }
                     ]
                 },
+                ota: {
+                    path: '/ws/ota',
+                    subprotocol: 'banyuwening.ota.v1',
+                    httpFallback: { method: 'GET', url: '/api/http/ota/check' },
+                    presets: [
+                        { label: 'Cek OTA', body: { type: 'ota.check' } },
+                        { label: 'Downloading 50%', body: { type: 'ota.status', status: 'DOWNLOADING', progress_pct: 50, active_partition: 'ota_1' } },
+                        { label: 'Boot Health OK', body: { type: 'ota.status', status: 'COMPLETED', progress_pct: 100, active_partition: 'ota_1', boot_health_ok: true } },
+                        { label: 'Auto-Rollback', body: { type: 'ota.status', status: 'ROLLED_BACK', progress_pct: 0, active_partition: 'ota_0', boot_health_ok: false, error_message: 'Watchdog health check 60s gagal' } }
+                    ]
+                },
                 stream: {
                     path: '/ws/stream',
                     subprotocol: 'banyuwening.dashboard.v1',
@@ -607,7 +619,7 @@
 
                 if (ch === 'stream') {
                     const ticket = realtimeConfig.dashboard_ticket || '';
-                    url += '?channels=telemetry,control,alerts,heartbeat&ticket=' + encodeURIComponent(ticket);
+                    url += '?channels=telemetry,control,alerts,heartbeat,ota&ticket=' + encodeURIComponent(ticket);
                 } else {
                     const token = elToken.value.trim();
                     url += '?token=' + encodeURIComponent(token);

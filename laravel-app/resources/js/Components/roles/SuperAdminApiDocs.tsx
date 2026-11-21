@@ -76,6 +76,18 @@ export function SuperAdminApiDocs({
     typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8000";
   const wsBase = realtimeConfig?.ws_base_url || "ws://127.0.0.1:8081";
 
+  let wsHost = "127.0.0.1";
+  let wsPort = 8081;
+  let wsUseTls = false;
+  try {
+    const parsedWs = new URL(wsBase);
+    wsHost = parsedWs.hostname || "127.0.0.1";
+    wsUseTls = parsedWs.protocol === "wss:";
+    wsPort = parsedWs.port ? Number(parsedWs.port) : wsUseTls ? 443 : 80;
+  } catch {
+    // gunakan default lokal
+  }
+
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -371,8 +383,8 @@ export function SuperAdminApiDocs({
 
 const char* DEVICE_CODE  = "${sampleCode}";
 const char* DEVICE_TOKEN = "${sampleToken}";
-const char* WS_HOST      = "127.0.0.1";
-const uint16_t WS_PORT   = 8081;
+const char* WS_HOST      = "${wsHost}";
+const uint16_t WS_PORT   = ${wsPort};
 const char* HTTP_FALLBACK_TELEMETRY = "${origin}/api/http/telemetry";
 const char* HTTP_FALLBACK_COMMANDS  = "${origin}/api/http/commands";
 
@@ -381,7 +393,11 @@ bool wsConnected = false;
 
 void setupRealtime() {
   String path = String("/ws/telemetry?token=") + DEVICE_TOKEN;
-  wsTelemetry.begin(WS_HOST, WS_PORT, path.c_str(), "banyuwening.telemetry.v1");
+  ${
+    wsUseTls
+      ? 'wsTelemetry.beginSSL(WS_HOST, WS_PORT, path.c_str(), "", "banyuwening.telemetry.v1");'
+      : 'wsTelemetry.begin(WS_HOST, WS_PORT, path.c_str(), "banyuwening.telemetry.v1");'
+  }
   wsTelemetry.setExtraHeaders((String("X-Device-Token: ") + DEVICE_TOKEN).c_str());
   wsTelemetry.onEvent([](WStype_t type, uint8_t* payload, size_t len) {
     if (type == WStype_CONNECTED)    wsConnected = true;
@@ -504,7 +520,7 @@ curl -X GET ${origin}/api/http/commands \\
           </h1>
           <p className="text-[13px] text-muted mt-1 max-w-3xl">
             Standar dokumentasi REST API interaktif berbasis <strong>Swagger UI</strong>, jalur
-            realtime kecepatan tinggi melalui <strong>4 protokol WebSocket</strong>, jalur{" "}
+            realtime kecepatan tinggi melalui <strong>5 protokol WebSocket</strong> (termasuk Dual-OTA), jalur{" "}
             <strong>HTTP Fallback</strong> otomatis bila WebSocket gagal terhubung, serta{" "}
             <strong>token autentikasi unik per alat</strong>.
           </p>
@@ -970,7 +986,7 @@ curl -X GET ${origin}/api/http/commands \\
           <div className="bg-surface rounded-[6px] border border-line overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line">
               <h2 className="text-sm font-semibold text-ink">
-                Matriks 4 Sub-Protokol WebSocket &amp; Pasangan HTTP Fallback
+                Matriks 5 Sub-Protokol WebSocket &amp; Pasangan HTTP Fallback
               </h2>
             </div>
             <div className="overflow-x-auto">

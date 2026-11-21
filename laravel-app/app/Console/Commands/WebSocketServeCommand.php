@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Device;
 use App\Models\RelayLog;
+use App\Services\FirmwareOtaService;
 use App\Services\RealtimeBroadcaster;
 use App\Services\TelemetryIngestionService;
 use App\Services\WebSocketProtocol;
@@ -50,6 +51,7 @@ class WebSocketServeCommand extends Command
         $this->line('      - /ws/control    [banyuwening.control.v1]    (Device token)');
         $this->line('      - /ws/alerts     [banyuwening.alerts.v1]     (Device token / Dashboard ticket)');
         $this->line('      - /ws/heartbeat  [banyuwening.heartbeat.v1]  (Device token)');
+        $this->line('      - /ws/ota        [banyuwening.ota.v1]        (Device token)');
         $this->line('      - /ws/stream     [banyuwening.dashboard.v1]  (Dashboard ticket)');
 
         while (true) {
@@ -152,6 +154,7 @@ class WebSocketServeCommand extends Command
             '/ws/control' => ['channel' => 'control', 'subprotocol' => 'banyuwening.control.v1', 'auth' => 'device'],
             '/ws/alerts' => ['channel' => 'alerts', 'subprotocol' => 'banyuwening.alerts.v1', 'auth' => 'either'],
             '/ws/heartbeat' => ['channel' => 'heartbeat', 'subprotocol' => 'banyuwening.heartbeat.v1', 'auth' => 'device'],
+            '/ws/ota' => ['channel' => 'ota', 'subprotocol' => 'banyuwening.ota.v1', 'auth' => 'device'],
             '/ws/stream' => ['channel' => 'stream', 'subprotocol' => RealtimeBroadcaster::DASHBOARD_SUBPROTOCOL, 'auth' => 'dashboard'],
         ];
 
@@ -240,10 +243,28 @@ class WebSocketServeCommand extends Command
                     'timestamp' => now()->toIso8601String(),
                 ]);
             }
+
+            // Jika alat terhubung ke kanal OTA dan ada rilis tertunda, push manifest langsung
+            if ($route['channel'] === 'ota') {
+                $otaCheck = app(FirmwareOtaService::class)->checkForDevice(
+                    $authedDevice,
+                    (string) config('app.url'),
+                    'WEBSOCKET'
+                );
+                if (!empty($otaCheck['update_available']) && !empty($otaCheck['manifest'])) {
+                    $this->sendJson($id, [
+                        'type' => 'ota.manifest',
+                        'protocol' => 'banyuwening.ota.v1',
+                        'device_code' => $authedDevice->device_code,
+                        'payload' => $otaCheck['manifest'],
+                        'timestamp' => now()->toIso8601String(),
+                    ]);
+                }
+            }
         } else {
             $requestedChannels = isset($req['query']['channels'])
                 ? array_filter(array_map('trim', explode(',', (string) $req['query']['channels'])))
-                : ['telemetry', 'control', 'alerts', 'heartbeat'];
+                : ['telemetry', 'control', 'alerts', 'heartbeat', 'ota'];
 
             $client['role'] = 'dashboard';
             $client['channels'] = $route['channel'] === 'stream' ? $requestedChannels : [$route['channel']];
@@ -418,6 +439,45 @@ class WebSocketServeCommand extends Command
                     'protocol' => 'banyuwening.control.v1',
                     'server_time' => now()->toIso8601String(),
                 ]);
+                return;
+            }
+
+            // 4. Protokol banyuwening.ota.v1 (Cek manifest & laporan status flashing / rollback)
+            if ($primaryChannel === 'ota' || str_starts_with($type, 'ota.')) {
+                $otaService = app(FirmwareOtaService::class);
+                if ($type === 'ota.check') {
+                    $check = $otaService->checkForDevice($device, (string) config('app.url'), 'WEBSOCKET');
+                    if (!empty($check['update_available']) && !empty($check['manifest'])) {
+                        $this->sendJson($id, [
+                            'type' => 'ota.manifest',
+                            'protocol' => 'banyuwening.ota.v1',
+                            'device_code' => $device->device_code,
+                            'payload' => $check['manifest'],
+                            'server_time' => now()->toIso8601String(),
+                        ]);
+                    } else {
+                        $this->sendJson($id, [
+                            'type' => 'ota.up_to_date',
+                            'protocol' => 'banyuwening.ota.v1',
+                            'device_code' => $device->device_code,
+                            'current_version' => $device->firmware_version,
+                            'server_time' => now()->toIso8601String(),
+                        ]);
+                    }
+                    return;
+                }
+
+                $statusData = is_array($msg['payload'] ?? null) ? $msg['payload'] : $msg;
+                $rollout = $otaService->recordDeviceStatus($device, $statusData, 'WEBSOCKET');
+                $this->sendJson($id, [
+                    'type' => 'ota.status_ack',
+                    'protocol' => 'banyuwening.ota.v1',
+                    'device_code' => $device->device_code,
+                    'rollout_id' => $rollout?->id,
+                    'status' => $rollout?->status,
+                    'server_time' => now()->toIso8601String(),
+                ]);
+                return;
             }
         } catch (\Throwable $e) {
             Log::error('WS message handling error: ' . $e->getMessage());

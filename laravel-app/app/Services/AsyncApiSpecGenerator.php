@@ -102,15 +102,25 @@ class AsyncApiSpecGenerator
                         'heartbeatPong' => ['$ref' => '#/components/messages/HeartbeatPong'],
                     ],
                 ],
+                'ota' => [
+                    'address' => '/ws/ota',
+                    'title' => 'Dual-OTA Firmware Protocol (banyuwening.ota.v1)',
+                    'description' => 'Sub-protokol `banyuwening.ota.v1` untuk push manifest firmware bertanda tangan HMAC-SHA256 secara instan ke ESP32 dan menerima progres flashing / boot health check 60 detik / auto-rollback. HTTP Fallback: `GET /api/http/ota/check`, `GET /api/http/ota/download/{version}`, `POST /api/http/ota/status`.',
+                    'messages' => [
+                        'otaManifestPush' => ['$ref' => '#/components/messages/OtaManifestPush'],
+                        'otaStatusReport' => ['$ref' => '#/components/messages/OtaStatusReport'],
+                    ],
+                ],
                 'dashboardStream' => [
                     'address' => '/ws/stream',
                     'title' => 'Multiplexed Dashboard Stream (banyuwening.dashboard.v1)',
-                    'description' => 'Sub-protokol `banyuwening.dashboard.v1` untuk Dashboard Web terautentikasi (menggunakan `?ticket=<hmac_ticket>&channels=telemetry,control,alerts,heartbeat`). HTTP Fallback: `GET /api/latest` + `GET /api/alerts/recent`.',
+                    'description' => 'Sub-protokol `banyuwening.dashboard.v1` untuk Dashboard Web terautentikasi (menggunakan `?ticket=<hmac_ticket>&channels=telemetry,control,alerts,heartbeat,ota`). HTTP Fallback: `GET /api/latest` + `GET /api/alerts/recent`.',
                     'messages' => [
                         'telemetryBroadcast' => ['$ref' => '#/components/messages/TelemetryBroadcast'],
                         'controlCommand' => ['$ref' => '#/components/messages/ControlCommand'],
                         'predictionUpdate' => ['$ref' => '#/components/messages/PredictionUpdate'],
                         'heartbeatPong' => ['$ref' => '#/components/messages/HeartbeatPong'],
+                        'otaStatusReport' => ['$ref' => '#/components/messages/OtaStatusReport'],
                     ],
                 ],
             ],
@@ -169,6 +179,22 @@ class AsyncApiSpecGenerator
                     'summary' => 'Server membalas heartbeat.pong beserta waktu server',
                     'messages' => [
                         ['$ref' => '#/channels/heartbeat/messages/heartbeatPong'],
+                    ],
+                ],
+                'receiveOtaManifest' => [
+                    'action' => 'receive',
+                    'channel' => ['$ref' => '#/channels/ota'],
+                    'summary' => 'Alat ESP32 menerima manifest firmware Dual-OTA bertanda tangan HMAC-SHA256',
+                    'messages' => [
+                        ['$ref' => '#/channels/ota/messages/otaManifestPush'],
+                    ],
+                ],
+                'sendOtaStatus' => [
+                    'action' => 'send',
+                    'channel' => ['$ref' => '#/channels/ota'],
+                    'summary' => 'Alat mengirim progres flashing, health-check 60s, atau status rollback OTA',
+                    'messages' => [
+                        ['$ref' => '#/channels/ota/messages/otaStatusReport'],
                     ],
                 ],
                 'subscribeDashboardStream' => [
@@ -370,6 +396,52 @@ class AsyncApiSpecGenerator
                                 'protocol' => ['type' => 'string', 'const' => 'banyuwening.heartbeat.v1'],
                                 'device_code' => ['type' => 'string'],
                                 'server_time' => ['type' => 'string', 'format' => 'date-time'],
+                            ],
+                        ],
+                    ],
+                    'OtaManifestPush' => [
+                        'name' => 'OtaManifestPush',
+                        'title' => 'Push Manifest Firmware Dual-OTA ESP32',
+                        'contentType' => 'application/json',
+                        'payload' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'type' => ['type' => 'string', 'const' => 'ota.manifest'],
+                                'protocol' => ['type' => 'string', 'const' => 'banyuwening.ota.v1'],
+                                'device_code' => ['type' => 'string'],
+                                'payload' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'rollout_id' => ['type' => 'integer'],
+                                        'version' => ['type' => 'string'],
+                                        'size_bytes' => ['type' => 'integer'],
+                                        'sha256' => ['type' => 'string'],
+                                        'signature_hmac_sha256' => ['type' => 'string'],
+                                        'rollback_timeout_s' => ['type' => 'integer'],
+                                        'download_url' => ['type' => 'string', 'format' => 'uri'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'OtaStatusReport' => [
+                        'name' => 'OtaStatusReport',
+                        'title' => 'Laporan Progres & Health Check Dual-OTA ESP32',
+                        'contentType' => 'application/json',
+                        'payload' => [
+                            'type' => 'object',
+                            'required' => ['type', 'status'],
+                            'properties' => [
+                                'type' => ['type' => 'string', 'const' => 'ota.status'],
+                                'rollout_id' => ['type' => 'integer'],
+                                'status' => [
+                                    'type' => 'string',
+                                    'enum' => ['NOTIFIED', 'DOWNLOADING', 'VERIFYING', 'FLASHING', 'REBOOTING', 'HEALTH_CHECK', 'COMPLETED', 'FAILED', 'ROLLED_BACK'],
+                                ],
+                                'progress_pct' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
+                                'active_partition' => ['type' => 'string'],
+                                'boot_health_ok' => ['type' => 'boolean'],
+                                'error_message' => ['type' => 'string'],
                             ],
                         ],
                     ],

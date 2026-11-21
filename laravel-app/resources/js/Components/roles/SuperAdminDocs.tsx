@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { router } from "@inertiajs/react";
 import {
   Cpu,
   Layers,
@@ -11,24 +12,104 @@ import {
   Code2,
   Users,
   XCircle,
-  ShieldAlert,
   SlidersHorizontal,
-  Fish,
-  Wrench,
-  FileSpreadsheet,
-  Lock,
   Check,
   X,
-  UserCheck,
-  Mail,
-  KeyRound,
+  Activity,
+  Rocket,
+  Save,
 } from "lucide-react";
 import { SuperAdminApiDocs } from "@/Components/roles/SuperAdminApiDocs";
+import { SuperAdminOtaProtocolPanel } from "@/Components/roles/SuperAdminOtaProtocolPanel";
+import { SuperAdminMlOpsPanel } from "@/Components/roles/SuperAdminMlOpsPanel";
+import {
+  UserPermissionsEditor,
+  countCustomOverrides,
+} from "@/Components/roles/UserPermissionsEditor";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  type ManagedDevice,
+  type MlPerformanceOverview,
+  type OtaOverview,
+  type RealtimeConfig,
+  type RealtimeTransportMode,
+  type User,
+  type UserPermissions,
+} from "@/Types";
 
-type DocSubTab = "arsitektur" | "peran-akun" | "api";
+type DocSubTab = "arsitektur" | "peran-akun" | "ota-esp32" | "ml-rf-ops" | "api";
 
-export function SuperAdminDocs() {
+interface SuperAdminDocsProps {
+  users?: User[];
+  devices?: ManagedDevice[];
+  realtimeConfig?: RealtimeConfig;
+  activeTransport?: RealtimeTransportMode;
+  transportReason?: string;
+  otaOverview?: OtaOverview | null;
+  mlOverview?: MlPerformanceOverview | null;
+}
+
+export function SuperAdminDocs({
+  users = [],
+  devices = [],
+  realtimeConfig,
+  activeTransport = "HTTP_FALLBACK",
+  transportReason,
+  otaOverview,
+  mlOverview,
+}: SuperAdminDocsProps) {
   const [activeSubTab, setActiveSubTab] = useState<DocSubTab>("arsitektur");
+  const [selectedUserId, setSelectedUserId] = useState<string>(
+    users[0] ? String(users[0].id) : ""
+  );
+  const [permDraft, setPermDraft] = useState<UserPermissions>(
+    users[0]
+      ? {
+          ...(DEFAULT_ROLE_PERMISSIONS[users[0].role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+          ...(users[0].permissions || {}),
+        }
+      : { ...DEFAULT_ROLE_PERMISSIONS.OPERATOR }
+  );
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [permToast, setPermToast] = useState<string | null>(null);
+
+  const selectedUser = users.find((u) => String(u.id) === selectedUserId) || users[0] || null;
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    setSelectedUserId(String(selectedUser.id));
+    setPermDraft({
+      ...(DEFAULT_ROLE_PERMISSIONS[selectedUser.role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+      ...(selectedUser.permissions || {}),
+    });
+  }, [selectedUser?.id, JSON.stringify(selectedUser?.permissions || {})]);
+
+  const handleSaveUserPermissions = (reset = false) => {
+    if (!selectedUser) return;
+    setSavingPerms(true);
+    router.post(
+      `/dashboard/users/${selectedUser.id}/permissions`,
+      {
+        reset,
+        permissions: reset ? {} : (permDraft as Record<string, boolean>),
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setPermToast(
+            reset
+              ? `Hak akses ${selectedUser.name} dikembalikan ke default role ${selectedUser.role}.`
+              : `Hak akses khusus ${selectedUser.name} berhasil disimpan.`
+          );
+          setTimeout(() => setPermToast(null), 3500);
+          setSavingPerms(false);
+        },
+        onError: () => {
+          setSavingPerms(false);
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -36,15 +117,15 @@ export function SuperAdminDocs() {
       <div>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-brand text-[12px] font-semibold mb-2">
           <BookOpen className="w-3.5 h-3.5" />
-          <span>Dokumentasi Terpadu: Arsitektur Sistem, Hak Akses Akun & Spesifikasi API</span>
+          <span>Dokumentasi Terpadu Khusus Super Admin: Arsitektur, RBAC, Dual-OTA ESP32, RF MLOps &amp; API</span>
         </div>
         <h1 className="text-[26px] md:text-[30px] font-display text-ink leading-tight">
           Dokumentasi Lengkap Sistem BanyuWening
         </h1>
         <p className="text-[14px] text-muted mt-1 max-w-3xl">
-          Spesifikasi teknis menyeluruh arsitektur Modular Multi-Kolam (1 Core Hub : 1-4 Kolam),
-          Edge Watchdog &amp; Auto-Resume, Sensor Health Watchdog, Always-On Cloud (EMQX TLS + FastAPI + Supabase Pro),
-          HITL AI Safety Gate, dan WeningBot WhatsApp-First.
+          Pusat kendali &amp; spesifikasi teknis eksklusif Super Administrator: arsitektur Modular Multi-Kolam,
+          Protokol Dual-OTA Firmware ESP32 (<code>banyuwening.ota.v1</code>), Endpoint &amp; Dashboard Performa
+          Random Forest + AI Agent Self-Learning, serta Swagger/AsyncAPI Studio.
         </p>
       </div>
 
@@ -59,7 +140,7 @@ export function SuperAdminDocs() {
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>1. Arsitektur & Spesifikasi Sistem</span>
+          <span>1. Arsitektur &amp; Sistem</span>
         </button>
 
         <button
@@ -71,7 +152,31 @@ export function SuperAdminDocs() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>2. Matriks Hak Akses & Peran Akun (RBAC)</span>
+          <span>2. Hak Akses (RBAC)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("ota-esp32")}
+          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+            activeSubTab === "ota-esp32"
+              ? "border-brand text-brand"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          <Rocket className="w-4 h-4" />
+          <span>3. Protokol Firmware OTA ESP32</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("ml-rf-ops")}
+          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+            activeSubTab === "ml-rf-ops"
+              ? "border-brand text-brand"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>4. Performa RF &amp; Agent AI Self-Learning</span>
         </button>
 
         <button
@@ -83,12 +188,21 @@ export function SuperAdminDocs() {
           }`}
         >
           <Code2 className="w-4 h-4" />
-          <span>3. Dokumentasi REST API & Playground IoT</span>
+          <span>5. REST API, Swagger &amp; AsyncAPI</span>
         </button>
       </div>
 
-      {activeSubTab === "api" ? (
-        <SuperAdminApiDocs />
+      {activeSubTab === "ota-esp32" ? (
+        <SuperAdminOtaProtocolPanel initialOverview={otaOverview} realtimeConfig={realtimeConfig} />
+      ) : activeSubTab === "ml-rf-ops" ? (
+        <SuperAdminMlOpsPanel initialOverview={mlOverview} devices={devices} />
+      ) : activeSubTab === "api" ? (
+        <SuperAdminApiDocs
+          devices={devices}
+          realtimeConfig={realtimeConfig}
+          activeTransport={activeTransport}
+          transportReason={transportReason}
+        />
       ) : activeSubTab === "peran-akun" ? (
         <div className="space-y-8 animate-fadeIn">
           {/* Header Subtab Peran Akun */}
@@ -101,9 +215,88 @@ export function SuperAdminDocs() {
               Sistem BanyuWening membagi hak akses ke dalam 4 peran akun hierarkis dengan prinsip{" "}
               <strong>Least Privilege</strong> (hanya memberikan wewenang sesuai kebutuhan tugas).
               Pemisahan peran ini mencegah salah kendali aktuator di lapangan, mengisolasi data analitis riset,
-              dan mengunci seluruh konfigurasi sensitif hanya untuk Super Administrator.
+              dan mengunci seluruh konfigurasi sensitif hanya untuk Super Administrator — disertai{" "}
+              <strong>kustomisasi hak akses granular per pengguna</strong> bila dibutuhkan pengecualian khusus.
             </p>
           </div>
+
+          {/* Panel Interaktif Kustomisasi Hak Akses Per Pengguna */}
+          {users.length > 0 && selectedUser && (
+            <div className="bg-surface border border-brand/30 rounded-[6px] p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
+                <div>
+                  <h3 className="text-[16px] font-semibold text-ink flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4 text-brand" />
+                    <span>Kustomisasi Hak Akses Per Pengguna (Granular Override)</span>
+                  </h3>
+                  <p className="text-[12px] text-muted mt-0.5">
+                    Pilih akun pengguna di bawah untuk menambah atau mencabut hak akses fitur secara spesifik tanpa mengubah role dasarnya.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={String(selectedUser.id)}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setSelectedUserId(nextId);
+                      const nextUser = users.find((u) => String(u.id) === nextId);
+                      if (nextUser) {
+                        setPermDraft({
+                          ...(DEFAULT_ROLE_PERMISSIONS[nextUser.role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+                          ...(nextUser.permissions || {}),
+                        });
+                      }
+                    }}
+                    className="h-9 px-3 bg-surface-2 border border-line rounded-[6px] text-[12px] font-medium text-ink focus:outline-hidden focus:border-brand cursor-pointer"
+                  >
+                    {users.map((u) => {
+                      const eff = {
+                        ...(DEFAULT_ROLE_PERMISSIONS[u.role] || DEFAULT_ROLE_PERMISSIONS.OPERATOR),
+                        ...(u.permissions || {}),
+                      };
+                      const overrides = countCustomOverrides(u.role, eff);
+                      return (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.name} ({u.role}) {overrides > 0 ? `• Kustom (${overrides})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {permToast && (
+                <div className="p-3 rounded-[6px] bg-aman/15 border border-aman text-ink text-[12px] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-aman shrink-0" />
+                  <span>{permToast}</span>
+                </div>
+              )}
+
+              <UserPermissionsEditor
+                targetRole={selectedUser.role}
+                targetEmail={selectedUser.email}
+                value={permDraft}
+                onChange={setPermDraft}
+                onReset={() => handleSaveUserPermissions(true)}
+              />
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-line">
+                <button
+                  type="button"
+                  disabled={savingPerms}
+                  onClick={() => handleSaveUserPermissions(false)}
+                  className="h-9 px-4 bg-brand text-brand-ink rounded-[6px] text-[12px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>
+                    {savingPerms
+                      ? "Menyimpan..."
+                      : `Simpan Hak Akses ${selectedUser.name}`}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Tabel Matriks Perbandingan Hak Akses */}
           <div className="bg-surface border border-line rounded-[6px] p-5 space-y-4">
@@ -768,23 +961,23 @@ export function SuperAdminDocs() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[13px]">
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">Cold-Start 4-Fase & DO Ground-Truth</div>
+            <div className="font-semibold text-ink mb-1">Random Forest REST API &amp; Trafik MLOps</div>
             <p className="text-[12px] text-muted">
-              Hari 0-30 memakai Edge Fuzzy deterministik + Relative Local Anomaly Detection sambil mengkalibrasi dataset Pilot dengan 2 DO Meter Portabel &amp; Test Kit Amonia/Nitrit.
+              Endpoint <code>/api/ml/predict</code>, <code>/api/ml/predict/batch</code>, <code>/api/ml/performance</code>, dan <code>/api/ml/status</code> menyediakan inferensi &amp; metrik latensi P95 secara terukur.
             </p>
           </div>
 
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">Sensor Health Watchdog</div>
+            <div className="font-semibold text-ink mb-1">AI Agent Self-Learning &amp; Safety Gate</div>
             <p className="text-[12px] text-muted">
-              Mendeteksi nilai flatline atau stuck-at-rail (misal lensa turbidity jenuh lumut minggu ke-4-12), menandai SATURATED/FAULT, mengisolasi parameter rusak, dan mengirim pengingat bilas WA.
+              Agen AI memantau data drift, menjalankan 3-fold TimeSeriesSplit, memvalidasi recall BAHAYA &amp; Macro-F1 SNI 8228.4:2015 sebelum promosi atomik atau 1-klik rollback.
             </p>
           </div>
 
           <div className="p-4 bg-surface-2 rounded border border-line">
-            <div className="font-semibold text-ink mb-1">HITL Engineer Gate (Zero Autonomous Push)</div>
+            <div className="font-semibold text-ink mb-1">Dual-OTA ESP32 &amp; Rollback 60 Detik</div>
             <p className="text-[12px] text-muted">
-              AI Supervisor hanya menghasilkan usulan JSON parameter yang wajib disetujui manual oleh Engineer, dikunci Hard Safety Bounds + Duty-Cycle Clamp, dan Dual-OTA rollback 60 detik.
+              Protokol <code>banyuwening.ota.v1</code> (WS + HTTP Fallback <code>/api/http/ota/*</code>) mengirim signed manifest HMAC-SHA256 dan mengaktifkan rollback otomatis bila health-check 60s gagal.
             </p>
           </div>
         </div>

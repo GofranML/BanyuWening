@@ -2,14 +2,18 @@
 Modul Inference Prediksi Kualitas Air BanyuWening
 Menerima payload JSON telemetri sensor dari Laravel (via CLI args atau stdin),
 memuat model Joblib Random Forest, dan mengembalikan output JSON terstruktur.
+Mendukung mode single reading maupun batch inference.
 """
 
 import sys
 import json
+import time
+import warnings
 from pathlib import Path
-import numpy as np
 import pandas as pd
 import joblib
+
+warnings.filterwarnings("ignore")
 
 # Pastikan path modul lokal terbaca
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -22,6 +26,34 @@ RISK_MAP = {
     1: "WASPADA",
     2: "BAHAYA",
 }
+
+
+def get_active_model_version(models_dir: Path) -> str:
+    card_path = models_dir / "model_card.json"
+    if card_path.exists():
+        try:
+            with open(card_path, "r", encoding="utf-8") as f:
+                card = json.load(f)
+            version = str(card.get("version") or "").strip()
+            if version:
+                return "1.0.0-rf" if version == "1.0.0" else version
+        except Exception:
+            pass
+    return "1.0.0-rf"
+
+
+def load_active_model(base_dir: Path):
+    models_dir = base_dir / "models"
+    model_path = models_dir / "random_forest_water_quality.joblib"
+
+    if not model_path.exists():
+        from train import train_and_save_model
+        train_and_save_model()
+
+    model = joblib.load(model_path)
+    version = get_active_model_version(models_dir)
+    return model, version
+
 
 def get_action_recommendation(risk: str, triggers: list, reading: dict) -> str:
     if risk == "BAHAYA":
@@ -40,16 +72,14 @@ def get_action_recommendation(risk: str, triggers: list, reading: dict) -> str:
         return "Model memproyeksikan potensi penurunan kualitas air 1–3 jam ke depan. Periksa aerasi dan filter."
     return "Suhu dan pH berada dalam rentang aman SNI 8228.4:2015 (25–30 °C, pH 6.5–8.5); TDS, turbidity, dan ketinggian air tetap dipantau terhadap baseline lokal."
 
-def predict_single(sensor_payload: dict) -> dict:
-    base_dir = Path(__file__).resolve().parent.parent
-    model_path = base_dir / "models" / "random_forest_water_quality.joblib"
 
-    if not model_path.exists():
-        # Fallback: jika model belum dilatih, jalankan modul train
-        from train import train_and_save_model
-        train_and_save_model()
-
-    model = joblib.load(model_path)
+def predict_single(sensor_payload: dict, model=None, model_version: str | None = None) -> dict:
+    started = time.perf_counter()
+    if model is None or model_version is None:
+        base_dir = Path(__file__).resolve().parent.parent
+        loaded_model, loaded_version = load_active_model(base_dir)
+        model = model or loaded_model
+        model_version = model_version or loaded_version
 
     # 1. Preprocessing & validasi fisik
     cleaned = clean_sensor_reading(sensor_payload)
@@ -62,10 +92,16 @@ def predict_single(sensor_payload: dict) -> dict:
     pred_class = int(model.predict(X)[0])
     probabilities = model.predict_proba(X)[0]
 
-    # Map probabilitas ke 3 kelas
-    p_aman = float(probabilities[0]) if len(probabilities) > 0 else 0.0
-    p_waspada = float(probabilities[1]) if len(probabilities) > 1 else 0.0
-    p_bahaya = float(probabilities[2]) if len(probabilities) > 2 else 0.0
+    # Map probabilitas ke 3 kelas (tangani jika model terlatih tidak memuat semua kelas)
+    prob_map = {0: 0.0, 1: 0.0, 2: 0.0}
+    classes = getattr(model, "classes_", [0, 1, 2])
+    for idx, cls in enumerate(classes):
+        if int(cls) in prob_map and idx < len(probabilities):
+            prob_map[int(cls)] = float(probabilities[idx])
+
+    p_aman = prob_map[0]
+    p_waspada = prob_map[1]
+    p_bahaya = prob_map[2]
 
     # 4. Deteksi pemicu anomali deterministik
     triggers = []
@@ -79,8 +115,6 @@ def predict_single(sensor_payload: dict) -> dict:
     elif cleaned["temperature_c"] > 30.0 or cleaned["temperature_c"] < 25.0:
         triggers.append(f"Suhu mendekati batas ({cleaned['temperature_c']:.1f} °C)")
 
-    # Catatan pemantauan: ambang TDS, turbidity, dan ketinggian air belum tervalidasi secara lokal;
-    # nilai di bawah hanya indikator pemantauan sementara sambil menunggu kalibrasi baseline kolam.
     if cleaned["tds_ppm"] > 800:
         triggers.append(f"TDS menyimpang ekstrem dari baseline sementara ({cleaned['tds_ppm']:.0f} ppm)")
     elif cleaned["tds_ppm"] > 600:
@@ -93,10 +127,17 @@ def predict_single(sensor_payload: dict) -> dict:
         triggers.append("Level air surut")
 
     # Failsafe priority: aturan deterministik keselamatan kolam
-    failsafe_active = (cleaned["ph"] < 6.0 or cleaned["ph"] > 8.8 or cleaned["temperature_c"] > 33.0 or cleaned["water_level"] < 0.5)
+    failsafe_active = (
+        cleaned["ph"] < 6.0
+        or cleaned["ph"] > 8.8
+        or cleaned["temperature_c"] > 33.0
+        or cleaned["temperature_c"] < 22.0
+        or cleaned["water_level"] < 0.5
+    )
     final_risk = "BAHAYA" if failsafe_active else RISK_MAP.get(pred_class, "AMAN")
 
     action = get_action_recommendation(final_risk, triggers, cleaned)
+    inference_ms = round((time.perf_counter() - started) * 1000.0, 3)
 
     return {
         "success": True,
@@ -108,8 +149,30 @@ def predict_single(sensor_payload: dict) -> dict:
         "triggers": triggers,
         "failsafe_active": failsafe_active,
         "recommended_action": action,
-        "model_version": "1.0.0-rf",
+        "model_version": model_version,
+        "inference_ms": inference_ms,
     }
+
+
+def predict_batch(items: list) -> dict:
+    started = time.perf_counter()
+    base_dir = Path(__file__).resolve().parent.parent
+    model, model_version = load_active_model(base_dir)
+
+    results = [
+        predict_single(item if isinstance(item, dict) else {}, model=model, model_version=model_version)
+        for item in items
+    ]
+    total_ms = round((time.perf_counter() - started) * 1000.0, 3)
+
+    return {
+        "success": True,
+        "model_version": model_version,
+        "count": len(results),
+        "total_inference_ms": total_ms,
+        "predictions": results,
+    }
+
 
 def main():
     try:
@@ -120,7 +183,6 @@ def main():
             input_text = sys.stdin.read().strip()
 
         if not input_text:
-            # Default payload testing
             payload = {
                 "ph": 7.15,
                 "temperature_c": 28.6,
@@ -131,7 +193,13 @@ def main():
         else:
             payload = json.loads(input_text)
 
-        result = predict_single(payload)
+        if isinstance(payload, list):
+            result = predict_batch(payload)
+        elif isinstance(payload, dict) and isinstance(payload.get("batch"), list):
+            result = predict_batch(payload["batch"])
+        else:
+            result = predict_single(payload)
+
         print(json.dumps(result))
     except Exception as e:
         error_output = {
@@ -147,6 +215,7 @@ def main():
         }
         print(json.dumps(error_output))
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

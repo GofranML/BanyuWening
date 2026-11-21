@@ -5,6 +5,8 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\MlApiController;
+use App\Http\Controllers\OtaController;
 use App\Http\Controllers\SwaggerController;
 
 /*
@@ -40,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
     // Super Admin Management Routes
     Route::post('/dashboard/users', [DashboardController::class, 'storeUser'])->name('dashboard.users.store');
     Route::match(['post', 'put'], '/dashboard/users/{id}/update', [DashboardController::class, 'updateUser'])->name('dashboard.users.update');
+    Route::match(['post', 'put'], '/dashboard/users/{id}/permissions', [DashboardController::class, 'updateUserPermissions'])->name('dashboard.users.permissions');
     Route::match(['post', 'put'], '/dashboard/users/{id}', [DashboardController::class, 'updateUser']);
     Route::delete('/dashboard/users/{id}', [DashboardController::class, 'destroyUser'])->name('dashboard.users.destroy');
     Route::post('/dashboard/notifications/config', [DashboardController::class, 'saveNotificationConfig'])->name('dashboard.notifications.config');
@@ -56,6 +59,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/devices/{device}/rotate-token', [DashboardController::class, 'rotateDeviceToken'])->name('dashboard.devices.rotate-token');
     Route::post('/dashboard/devices/{device}/toggle-token', [DashboardController::class, 'toggleDeviceToken'])->name('dashboard.devices.toggle-token');
     Route::delete('/dashboard/devices/{device}', [DashboardController::class, 'destroyDevice'])->name('dashboard.devices.destroy');
+
+    // Super Admin: Manajemen Protokol Firmware Dual-OTA ESP32
+    Route::get('/dashboard/ota/overview', [OtaController::class, 'overview'])->name('dashboard.ota.overview');
+    Route::post('/dashboard/ota/releases', [OtaController::class, 'storeRelease'])->name('dashboard.ota.releases.store');
+    Route::post('/dashboard/ota/rollout', [OtaController::class, 'initiateRollout'])->name('dashboard.ota.rollout');
+    Route::post('/dashboard/ota/releases/{release}/toggle', [OtaController::class, 'toggleRelease'])->name('dashboard.ota.releases.toggle');
+    Route::delete('/dashboard/ota/releases/{release}', [OtaController::class, 'destroyRelease'])->name('dashboard.ota.releases.destroy');
+
+    // Super Admin: Dashboard Performance Random Forest & AI Agent Self-Learning
+    Route::get('/dashboard/ml/overview', [MlApiController::class, 'adminOverview'])->name('dashboard.ml.overview');
+    Route::post('/dashboard/ml/evaluate', [MlApiController::class, 'triggerEvaluate'])->name('dashboard.ml.evaluate');
+    Route::post('/dashboard/ml/agent/run', [MlApiController::class, 'triggerSelfLearn'])->name('dashboard.ml.agent.run');
+    Route::post('/dashboard/ml/agent/config', [MlApiController::class, 'updateAgentConfig'])->name('dashboard.ml.agent.config');
+    Route::post('/dashboard/ml/models/{mlModelVersion}/promote', [MlApiController::class, 'promoteModel'])->name('dashboard.ml.models.promote');
 });
 
 // Standar Dokumentasi API (Swagger UI + AsyncAPI Studio) & Penemuan Protokol Realtime (Session-Aware)

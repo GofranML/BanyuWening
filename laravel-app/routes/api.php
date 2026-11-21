@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\MlApiController;
+use App\Http\Controllers\OtaController;
 use App\Http\Controllers\SwaggerController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,10 +27,22 @@ Route::get('/latest', [ApiController::class, 'getLatest'])->name('api.latest');
 Route::get('/history', [ApiController::class, 'getHistory'])->name('api.history');
 Route::get('/alerts/recent', [ApiController::class, 'getRecentAlerts'])->name('api.alerts.recent');
 
+// Random Forest ML Public Status, History & Performance Endpoints
+Route::prefix('ml')->group(function () {
+    Route::get('/status', [MlApiController::class, 'status'])->name('api.ml.status');
+    Route::get('/predictions', [MlApiController::class, 'predictions'])->name('api.ml.predictions');
+    Route::get('/predictions/latest', [MlApiController::class, 'latestPrediction'])->name('api.ml.predictions.latest');
+    Route::get('/performance', [MlApiController::class, 'performance'])->name('api.ml.performance');
+});
+
 // Endpoint Perangkat IoT — Wajib Token Unik Per Alat (Bearer / X-Device-Token)
 Route::middleware(['device.token'])->group(function () {
     // Ingesti telemetri HTTP standar
     Route::post('/telemetry', [ApiController::class, 'ingestTelemetry'])->name('api.telemetry');
+
+    // Inferensi On-Demand & Batch Random Forest
+    Route::post('/ml/predict', [MlApiController::class, 'predict'])->name('api.ml.predict');
+    Route::post('/ml/predict/batch', [MlApiController::class, 'predictBatch'])->name('api.ml.predict.batch');
 
     // Jalur eksplisit HTTP Fallback ketika WebSocket gagal connect
     Route::prefix('http')->group(function () {
@@ -37,5 +51,12 @@ Route::middleware(['device.token'])->group(function () {
         Route::post('/heartbeat', [ApiController::class, 'httpHeartbeat'])->name('api.http.heartbeat');
         Route::get('/commands', [ApiController::class, 'getHttpCommands'])->name('api.http.commands');
         Route::post('/commands/ack', [ApiController::class, 'ackHttpCommand'])->name('api.http.commands.ack');
+
+        // Jalur HTTP Fallback Protokol Dual-OTA Firmware ESP32 (banyuwening.ota.v1)
+        Route::prefix('ota')->group(function () {
+            Route::get('/check', [OtaController::class, 'check'])->name('api.http.ota.check');
+            Route::get('/download/{version}', [OtaController::class, 'download'])->name('api.http.ota.download');
+            Route::post('/status', [OtaController::class, 'reportStatus'])->name('api.http.ota.status');
+        });
     });
 });
