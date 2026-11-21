@@ -130,64 +130,64 @@ export function SuperAdminDocs({
       </div>
 
       {/* Sub-tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-line pb-1 text-[13px] flex-wrap">
+      <div className="flex items-center gap-2 border-b border-line pb-2 text-[12.5px] sm:text-[13px] overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveSubTab("arsitektur")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "arsitektur"
               ? "border-brand text-brand"
               : "border-transparent text-muted hover:text-ink"
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 shrink-0" />
           <span>1. Arsitektur &amp; Sistem</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("peran-akun")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "peran-akun"
               ? "border-brand text-brand"
               : "border-transparent text-muted hover:text-ink"
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-4 h-4 shrink-0" />
           <span>2. Hak Akses (RBAC)</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("ota-esp32")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "ota-esp32"
               ? "border-brand text-brand"
               : "border-transparent text-muted hover:text-ink"
           }`}
         >
-          <Rocket className="w-4 h-4" />
+          <Rocket className="w-4 h-4 shrink-0" />
           <span>3. Protokol Firmware OTA ESP32</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("ml-rf-ops")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "ml-rf-ops"
               ? "border-brand text-brand"
               : "border-transparent text-muted hover:text-ink"
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-4 h-4 shrink-0" />
           <span>4. Performa RF &amp; Agent AI Self-Learning</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("api")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`min-h-[42px] px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeSubTab === "api"
               ? "border-brand text-brand"
               : "border-transparent text-muted hover:text-ink"
           }`}
         >
-          <Code2 className="w-4 h-4" />
+          <Code2 className="w-4 h-4 shrink-0" />
           <span>5. REST API, Swagger &amp; AsyncAPI</span>
         </button>
       </div>
@@ -233,7 +233,7 @@ export function SuperAdminDocs({
                     Pilih akun pengguna di bawah untuk menambah atau mencabut hak akses fitur secara spesifik tanpa mengubah role dasarnya.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="w-full sm:w-auto shrink-0">
                   <select
                     value={String(selectedUser.id)}
                     onChange={(e) => {
@@ -247,7 +247,7 @@ export function SuperAdminDocs({
                         });
                       }
                     }}
-                    className="h-9 px-3 bg-surface-2 border border-line rounded-[6px] text-[12px] font-medium text-ink focus:outline-hidden focus:border-brand cursor-pointer"
+                    className="w-full sm:w-auto min-h-[42px] px-3 bg-surface-2 border border-line rounded-[6px] text-[12px] font-medium text-ink focus:outline-hidden focus:border-brand cursor-pointer"
                   >
                     {users.map((u) => {
                       const eff = {

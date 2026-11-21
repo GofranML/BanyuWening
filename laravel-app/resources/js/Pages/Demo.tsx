@@ -560,23 +560,41 @@ export default function Demo({
             </Link>
           </div>
 
-          {/* Mobile Pond Selector */}
-          <div className="md:hidden mb-4">
-            <label htmlFor="mobile-pond-select" className="text-[12px] font-semibold text-muted block mb-1">
-              Pilih Kolam (1 Core Hub : 4 Kolam)
-            </label>
-            <select
-              id="mobile-pond-select"
-              value={selectedPond}
-              onChange={(e) => setSelectedPond(e.target.value as PondSlot)}
-              className="w-full min-h-[44px] bg-surface border border-line rounded-[6px] px-3 py-2 text-[13px] font-semibold text-ink"
-            >
-              {POND_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          {/* Mobile Pond & Role Selector */}
+          <div className="md:hidden mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label htmlFor="mobile-pond-select" className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
+                Pilih Kolam (1 Hub : 4 Kolam)
+              </label>
+              <select
+                id="mobile-pond-select"
+                value={selectedPond}
+                onChange={(e) => setSelectedPond(e.target.value as PondSlot)}
+                className="w-full min-h-[44px] bg-surface border border-line rounded-[6px] px-3 py-2 text-[13px] font-semibold text-ink"
+              >
+                {POND_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="mobile-role-select" className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
+                Uji Tampilan Peran Akun
+              </label>
+              <select
+                id="mobile-role-select"
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                className="w-full min-h-[44px] bg-surface border border-line rounded-[6px] px-3 py-2 text-[13px] font-semibold text-ink"
+              >
+                <option value="PEMILIK">Pemilik (Petambak)</option>
+                <option value="OPERATOR">Operator Kolam</option>
+                <option value="ANALIS">Analis Akuakultur</option>
+                <option value="ADMIN">Super Administrator</option>
+              </select>
+            </div>
           </div>
 
           {/* Scenario Alert Banners */}
@@ -683,7 +701,7 @@ export default function Demo({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <ParameterCard
                     label="pH (Consumable 4-6 Bln)"
                     value={currentReading.ph}
@@ -1052,13 +1070,13 @@ export default function Demo({
       {/* Mobile Bottom Tab Bar */}
       <nav
         aria-label="Navigasi Mobile Demo"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-line px-2 py-1.5 grid grid-cols-4 gap-1"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line px-1.5 pt-1.5 safe-bottom grid grid-cols-5 gap-1"
       >
         <button
           type="button"
           onClick={() => setActiveTab("ringkasan")}
           aria-current={activeTab === "ringkasan" ? "page" : undefined}
-          className={`min-h-[44px] rounded-[6px] flex flex-col items-center justify-center text-[11px] font-medium cursor-pointer ${
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
             activeTab === "ringkasan" ? "bg-brand text-brand-ink font-semibold" : "text-muted hover:text-ink"
           }`}
         >
@@ -1069,7 +1087,7 @@ export default function Demo({
           type="button"
           onClick={() => setActiveTab("grafik")}
           aria-current={activeTab === "grafik" ? "page" : undefined}
-          className={`min-h-[44px] rounded-[6px] flex flex-col items-center justify-center text-[11px] font-medium cursor-pointer ${
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
             activeTab === "grafik" ? "bg-brand text-brand-ink font-semibold" : "text-muted hover:text-ink"
           }`}
         >
@@ -1080,25 +1098,38 @@ export default function Demo({
           type="button"
           onClick={() => setActiveTab("peringatan")}
           aria-current={activeTab === "peringatan" ? "page" : undefined}
-          className={`min-h-[44px] rounded-[6px] flex flex-col items-center justify-center text-[11px] font-medium cursor-pointer ${
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
             activeTab === "peringatan" ? "bg-brand text-brand-ink font-semibold" : "text-muted hover:text-ink"
           }`}
         >
           <Bell className="w-4 h-4 mb-0.5" aria-hidden="true" />
-          <span>Peringatan</span>
+          <span>Alert</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("aerator")}
-          aria-current={activeTab === "aerator" || activeTab === "prediksi" ? "page" : undefined}
-          className={`min-h-[44px] rounded-[6px] flex flex-col items-center justify-center text-[11px] font-medium cursor-pointer ${
-            activeTab === "aerator" || activeTab === "prediksi"
+          aria-current={activeTab === "aerator" ? "page" : undefined}
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "aerator"
               ? "bg-brand text-brand-ink font-semibold"
               : "text-muted hover:text-ink"
           }`}
         >
           <Power className="w-4 h-4 mb-0.5" aria-hidden="true" />
           <span>Aerator</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("prediksi")}
+          aria-current={activeTab === "prediksi" ? "page" : undefined}
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "prediksi"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          <Cpu className="w-4 h-4 mb-0.5" aria-hidden="true" />
+          <span>Prediksi</span>
         </button>
       </nav>
 

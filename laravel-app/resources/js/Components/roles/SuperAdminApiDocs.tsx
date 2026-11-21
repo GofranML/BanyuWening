@@ -563,7 +563,7 @@ curl -X GET ${origin}/api/http/commands \\
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-line pb-3">
+      <div className="flex items-center gap-1.5 border-b border-line pb-3 overflow-x-auto no-scrollbar">
         {[
           { id: "swagger" as SubTab, label: "Swagger UI (HTTP)", icon: FileJson },
           { id: "asyncapi" as SubTab, label: "AsyncAPI Studio (WebSocket)", icon: Wifi },
@@ -577,13 +577,13 @@ curl -X GET ${origin}/api/http/commands \\
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id)}
-              className={`px-3.5 py-2 rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`min-h-[40px] px-3.5 py-2 rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                 active
                   ? "bg-brand text-brand-ink"
                   : "bg-surface border border-line text-ink hover:bg-surface-2"
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               <span>{tab.label}</span>
             </button>
           );
@@ -629,7 +629,7 @@ curl -X GET ${origin}/api/http/commands \\
               key={swaggerRefreshKey}
               src={`/api/docs?v=${swaggerRefreshKey}`}
               title="Swagger UI: BanyuWening OpenAPI 3.0.3"
-              className="w-full h-[780px] border-0"
+              className="w-full h-[65dvh] md:h-[780px] border-0"
             />
           </div>
         </div>
@@ -674,7 +674,7 @@ curl -X GET ${origin}/api/http/commands \\
               key={`asyncapi-${swaggerRefreshKey}`}
               src={`/api/docs/asyncapi?v=${swaggerRefreshKey}`}
               title="AsyncAPI Studio 3.0 & WebSocket Simulator: BanyuWening"
-              className="w-full h-[800px] border-0"
+              className="w-full h-[65dvh] md:h-[800px] border-0"
             />
           </div>
         </div>
@@ -834,7 +834,71 @@ curl -X GET ${origin}/api/http/commands \\
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Card View (< md) */}
+            <div className="md:hidden divide-y divide-line">
+              {devices.map((d) => (
+                <div key={`m-dev-${d.id}`} className="p-4 space-y-2.5 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-mono font-bold text-ink text-[13px] truncate">{d.device_code}</div>
+                      <div className="text-[11px] text-muted truncate">
+                        {d.name} · {d.pond_name}
+                      </div>
+                    </div>
+                    {d.token_active ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-emerald-500/10 text-emerald-700 font-semibold text-[11px] shrink-0">
+                        <ShieldCheck className="w-3 h-3" />
+                        Aktif
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-red-500/10 text-red-700 font-semibold text-[11px] shrink-0">
+                        <ShieldOff className="w-3 h-3" />
+                        Dicabut
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <span className="font-mono text-brand">{d.api_token_prefix || "(belum diterbitkan)"}</span>
+                    <span className="font-mono px-2 py-0.5 rounded bg-surface-2 text-muted">
+                      {d.transport_protocol || "STANDBY"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => handleRotateToken(d)}
+                      disabled={deviceBusyId === d.id}
+                      className="flex-1 min-h-[40px] px-3 bg-brand/10 hover:bg-brand/20 text-brand rounded-[6px] text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Rotasi Token</span>
+                    </button>
+                    <button
+                      onClick={() => handleToggleToken(d)}
+                      disabled={deviceBusyId === d.id}
+                      className="min-h-[40px] px-3 bg-surface-2 text-ink rounded-[6px] border border-line text-[12px] font-semibold cursor-pointer"
+                    >
+                      {d.token_active ? "Cabut" : "Aktifkan"}
+                    </button>
+                    {devices.length > 1 && (
+                      <button
+                        onClick={() => handleDeleteDevice(d)}
+                        disabled={deviceBusyId === d.id}
+                        className="min-h-[40px] min-w-[40px] px-2.5 text-bahaya bg-bahaya/10 rounded-[6px] inline-flex items-center justify-center cursor-pointer"
+                        aria-label={`Hapus ${d.device_code}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {devices.length === 0 && (
+                <div className="p-6 text-center text-muted text-xs">Belum ada perangkat terdaftar.</div>
+              )}
+            </div>
+
+            {/* Desktop Table View (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-2 border-b border-line text-muted uppercase text-[10px] font-semibold">
                   <tr>

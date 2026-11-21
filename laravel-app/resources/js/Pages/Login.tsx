@@ -128,20 +128,20 @@ export default function Login({
   return (
     <div className="min-h-[100svh] bg-bg text-ink flex flex-col justify-between font-sans selection:bg-brand selection:text-brand-ink">
       {/* Top Bar Header */}
-      <header className="min-h-[64px] border-b border-line bg-surface px-4 md:px-8 flex items-center justify-between gap-4">
-        <Link href="/" className="min-h-[44px] flex items-center gap-3">
+      <header className="min-h-[60px] border-b border-line bg-surface px-4 md:px-8 flex items-center justify-between gap-3">
+        <Link href="/" className="min-h-[44px] flex items-center gap-2.5 min-w-0">
           <img
             src="/brand/logogram.svg"
             alt="BanyuWening Logo"
             width={28}
             height={34}
-            className="w-auto h-7"
+            className="w-auto h-7 shrink-0"
           />
-          <div className="flex flex-col">
-            <span className="font-display font-semibold text-[17px] tracking-tight text-ink leading-tight">
+          <div className="flex flex-col min-w-0">
+            <span className="font-display font-semibold text-[16px] sm:text-[17px] tracking-tight text-ink leading-tight truncate">
               BanyuWening
             </span>
-            <span className="text-[11px] text-muted tracking-wide uppercase font-medium">
+            <span className="text-[10px] sm:text-[11px] text-muted tracking-wide uppercase font-medium truncate">
               Sistem Otomasi Kolam
             </span>
           </div>
@@ -149,9 +149,10 @@ export default function Login({
 
         <Link
           href="/demo"
-          className="min-h-[44px] text-[13px] text-brand hover:underline font-medium inline-flex items-center gap-1"
+          className="min-h-[44px] px-3 sm:px-0 text-[12px] sm:text-[13px] text-brand hover:underline font-semibold inline-flex items-center gap-1 shrink-0 rounded-[6px] bg-brand/10 sm:bg-transparent"
         >
-          <span>Buka Dashboard Demo (Tanpa Login)</span>
+          <span className="sm:hidden">Mode Demo</span>
+          <span className="hidden sm:inline">Buka Dashboard Demo (Tanpa Login)</span>
           <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
         </Link>
       </header>
@@ -437,7 +438,7 @@ export default function Login({
       </main>
 
       {/* Footer */}
-      <footer className="min-h-[56px] border-t border-line bg-surface px-4 md:px-8 flex items-center justify-between text-[12px] text-muted">
+      <footer className="min-h-[56px] border-t border-line bg-surface px-4 md:px-8 py-2.5 sm:py-0 flex flex-col sm:flex-row items-center justify-between gap-1 text-[12px] text-muted text-center sm:text-left">
         <div>Institut Teknologi dan Bisnis PalComTech</div>
         <div>
           <Link href="/" className="min-h-[44px] inline-flex items-center hover:text-brand transition-colors">

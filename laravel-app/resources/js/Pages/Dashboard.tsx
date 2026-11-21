@@ -21,6 +21,8 @@ import {
   Globe,
   UserCog,
   ShieldCheck,
+  Menu,
+  X,
 } from "lucide-react";
 
 import { StatusCard } from "@/Components/StatusCard";
@@ -179,6 +181,12 @@ export default function Dashboard({
   );
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isControlModalOpen, setIsControlModalOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
+  const selectMobileTab = (tab: TabId) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
 
   // Aerator runtime state
   const [aeratorState, setAeratorState] = useState<AeratorState>(
@@ -682,11 +690,11 @@ export default function Dashboard({
       {/* ======================================================== */}
       {/* 2. MAIN CONTENT AREA                                     */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-8">
+      <div className="flex-1 flex flex-col min-w-0 pb-24 md:pb-8">
         {/* Mobile Header (56px) */}
-        <header className="md:hidden h-14 border-b border-line bg-surface px-4 flex items-center justify-between sticky top-0 z-40">
-          <div className="flex items-center gap-2.5">
-            <Link href="/" aria-label="BanyuWening">
+        <header className="md:hidden h-14 border-b border-line bg-surface px-3 sm:px-4 flex items-center justify-between gap-2 sticky top-0 z-40">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link href="/" aria-label="BanyuWening" className="shrink-0">
               <img
                 src={isDarkMode ? "/brand/logogram-gelap.svg" : "/brand/logogram.svg"}
                 alt=""
@@ -694,40 +702,287 @@ export default function Dashboard({
                 height={32}
               />
             </Link>
-            <div>
-              <div className="text-[13px] font-semibold text-ink leading-tight truncate max-w-[130px]">
+            <button
+              type="button"
+              onClick={() => selectMobileTab("profil")}
+              className="text-left min-w-0 cursor-pointer"
+              title="Buka Pengaturan Profil & 2FA"
+            >
+              <div className="text-[13px] font-semibold text-ink leading-tight truncate max-w-[140px]">
                 {user.name}
               </div>
-              <div className="text-[10px] text-brand font-medium">
+              <div className="text-[10px] text-brand font-medium truncate">
                 {getRoleBadgeLabel(user.role)}
               </div>
-            </div>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {hasPerm("control_aerator") && (
+              <button
+                type="button"
+                onClick={() => setIsControlModalOpen(true)}
+                className="min-h-[40px] px-2.5 rounded-[6px] border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                title="Kendali Cepat Aerator"
+              >
+                <Power className="w-3.5 h-3.5" />
+                <span>Aerator</span>
+              </button>
+            )}
+
             <button
+              type="button"
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-1.5 rounded border border-line text-muted hover:text-ink cursor-pointer"
+              className="min-h-[40px] min-w-[40px] rounded-[6px] border border-line text-muted hover:text-ink inline-flex items-center justify-center cursor-pointer"
               aria-label="Toggle tema gelap/terang"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-[#F2C46B]" /> : <Moon className="w-4 h-4" />}
             </button>
 
             <button
-              onClick={handleLogout}
-              className="p-1.5 rounded border border-line text-muted hover:text-bahaya cursor-pointer"
-              title="Keluar"
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="dashboard-mobile-drawer"
+              className={`min-h-[40px] px-2.5 rounded-[6px] border text-[12px] font-semibold inline-flex items-center gap-1 cursor-pointer ${
+                isMobileMenuOpen
+                  ? "bg-brand text-brand-ink border-brand"
+                  : "bg-surface-2 text-ink border-line"
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              <span>{isMobileMenuOpen ? "Tutup" : "Menu"}</span>
             </button>
           </div>
         </header>
 
+        {/* Mobile Categorized Navigation Drawer */}
+        {isMobileMenuOpen && (
+          <>
+            <div
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden fixed inset-0 top-14 z-30 bg-black/55 backdrop-blur-xs"
+              aria-hidden="true"
+            />
+            <div
+              id="dashboard-mobile-drawer"
+              className="md:hidden fixed top-14 left-0 right-0 z-40 max-h-[calc(100dvh-7.5rem)] overflow-y-auto bg-surface border-b border-line p-4 space-y-4 shadow-2xl"
+            >
+              {/* Monitoring & Operasional */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted px-1">
+                  Monitoring &amp; Lapangan
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {hasPerm("view_summary") && (
+                    <button
+                      onClick={() => selectMobileTab("ringkasan")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "ringkasan" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <LayoutDashboard className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Ringkasan</span>
+                    </button>
+                  )}
+                  {hasPerm("view_charts") && (
+                    <button
+                      onClick={() => selectMobileTab("grafik")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "grafik" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <LineChart className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Grafik Riwayat</span>
+                    </button>
+                  )}
+                  {hasPerm("view_alerts") && (
+                    <button
+                      onClick={() => selectMobileTab("peringatan")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center justify-between gap-1 border text-left ${
+                        activeTab === "peringatan" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <Bell className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Peringatan</span>
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-ink/20 font-bold shrink-0">
+                        {alerts.length}
+                      </span>
+                    </button>
+                  )}
+                  {hasPerm("control_aerator") && (
+                    <button
+                      onClick={() => selectMobileTab("aerator")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "aerator" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Power className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Aerator</span>
+                    </button>
+                  )}
+                  {hasPerm("view_predictions") && (
+                    <button
+                      onClick={() => selectMobileTab("prediksi")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "prediksi" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Cpu className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Prediksi ML</span>
+                    </button>
+                  )}
+                  {hasPerm("export_csv") && (
+                    <button
+                      onClick={() => selectMobileTab("ekspor")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "ekspor" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Ekspor CSV</span>
+                    </button>
+                  )}
+                  {hasPerm("view_tutorial") && (
+                    <button
+                      onClick={() => selectMobileTab("tutorial")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "tutorial" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Wrench className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Tutorial SOP</span>
+                    </button>
+                  )}
+                  {hasPerm("view_analis_data") && (
+                    <button
+                      onClick={() => selectMobileTab("analisis-lengkap")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "analisis-lengkap" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Data Analis</span>
+                    </button>
+                  )}
+                  {hasPerm("view_owner_report") && (
+                    <button
+                      onClick={() => selectMobileTab("laporan-pemilik")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "laporan-pemilik" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Fish className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Laporan Kolam</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Super Admin Menu */}
+              {hasAnyAdminMenu && (
+                <div className="space-y-1.5 pt-1 border-t border-line">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted px-1 pt-1">
+                    Menu Super Admin
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {hasPerm("view_docs_api") && (
+                      <button
+                        onClick={() => selectMobileTab("dokumentasi")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "dokumentasi" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <BookOpen className="w-4 h-4 shrink-0" />
+                        <span>Dokumentasi Lengkap (OTA, RF &amp; API)</span>
+                      </button>
+                    )}
+                    {hasPerm("manage_users") && (
+                      <button
+                        onClick={() => selectMobileTab("manajemen-akun")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "manajemen-akun" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span>Buat &amp; Kelola Akun + Hak Akses</span>
+                      </button>
+                    )}
+                    {hasPerm("manage_landing") && (
+                      <button
+                        onClick={() => selectMobileTab("manajemen-konten")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "manajemen-konten" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <Globe className="w-4 h-4 shrink-0" />
+                        <span>Manajemen Konten Landing</span>
+                      </button>
+                    )}
+                    {hasPerm("manage_notifications") && (
+                      <button
+                        onClick={() => selectMobileTab("konfigurasi-bot")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "konfigurasi-bot" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <Bot className="w-4 h-4 shrink-0" />
+                        <span>Konfigurasi Bot &amp; Notifikasi</span>
+                      </button>
+                    )}
+                    {hasPerm("manage_backups") && (
+                      <button
+                        onClick={() => selectMobileTab("keamanan-backup")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "keamanan-backup" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <ShieldCheck className="w-4 h-4 shrink-0" />
+                        <span>Keamanan &amp; Backup</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Akun & Keluar */}
+              <div className="pt-2 border-t border-line grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => selectMobileTab("profil")}
+                  className={`min-h-[44px] px-2.5 rounded-[6px] text-[12px] font-semibold flex items-center justify-center gap-1.5 border ${
+                    activeTab === "profil" ? "bg-brand text-brand-ink border-brand" : "bg-surface-2 text-ink border-line"
+                  }`}
+                >
+                  <UserCog className="w-3.5 h-3.5 shrink-0" />
+                  <span>Profil &amp; 2FA</span>
+                </button>
+                <Link
+                  href="/demo"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="min-h-[44px] px-2.5 rounded-[6px] text-[12px] font-semibold flex items-center justify-center gap-1.5 border border-line bg-surface-2 text-ink"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-brand shrink-0" />
+                  <span>Demo</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="min-h-[44px] px-2.5 rounded-[6px] text-[12px] font-semibold flex items-center justify-center gap-1.5 border border-bahaya/30 bg-bahaya/10 text-bahaya"
+                >
+                  <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  <span>Keluar</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Mobile Navigation Sub-Bar (Horizontal Scrollable) */}
-        <div className="md:hidden flex overflow-x-auto border-b border-line bg-surface px-3 py-2 gap-1.5 sticky top-14 z-30 text-[12px] font-medium">
+        <div className="md:hidden flex overflow-x-auto no-scrollbar border-b border-line bg-surface px-3 py-2 gap-1.5 sticky top-14 z-20 text-[12px] font-medium">
           <button
             onClick={() => setActiveTab("profil")}
-            className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
+            className={`min-h-[38px] px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
               activeTab === "profil"
                 ? "bg-brand text-brand-ink font-semibold"
                 : "bg-surface-2 text-ink"
@@ -922,16 +1177,16 @@ export default function Dashboard({
         {/* Content Body */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1280px] w-full mx-auto">
           {/* Status Bar Operasional Kolam */}
-          <div className="mb-6 p-3 bg-surface border border-line rounded-[6px] flex flex-wrap items-center justify-between gap-3 text-[12px]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${device.status === "ONLINE" ? "bg-aman animate-pulse" : "bg-muted"}`} />
+          <div className="mb-5 sm:mb-6 p-3 sm:p-3.5 bg-surface border border-line rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11.5px] sm:text-[12px]">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${device.status === "ONLINE" ? "bg-aman animate-pulse" : "bg-muted"}`} />
               <span className="font-semibold text-ink">
-                {device.status === "ONLINE" ? "Node Sensor ESP32 Terhubung:" : "Status Node Sensor ESP32:"}
+                {device.status === "ONLINE" ? "ESP32 Terhubung:" : "Status ESP32:"}
               </span>
               <span className="text-muted">
                 {device.status === "ONLINE"
-                  ? `Transport Alat: ${device.transport_protocol || "HTTP"} · Update Realtime`
-                  : "Standby (Menunggu Pengiriman Data Telemetri Pertama dari Node ESP32)"}
+                  ? `${device.transport_protocol || "HTTP"} · Realtime`
+                  : "Standby (Menunggu Telemetri)"}
               </span>
               <span
                 className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold ${
@@ -944,13 +1199,13 @@ export default function Dashboard({
                 title={transportReason || "Status kanal realtime dashboard"}
               >
                 {realtimeMode === "WEBSOCKET"
-                  ? "WS Multi-Protokol Aktif"
+                  ? "WS Aktif"
                   : realtimeMode === "HTTP_FALLBACK"
-                  ? "HTTP Fallback Aktif"
+                  ? "HTTP Fallback"
                   : "Menghubungkan WS..."}
               </span>
             </div>
-            <div className="text-muted">
+            <div className="text-muted truncate">
               Unit: <strong className="text-ink">{user.pond_name || device.pond_name}</strong>
             </div>
           </div>
@@ -1081,7 +1336,7 @@ export default function Dashboard({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <ParameterCard
                     label="pH"
                     value={currentReading ? currentReading.ph : "-"}
@@ -1429,6 +1684,126 @@ export default function Dashboard({
           )}
         </main>
       </div>
+
+      {/* Mobile Fixed Bottom Thumb-Zone Navigation Bar */}
+      <nav
+        aria-label="Navigasi Cepat Mobile"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-line px-1.5 pt-1.5 safe-bottom grid grid-cols-5 gap-1"
+      >
+        <button
+          type="button"
+          onClick={() =>
+            selectMobileTab(
+              hasPerm("view_summary")
+                ? "ringkasan"
+                : hasPerm("view_owner_report")
+                ? "laporan-pemilik"
+                : "profil"
+            )
+          }
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "ringkasan" || activeTab === "laporan-pemilik"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4 mb-0.5" />
+          <span className="truncate max-w-full px-0.5">
+            {hasPerm("view_summary") ? "Ringkasan" : "Laporan"}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            selectMobileTab(
+              hasPerm("view_charts")
+                ? "grafik"
+                : hasPerm("view_docs_api")
+                ? "dokumentasi"
+                : "profil"
+            )
+          }
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "grafik" || activeTab === "dokumentasi"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          {hasPerm("view_charts") ? (
+            <LineChart className="w-4 h-4 mb-0.5" />
+          ) : (
+            <BookOpen className="w-4 h-4 mb-0.5" />
+          )}
+          <span>{hasPerm("view_charts") ? "Grafik" : "Docs"}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => selectMobileTab(hasPerm("view_alerts") ? "peringatan" : "profil")}
+          className={`relative min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "peringatan"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          <Bell className="w-4 h-4 mb-0.5" />
+          <span>Alert</span>
+          {alerts.length > 0 && (
+            <span className="absolute top-1 right-2 px-1 rounded-full bg-bahaya text-white text-[9px] font-bold leading-tight">
+              {alerts.length > 99 ? "99+" : alerts.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            selectMobileTab(
+              hasPerm("control_aerator")
+                ? "aerator"
+                : hasPerm("view_predictions")
+                ? "prediksi"
+                : "profil"
+            )
+          }
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            activeTab === "aerator" || activeTab === "prediksi"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          {hasPerm("control_aerator") ? (
+            <Power className="w-4 h-4 mb-0.5" />
+          ) : (
+            <Cpu className="w-4 h-4 mb-0.5" />
+          )}
+          <span>
+            {hasPerm("control_aerator")
+              ? "Aerator"
+              : hasPerm("view_predictions")
+              ? "Prediksi"
+              : "Profil"}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
+            isMobileMenuOpen
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          {isMobileMenuOpen ? (
+            <X className="w-4 h-4 mb-0.5" />
+          ) : (
+            <Menu className="w-4 h-4 mb-0.5" />
+          )}
+          <span>Menu</span>
+        </button>
+      </nav>
 
       {/* Aerator Control Modal Dialog */}
       <AeratorControlDialog

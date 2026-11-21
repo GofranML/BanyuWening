@@ -622,7 +622,70 @@ curl -X POST ${origin}/api/http/ota/status \\
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View (< md) */}
+        <div className="md:hidden divide-y divide-line">
+          {releases.map((r) => (
+            <div key={`m-rel-${r.id}`} className="p-4 space-y-2.5 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-mono font-bold text-ink text-[13px] flex items-center gap-1.5 flex-wrap">
+                    <span>{r.version}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] uppercase">
+                      {r.channel}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted mt-0.5">{r.changelog || r.target_hardware}</div>
+                </div>
+                <span
+                  className={`inline-flex px-2 py-0.5 rounded-[4px] text-[10px] font-semibold shrink-0 ${
+                    r.is_active ? "bg-aman-bg text-aman-text" : "bg-surface-2 text-muted"
+                  }`}
+                >
+                  {r.is_active ? "Aktif" : "Nonaktif"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-muted">
+                <span>{(r.file_size_bytes / 1024).toFixed(1)} KB · Timeout {r.rollback_timeout_s}s</span>
+                <span>SHA: {r.sha256_checksum.slice(0, 12)}...</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={!r.is_active || busyKey === `rollout-${r.id}`}
+                  onClick={() => handleTriggerRollout(r)}
+                  className="flex-1 min-h-[40px] px-3 bg-brand text-brand-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                >
+                  <Rocket className="w-3.5 h-3.5" />
+                  <span>Rollout ke Node</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={busyKey === `toggle-${r.id}`}
+                  onClick={() => handleToggleRelease(r)}
+                  className="min-h-[40px] px-3 bg-surface-2 border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Power className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busyKey === `del-${r.id}`}
+                  onClick={() => handleDeleteRelease(r)}
+                  className="min-h-[40px] min-w-[40px] px-2.5 text-bahaya bg-bahaya/10 rounded-[6px] inline-flex items-center justify-center cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {releases.length === 0 && (
+            <div className="p-6 text-center text-muted text-xs">
+              Belum ada rilis binary firmware `.bin` diunggah.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface-2 border-b border-line text-muted uppercase text-[10px] font-semibold">
               <tr>

@@ -56,27 +56,27 @@ export function StatusCard({
     <div
       role="status"
       aria-live={level === "BAHAYA" ? "assertive" : "polite"}
-      className={`rounded-[6px] border border-line p-6 md:p-8 transition-colors duration-200 ${bgClass}`}
+      className={`rounded-[6px] border border-line p-4 sm:p-6 md:p-8 transition-colors duration-200 ${bgClass}`}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         {Icon && (
-          <div className="shrink-0 mt-1">
-            <Icon className={`w-8 h-8 ${iconClass}`} />
+          <div className="shrink-0 mt-0.5 sm:mt-1">
+            <Icon className={`w-6 h-6 sm:w-8 sm:h-8 ${iconClass}`} />
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="text-[28px] md:text-[36px] font-display font-semibold tracking-tight text-ink leading-tight">
+          <h2 className="text-[20px] sm:text-[28px] md:text-[36px] font-display font-semibold tracking-tight text-ink leading-tight">
             {title}
           </h2>
-          <p className={`text-[13px] md:text-[14px] mt-1 ${textClass}`}>
+          <p className={`text-[12.5px] sm:text-[13px] md:text-[14px] mt-1 ${textClass}`}>
             {subtitle}
           </p>
         </div>
       </div>
 
       {prediction && (
-        <div className={`mt-4 pt-4 border-t ${level === "BAHAYA" ? "border-bahaya/20" : level === "WASPADA" ? "border-waspada/20" : "border-aman/20"}`}>
-          <div className="flex items-center justify-between text-[13px]">
+        <div className={`mt-3.5 sm:mt-4 pt-3 sm:pt-4 border-t ${level === "BAHAYA" ? "border-bahaya/20" : level === "WASPADA" ? "border-waspada/20" : "border-aman/20"}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[12px] sm:text-[13px]">
             <span className="text-muted">Proyeksi Model Machine Learning:</span>
             <span className="font-semibold text-ink">
               Risiko {prediction.risk} dalam {prediction.timeframe}

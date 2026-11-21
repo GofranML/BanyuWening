@@ -305,3 +305,18 @@
   border: 2px solid #0F2321;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
+
+/* Mobile UX & overflow helpers */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.safe-bottom {
+  padding-bottom: max(0.375rem, env(safe-area-inset-bottom, 0px));
+}
+pre {
+  max-width: 100%;
+}

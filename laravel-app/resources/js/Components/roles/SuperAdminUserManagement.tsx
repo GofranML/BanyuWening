@@ -417,8 +417,8 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
 
       {/* MODAL EDIT PENGGUNA (KHUSUS SUPER ADMIN) */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface border border-line rounded-[10px] shadow-2xl max-w-xl w-full p-6 space-y-5 animate-scaleUp">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+          <div className="bg-surface border border-line rounded-t-[14px] sm:rounded-[10px] shadow-2xl max-w-xl w-full p-5 sm:p-6 space-y-5 max-h-[92dvh] overflow-y-auto safe-bottom animate-scaleUp">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-brand/15 text-brand flex items-center justify-center font-bold text-[13px]">
@@ -651,8 +651,8 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
 
       {/* MODAL KUSTOMISASI HAK AKSES PER PENGGUNA */}
       {permTargetUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface border border-line rounded-[10px] shadow-2xl max-w-3xl w-full p-6 space-y-5 animate-scaleUp my-8">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+          <div className="bg-surface border border-line rounded-t-[14px] sm:rounded-[10px] shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 sm:space-y-5 max-h-[92dvh] overflow-y-auto safe-bottom animate-scaleUp sm:my-8">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-brand/15 text-brand flex items-center justify-center">
@@ -720,7 +720,104 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View (< md) */}
+        <div className="md:hidden divide-y divide-line">
+          {users.map((u) => {
+            const overrideCount = countCustomOverrides(u.role, getEffectivePermissions(u));
+            return (
+              <div key={`m-${u.id}`} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-brand/15 text-brand font-bold text-[12px] flex items-center justify-center shrink-0">
+                      {u.avatar_initials || u.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-ink text-[14px] truncate">{u.name}</div>
+                      <div className="text-[11px] text-muted flex items-center gap-1 truncate">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{u.email}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded text-[10.5px] font-semibold shrink-0 ${
+                      u.role === "ADMIN"
+                        ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+                        : u.role === "OPERATOR"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                        : u.role === "ANALIS"
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                        : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    }`}
+                  >
+                    {getRoleBadgeLabel(u.role)}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  {overrideCount > 0 || u.has_custom_permissions ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <SlidersHorizontal className="w-2.5 h-2.5" />
+                      <span>Kustom ({overrideCount || "aktif"} izin)</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-muted bg-surface-2 border border-line">
+                      Default Role
+                    </span>
+                  )}
+                  {u.two_factor_enabled ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold bg-aman/15 text-aman border border-aman/30">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>2FA Aktif</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-muted bg-surface-2 border border-line">
+                      <ShieldAlert className="w-3 h-3" />
+                      <span>2FA Nonaktif</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-muted">
+                  <span className="inline-flex items-center gap-1 text-ink">
+                    <Building2 className="w-3.5 h-3.5 text-muted shrink-0" />
+                    <span>{u.pond_name || "-"}</span>
+                  </span>
+                  <span>{u.phone || "-"}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => handleOpenPermissionsModal(u)}
+                    className="flex-1 min-h-[40px] px-3 text-[12px] font-semibold text-brand bg-brand/10 hover:bg-brand/20 rounded-[6px] transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Kustom Hak Akses</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenEdit(u)}
+                    className="min-h-[40px] px-3 text-[12px] font-semibold text-ink bg-surface-2 border border-line hover:border-brand/50 rounded-[6px] transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  {u.email !== "admin@banyuwening.id" && (
+                    <button
+                      onClick={() => handleDelete(u.id, u.name, u.email)}
+                      className="min-h-[40px] min-w-[40px] px-2.5 text-bahaya bg-bahaya/10 hover:bg-bahaya/20 rounded-[6px] transition-colors cursor-pointer inline-flex items-center justify-center"
+                      aria-label={`Hapus akun ${u.name}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-[13px]">
             <thead className="bg-surface-2 text-ink font-semibold border-b border-line">
               <tr>

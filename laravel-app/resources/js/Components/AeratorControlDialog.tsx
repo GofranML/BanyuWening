@@ -116,7 +116,7 @@ export function AeratorControlDialog({
     >
       {/* Modal Surface */}
       <div
-        className="w-full sm:max-w-lg bg-surface border border-line rounded-t-[12px] sm:rounded-[8px] p-6 overflow-hidden"
+        className="w-full sm:max-w-lg bg-surface border border-line rounded-t-[14px] sm:rounded-[8px] p-5 sm:p-6 max-h-[90dvh] overflow-y-auto safe-bottom"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -264,12 +264,12 @@ export function AeratorControlDialog({
           </div>
 
           {/* Action buttons */}
-          <div className="pt-3 flex items-center justify-end gap-3 border-t border-line">
+          <div className="pt-3 grid grid-cols-1 sm:flex sm:items-center sm:justify-end gap-2.5 sm:gap-3 border-t border-line">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="h-11 px-4 border border-line rounded-[6px] text-[14px] font-medium text-ink hover:bg-surface-2 transition-colors disabled:opacity-50"
+              className="order-2 sm:order-1 min-h-[44px] px-4 border border-line rounded-[6px] text-[14px] font-medium text-ink hover:bg-surface-2 transition-colors disabled:opacity-50"
             >
               Batal
             </button>
@@ -277,7 +277,7 @@ export function AeratorControlDialog({
               type="button"
               onClick={handleConfirm}
               disabled={loading}
-              className="h-11 px-5 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="order-1 sm:order-2 min-h-[44px] px-5 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{getButtonText()}</span>

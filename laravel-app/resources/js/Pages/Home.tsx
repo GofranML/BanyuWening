@@ -248,15 +248,15 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     mass: 0.35,
   });
 
-  const x0 = useTransform(smoothProgress, [0.02, 0.22], [-140, 0]);
+  const x0 = useTransform(smoothProgress, [0.02, 0.22], [-48, 0]);
   const o0 = useTransform(smoothProgress, [0.02, 0.16], [0.08, 1]);
-  const x1 = useTransform(smoothProgress, [0.14, 0.36], [-140, 0]);
+  const x1 = useTransform(smoothProgress, [0.14, 0.36], [-48, 0]);
   const o1 = useTransform(smoothProgress, [0.14, 0.29], [0.08, 1]);
-  const x2 = useTransform(smoothProgress, [0.26, 0.50], [-140, 0]);
+  const x2 = useTransform(smoothProgress, [0.26, 0.50], [-48, 0]);
   const o2 = useTransform(smoothProgress, [0.26, 0.42], [0.08, 1]);
-  const x3 = useTransform(smoothProgress, [0.38, 0.62], [-140, 0]);
+  const x3 = useTransform(smoothProgress, [0.38, 0.62], [-48, 0]);
   const o3 = useTransform(smoothProgress, [0.38, 0.54], [0.08, 1]);
-  const x4 = useTransform(smoothProgress, [0.50, 0.74], [-140, 0]);
+  const x4 = useTransform(smoothProgress, [0.50, 0.74], [-48, 0]);
   const o4 = useTransform(smoothProgress, [0.50, 0.66], [0.08, 1]);
 
   const rows = [
@@ -310,7 +310,7 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
   return (
     <div
       ref={containerRef}
-      className="py-4 space-y-4 md:space-y-6 text-[clamp(30px,4.8vw,82px)] leading-[1.05] tracking-[-0.035em] font-semibold"
+      className="py-2 sm:py-4 space-y-3 md:space-y-6 text-[clamp(24px,6vw,82px)] leading-[1.08] tracking-[-0.035em] font-semibold"
     >
       {rows.map((row, idx) => (
         <motion.p
@@ -405,9 +405,9 @@ const ShowroomPlateSection = memo(function ShowroomPlateSection({
   const plateOpacity = useTransform(smooth, [0, 0.22, 0.85, 1], [0.25, 1, 1, 0.35]);
 
   return (
-    <div ref={showroomRef} className="mt-24 pt-16 border-t border-[#111918]/15">
-      <div className="mb-8">
-        <h2 className="text-[clamp(30px,4vw,58px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#111918]">
+    <div ref={showroomRef} className="mt-14 sm:mt-24 pt-10 sm:pt-16 border-t border-[#111918]/15">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-[clamp(26px,4vw,58px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#111918]">
           Siklus 24 jam kolam terpal
         </h2>
       </div>
@@ -808,16 +808,16 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
 
       {/* Subtle top micro-kicker row */}
       <div
-        className={`relative z-10 w-full px-6 md:px-12 lg:px-16 pt-20 md:pt-24 flex items-center justify-between text-[11px] mono-label transition-colors duration-300 ${journeyMutedTone}`}
+        className={`relative z-10 w-full px-4 sm:px-6 md:px-12 lg:px-16 pt-20 md:pt-24 flex items-center justify-between text-[10px] sm:text-[11px] mono-label transition-colors duration-300 ${journeyMutedTone}`}
       >
-        <span className="truncate max-w-[60vw]">
+        <span className="truncate max-w-[78vw] sm:max-w-[60vw]">
           {landingContent?.hero_tag || "SMART AQUACULTURE STUDIO"}
         </span>
         <span className="hidden sm:inline">EDGE FUZZY &amp; IOT HARDWARE</span>
       </div>
 
       {/* Main 3-Stage Bidirectional Scroll-Scrubbed Copy Layer (Zero-Re-Render MotionValues) */}
-      <div className="relative z-10 w-full h-[calc(100svh-9.5rem)] px-6 md:px-12 lg:px-16 pointer-events-none">
+      <div className="relative z-10 w-full h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)] px-4 sm:px-6 md:px-12 lg:px-16 pointer-events-none">
         {/* Stage 01: Portal */}
         <motion.div
           data-hero-stage="01"
@@ -833,12 +833,12 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s1Visibility as any,
                 }
           }
-          className={`absolute top-1/2 -translate-y-1/2 left-5 right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/65 backdrop-blur-md p-5 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
+          className={`absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/72 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
             journeyStage === 0 ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
           <motion.div
-            className="mono-label text-[11px] text-[#8CC2BA] mb-4 inline-flex items-center gap-2 will-change-transform"
+            className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-2.5 sm:mb-4 inline-flex items-center gap-2 will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1KickerY }}
           >
             <span
@@ -847,7 +847,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             />
             <span>01 / {landingContent?.hero_title || "BANYUWENING"}</span>
           </motion.div>
-          <h1 className="text-[clamp(36px,5.2vw,76px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
+          <h1 className="text-[clamp(28px,6.8vw,76px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
             <span className="block overflow-hidden pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
@@ -866,19 +866,19 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             </span>
           </h1>
           <motion.p
-            className="mt-4 max-w-[54ch] text-[16px] md:text-[18px] leading-[1.58] text-[#D9D4C7] will-change-transform"
+            className="mt-3 sm:mt-4 max-w-[54ch] text-[14px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#D9D4C7] will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1BodyY }}
           >
             {landingContent?.hero_subtitle ||
               "Platform IoT akuakultur presisi dengan kecerdasan Edge Fuzzy lokal dan kontrol pompa otomatis untuk menjaga kualitas air kolam lele 24 jam penuh."}
           </motion.p>
           <motion.div
-            className="mt-7 flex flex-wrap items-center gap-6 will-change-transform"
+            className="mt-4 sm:mt-7 flex flex-wrap items-center gap-3 sm:gap-6 will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1CtaY }}
           >
             <a
               href="#arsitektur-3d"
-              className="group inline-flex items-center gap-3 pb-2 border-b border-[#F2EFE7]/35 text-[14px] font-medium text-[#F2EFE7] hover:border-[#F2EFE7] transition-colors"
+              className="group min-h-[44px] inline-flex items-center gap-2.5 px-1 border-b border-[#F2EFE7]/35 text-[13px] sm:text-[14px] font-medium text-[#F2EFE7] hover:border-[#F2EFE7] transition-colors"
             >
               <span>Jelajahi sistem 3D</span>
               <ArrowRight
@@ -888,7 +888,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             </a>
             <Link
               href="/demo"
-              className="inline-flex items-center gap-2 rounded-full border border-[#8CC2BA]/40 bg-[#0F2321]/65 backdrop-blur-md px-5 py-2.5 text-[13px] font-medium text-[#8CC2BA] hover:bg-[#8CC2BA] hover:text-[#14302D] transition-colors"
+              className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-[#8CC2BA]/40 bg-[#0F2321]/65 backdrop-blur-md px-4 sm:px-5 py-2 text-[13px] font-medium text-[#8CC2BA] hover:bg-[#8CC2BA] hover:text-[#14302D] transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{landingContent?.cta_button_text || "Buka Versi Demo"}</span>
@@ -911,21 +911,21 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s2Visibility as any,
                 }
           }
-          className="absolute top-1/2 -translate-y-1/2 left-6 right-6 md:left-12 md:right-12 lg:left-16 lg:right-16 flex flex-col lg:flex-row lg:items-center justify-between gap-8 pointer-events-none"
+          className="absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-6 sm:right-6 md:left-12 md:right-12 lg:left-16 lg:right-16 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-8 pointer-events-none"
         >
           <div
-            className={`max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/65 backdrop-blur-md p-5 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
+            className={`max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/72 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
               journeyStage === 1 ? "pointer-events-auto" : "pointer-events-none"
             }`}
           >
-            <div className="mono-label text-[11px] text-[#8CC2BA] mb-4 inline-flex items-center gap-2">
+            <div className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-2.5 sm:mb-4 inline-flex items-center gap-2">
               <span
                 aria-hidden="true"
                 className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#8CC2BA] shadow-[0_0_14px_#8CC2BA]"
               />
               <span>02 / LORONG TOPOLOGI CORE HUB</span>
             </div>
-            <h2 className="text-[clamp(34px,5vw,72px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
+            <h2 className="text-[clamp(26px,6.2vw,72px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
               <span className="block overflow-hidden pb-1">
                 <motion.span
                   className="block hero-split-line will-change-transform"
@@ -943,9 +943,17 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 </motion.span>
               </span>
             </h2>
-            <p className="mt-4 max-w-[52ch] text-[16px] md:text-[18px] leading-[1.58] text-[#D9D4C7]">
+            <p className="mt-3 sm:mt-4 max-w-[52ch] text-[13.5px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#D9D4C7]">
               Jalur kabel shielded GX16 mengisolasi pembacaan ADC 16-bit tiap kolam sekaligus mempertahankan efisiensi instalasi petambak UMKM.
             </p>
+            <div className="lg:hidden grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15">
+              {passageBeats.map((b) => (
+                <div key={b.num} className="rounded-lg bg-white/5 px-2.5 py-2">
+                  <div className="mono-label text-[9px] text-[#8CC2BA]">{b.num}</div>
+                  <div className="text-[11px] font-semibold text-[#F2EFE7] mt-0.5 leading-tight">{b.title}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="hidden lg:flex flex-col gap-3 items-end pointer-events-none">
@@ -977,18 +985,18 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s3Visibility as any,
                 }
           }
-          className={`absolute top-1/2 -translate-y-1/2 left-5 right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#F2EFE7]/85 backdrop-blur-md p-5 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${journeyTextTone} ${
+          className={`absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#F2EFE7]/88 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${journeyTextTone} ${
             journeyStage === 2 ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
-          <div className="mono-label text-[11px] text-[#33706A] mb-4 inline-flex items-center gap-2">
+          <div className="mono-label text-[10px] sm:text-[11px] text-[#33706A] mb-2.5 sm:mb-4 inline-flex items-center gap-2">
             <span
               aria-hidden="true"
               className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#33706A]"
             />
             <span>03 / OTONOMI PENUH PINGGIR KOLAM</span>
           </div>
-          <h2 className="text-[clamp(34px,4.8vw,68px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#14302D] text-balance">
+          <h2 className="text-[clamp(26px,6.2vw,68px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#14302D] text-balance">
             <span className="block overflow-hidden pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
@@ -1006,13 +1014,13 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
               </motion.span>
             </span>
           </h2>
-          <p className="mt-4 max-w-[50ch] text-[16px] md:text-[18px] leading-[1.58] text-[#4B5D5A]">
+          <p className="mt-3 sm:mt-4 max-w-[50ch] text-[14px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#4B5D5A]">
             Tetap menjaga pH, suhu, kekeruhan, dan pompa aerasi walaupun WiFi kolam terputus melalui Edge Fuzzy &amp; Mode Offline-Plus Rp0.
           </p>
-          <div className="mt-7">
+          <div className="mt-4 sm:mt-7">
             <a
               href="#arsitektur-3d"
-              className="inline-flex items-center gap-3 pb-2 border-b border-[#14302D]/35 text-[14px] font-medium text-[#14302D] hover:border-[#14302D]"
+              className="min-h-[44px] inline-flex items-center gap-2.5 px-1 border-b border-[#14302D]/35 text-[13px] sm:text-[14px] font-medium text-[#14302D] hover:border-[#14302D]"
             >
               <span>Lihat arsitektur sistem</span>
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1023,9 +1031,9 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
 
       {/* Bottom HUD Navigation Bar & 2px Journey Progress Track */}
       <div
-        className={`absolute bottom-5 md:bottom-7 left-0 right-0 z-20 px-6 md:px-12 lg:px-16 transition-colors duration-300 ${journeyMutedTone}`}
+        className={`absolute bottom-3 sm:bottom-5 md:bottom-7 left-0 right-0 z-20 px-4 sm:px-6 md:px-12 lg:px-16 transition-colors duration-300 ${journeyMutedTone}`}
       >
-        <div className="w-full flex items-center justify-between gap-4 text-[12px]">
+        <div className="w-full flex items-center justify-between gap-2 sm:gap-4 text-[12px]">
           <a
             href="#siklus-24-jam"
             className="hidden sm:inline-flex items-center gap-3 hover:opacity-100 opacity-85"
@@ -1042,7 +1050,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             <span className="inline-block h-4 w-[1px] bg-current opacity-50" />
           </a>
 
-          <div className="flex items-center gap-5 md:gap-7 font-medium mx-auto sm:mx-0">
+          <div className="flex items-center gap-3 sm:gap-5 md:gap-7 font-medium mx-auto sm:mx-0">
             {[
               { id: 0 as const, num: "01", label: "Portal" },
               { id: 1 as const, num: "02", label: "Lorong Hub" },
@@ -1056,12 +1064,12 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   key={item.num}
                   type="button"
                   onClick={() => onJumpStage(item.id)}
-                  className={`pb-1.5 border-b-2 transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                  className={`min-h-[44px] px-2 border-b-2 transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                     active
                       ? `${activeUnderline} opacity-100 font-semibold ${
                           journeyStage === 2 ? "text-[#14302D]" : "text-[#F2EFE7]"
                         }`
-                      : "border-transparent opacity-55 hover:opacity-90"
+                      : "border-transparent opacity-60 hover:opacity-90"
                   }`}
                 >
                   <span
@@ -1168,7 +1176,7 @@ const PipelineCard = memo(function PipelineCard({
       }}
     >
       <div
-        className="relative w-full h-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-stretch rounded-3xl bg-[#051B18]/94 border border-white/15 p-6 sm:p-8 lg:p-12 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)]"
+        className="relative w-full h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 lg:gap-12 items-stretch rounded-2xl sm:rounded-3xl bg-[#051B18]/94 border border-white/15 p-4 sm:p-7 lg:p-12 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)] overflow-y-auto no-scrollbar"
         style={{ contain: "layout style" }}
       >
         <motion.span
@@ -1183,7 +1191,7 @@ const PipelineCard = memo(function PipelineCard({
           className="lg:col-span-6 h-full min-h-0 flex items-center justify-center will-change-transform"
           style={{ y: imgY }}
         >
-          <div className="relative w-full aspect-[16/10] max-h-[34vh] sm:max-h-[42vh] lg:max-h-[56vh] overflow-hidden rounded-2xl bg-[#0B2320] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
+          <div className="relative w-full aspect-[16/9] max-h-[20vh] sm:max-h-[36vh] lg:max-h-[56vh] overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
             <img
               src={st.img}
               alt={st.title}
@@ -1197,24 +1205,24 @@ const PipelineCard = memo(function PipelineCard({
         </motion.div>
 
         <motion.div
-          className="lg:col-span-6 h-full flex flex-col justify-center space-y-4 lg:space-y-6 lg:px-4 will-change-transform"
+          className="lg:col-span-6 h-full flex flex-col justify-center space-y-2.5 sm:space-y-4 lg:space-y-6 lg:px-4 will-change-transform"
           style={{ y: textY }}
         >
-          <div className="flex items-baseline gap-4">
-            <span className="text-[clamp(56px,7vw,120px)] font-bold leading-none tracking-[-0.04em] tnum text-white/95">
+          <div className="flex items-baseline gap-3 sm:gap-4">
+            <span className="text-[clamp(32px,7vw,120px)] font-bold leading-none tracking-[-0.04em] tnum text-white/95">
               {st.num}
             </span>
-            <span className="mono-label text-[12px] sm:text-[13px] text-[#A9F2E8]">
+            <span className="mono-label text-[11px] sm:text-[13px] text-[#A9F2E8]">
               TAHAP {st.verb}
             </span>
           </div>
-          <h3 className="text-[clamp(26px,3.4vw,52px)] leading-[1.08] tracking-[-0.025em] font-semibold text-white">
+          <h3 className="text-[clamp(20px,4.5vw,52px)] leading-[1.1] tracking-[-0.025em] font-semibold text-white">
             {st.title}
           </h3>
-          <p className="text-[15px] sm:text-[17px] lg:text-[19px] leading-[1.65] text-white/85 max-w-[60ch]">
+          <p className="text-[13.5px] sm:text-[17px] lg:text-[19px] leading-[1.55] sm:leading-[1.65] text-white/85 max-w-[60ch]">
             {st.detail}
           </p>
-          <div className="pt-3 border-t border-white/20 mono-label text-[11px] sm:text-[13px] text-[#A9F2E8]">
+          <div className="pt-2.5 sm:pt-3 border-t border-white/20 mono-label text-[10px] sm:text-[13px] text-[#A9F2E8]">
             {st.spec}
           </div>
         </motion.div>
@@ -1278,7 +1286,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
   const meterScaleX = useTransform(smoothPipeline, [0, 1], [0.1, 1]);
 
   return (
-    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-6 md:px-12 lg:px-16 pt-20 md:pt-24 pb-6 md:pb-8">
+    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-4 sm:px-6 md:px-12 lg:px-16 pt-18 sm:pt-20 md:pt-24 pb-3 sm:pb-6 md:pb-8">
       {/* Layer 0: Full-Bleed WebGL 5-Point Mesh Gradient + 3D Perspective Floor Grid */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <HelloWorldMeshCanvas className="h-full w-full" />
@@ -1310,21 +1318,21 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
       </div>
 
       {/* Top Row: Section Heading + Read-Only Continuous Progress Meter */}
-      <div className="relative z-20 w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-[clamp(28px,4vw,56px)] leading-[0.95] tracking-[-0.04em] font-bold uppercase text-white">
+      <div className="relative z-20 w-full flex flex-row items-center justify-between gap-2 sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[clamp(22px,4vw,56px)] leading-[0.98] tracking-[-0.04em] font-bold uppercase text-white">
             Lima tahap otomasi
           </h2>
         </div>
 
         <div
           aria-live="polite"
-          className="pointer-events-none flex flex-col sm:items-end gap-2 shrink-0"
+          className="pointer-events-none flex flex-col items-end gap-1.5 sm:gap-2 shrink-0"
         >
-          <div className="mono-label text-[12px] text-[#A9F2E8] tnum">
+          <div className="mono-label text-[10px] sm:text-[12px] text-[#A9F2E8] tnum">
             TAHAP 0{activeStepIdx + 1} / 05
           </div>
-          <div className="w-40 md:w-56 h-1.5 rounded-full bg-white/15 overflow-hidden">
+          <div className="w-24 sm:w-40 md:w-56 h-1.5 rounded-full bg-white/15 overflow-hidden">
             <motion.div
               className="h-full w-full bg-[#A9F2E8] rounded-full origin-left"
               style={{ scaleX: meterScaleX }}
@@ -1335,7 +1343,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
 
       {/* Center Stage: Full-Viewport 5 Stacked Cards Driven Purely by GPU MotionValues */}
       <div
-        className="relative z-10 flex-1 min-h-0 w-full flex items-stretch justify-center my-4"
+        className="relative z-10 flex-1 min-h-0 w-full flex items-stretch justify-center my-2 sm:my-4"
         style={{ perspective: "1400px" }}
       >
         {PIPELINE_STEPS.map((st, idx) => (
@@ -1350,8 +1358,8 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
       </div>
 
       {/* Bottom Full-Page Read-Only Scroll Rail */}
-      <div className="pointer-events-none relative z-20 w-full pt-3 border-t border-white/15 flex items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+      <div className="pointer-events-none relative z-20 w-full pt-2 sm:pt-3 border-t border-white/15 flex items-center justify-between gap-4">
+        <div className="flex flex-nowrap overflow-x-auto no-scrollbar items-center gap-3 sm:gap-6">
           {PIPELINE_STEPS.map((st, idx) => (
             <PipelineRailStep
               key={st.num}
@@ -1653,7 +1661,7 @@ export default function Home({ landingContent }: HomeProps) {
       {/* ================================================================= */}
       <header
         data-away={headerIsAway && !mobileMenuOpen ? "true" : "false"}
-        className={`fixed top-0 left-0 right-0 z-50 px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           headerIsAway && !mobileMenuOpen ? "-translate-y-[105%]" : "translate-y-0"
         } ${
           navOnLightPaper
@@ -1661,15 +1669,15 @@ export default function Home({ landingContent }: HomeProps) {
             : "bg-transparent text-[#F2EFE7]"
         }`}
       >
-        <div className="w-full flex items-center justify-between gap-4">
-          <Link href="/" className="min-h-[44px] inline-flex items-center gap-2.5 shrink-0">
+        <div className="w-full flex items-center justify-between gap-3">
+          <Link href="/" className="min-h-[44px] inline-flex items-center gap-2 shrink-0">
             <img
               src={navOnLightPaper ? "/brand/logogram.svg" : "/brand/logogram-gelap.svg"}
               alt="Logo BanyuWening"
               width={24}
               height={30}
             />
-            <span className="text-[14px] font-medium tracking-[0.22em] uppercase">
+            <span className="text-[13px] sm:text-[14px] font-medium tracking-[0.2em] uppercase">
               BANYUWENING
             </span>
           </Link>
@@ -1722,58 +1730,71 @@ export default function Home({ landingContent }: HomeProps) {
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav-drawer"
             aria-label={mobileMenuOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
-            className={`lg:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full border ${
+            className={`lg:hidden min-h-[44px] px-3.5 inline-flex items-center justify-center gap-1.5 rounded-full border text-[12px] font-semibold ${
               navOnLightPaper
-                ? "border-[#14302D]/20 bg-white/80 text-[#14302D]"
-                : "border-[#F2EFE7]/30 bg-[#0F2321]/65 text-[#F2EFE7]"
+                ? "border-[#14302D]/20 bg-white/85 text-[#14302D]"
+                : "border-[#F2EFE7]/30 bg-[#0F2321]/75 text-[#F2EFE7]"
             }`}
           >
             {mobileMenuOpen ? (
-              <X className="w-5 h-5" aria-hidden="true" />
+              <>
+                <X className="w-4 h-4" aria-hidden="true" />
+                <span>Tutup</span>
+              </>
             ) : (
-              <Menu className="w-5 h-5" aria-hidden="true" />
+              <>
+                <Menu className="w-4 h-4" aria-hidden="true" />
+                <span>Menu</span>
+              </>
             )}
           </button>
         </div>
       </header>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Navigation Drawer Backdrop & Panel */}
       {mobileMenuOpen && (
-        <div
-          id="mobile-nav-drawer"
-          className="lg:hidden fixed top-16 left-0 right-0 z-40 bg-[#0F2321]/95 backdrop-blur-xl border-b border-[#8CC2BA]/20 px-4 py-4 space-y-3 text-[#F2EFE7]"
-        >
-          <nav aria-label="Menu navigasi mobile" className="grid grid-cols-2 gap-2">
-            {NAV_LINKS.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
+        <>
+          <div
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden fixed inset-0 top-16 z-30 bg-black/50 backdrop-blur-xs"
+            aria-hidden="true"
+          />
+          <div
+            id="mobile-nav-drawer"
+            className="lg:hidden fixed top-16 left-0 right-0 z-40 max-h-[calc(100dvh-4rem)] overflow-y-auto bg-[#0F2321]/95 backdrop-blur-xl border-b border-[#8CC2BA]/20 px-4 py-4 space-y-3 text-[#F2EFE7] shadow-2xl"
+          >
+            <nav aria-label="Menu navigasi mobile" className="grid grid-cols-2 gap-2">
+              {NAV_LINKS.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="min-h-[44px] px-3 flex items-center rounded-xl bg-white/5 hover:bg-white/10 text-[13px] font-medium"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Link
+                href="/demo"
                 onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] px-3 flex items-center rounded-xl bg-white/5 text-[13px] font-medium"
+                className="min-h-[44px] px-4 flex items-center justify-center gap-1.5 rounded-full border border-[#8CC2BA]/35 text-[13px] font-medium text-[#8CC2BA]"
               >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <Link
-              href="/demo"
-              onClick={() => setMobileMenuOpen(false)}
-              className="min-h-[44px] px-4 flex items-center justify-center gap-1.5 rounded-full border border-[#8CC2BA]/35 text-[13px] font-medium text-[#8CC2BA]"
-            >
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Versi Demo</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className="min-h-[44px] px-4 flex items-center justify-center gap-1.5 rounded-full bg-[#F2EFE7] text-[#14302D] text-[13px] font-semibold"
-            >
-              <span>Dashboard</span>
-              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-            </Link>
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Versi Demo</span>
+              </Link>
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-h-[44px] px-4 flex items-center justify-center gap-1.5 rounded-full bg-[#F2EFE7] text-[#14302D] text-[13px] font-semibold"
+              >
+                <span>Dashboard</span>
+                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <main>
@@ -1809,7 +1830,7 @@ export default function Home({ landingContent }: HomeProps) {
         <section
           id="siklus-24-jam"
           ref={paperSheetRef}
-          className="swiss-sheet swiss-sheet-rule relative z-10 px-6 md:px-12 lg:px-16 py-20 md:py-28 overflow-x-clip"
+          className="swiss-sheet swiss-sheet-rule relative z-10 px-4 sm:px-6 md:px-12 lg:px-16 py-14 sm:py-20 md:py-28 overflow-x-clip"
         >
           <div className="w-full">
             {/* Full-Width Stacked Staircase Statement with Smooth Left-to-Right Scroll Parallax */}
@@ -1952,10 +1973,10 @@ export default function Home({ landingContent }: HomeProps) {
           ref={archRef}
           className="relative bg-[#111918] text-[#F3F1EC] lg:min-h-[240vh] scroll-mt-16 md:scroll-mt-20"
         >
-          <div className="lg:sticky lg:top-0 lg:min-h-[100svh] flex flex-col justify-center py-16 md:py-20 lg:py-24 px-6 md:px-12 lg:px-16 overflow-x-clip">
+          <div className="lg:sticky lg:top-0 lg:min-h-[100svh] flex flex-col justify-center py-14 md:py-20 lg:py-24 px-4 sm:px-6 md:px-12 lg:px-16 overflow-x-clip">
             <div className="w-full">
-              <div className="mb-8 lg:mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-                <h2 className="text-[clamp(36px,6vw,96px)] leading-[0.98] tracking-[-0.045em] font-semibold text-[#F3F1EC]">
+              <div className="mb-6 sm:mb-8 lg:mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+                <h2 className="text-[clamp(32px,7.5vw,96px)] leading-[0.98] tracking-[-0.045em] font-semibold text-[#F3F1EC]">
                   <span
                     aria-label="Fungsional."
                     className="inline-block overflow-hidden align-bottom whitespace-nowrap pb-1"
@@ -2005,7 +2026,7 @@ export default function Home({ landingContent }: HomeProps) {
                     <div
                       role="tablist"
                       aria-label="Pilih lapisan arsitektur 3D"
-                      className="order-1 lg:hidden flex flex-wrap gap-2"
+                      className="order-1 lg:hidden grid grid-cols-2 sm:flex sm:flex-wrap gap-2"
                     >
                       {ARCH_PHASES.map((item) => {
                         const isActive = activePhase === item.phase;
@@ -2016,14 +2037,14 @@ export default function Home({ landingContent }: HomeProps) {
                             role="tab"
                             aria-selected={isActive}
                             onClick={() => handleSelectPhase(item.phase)}
-                            className={`min-h-[44px] px-3.5 py-2 rounded-full text-[13px] font-medium transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                            className={`min-h-[44px] px-3 py-2 rounded-xl sm:rounded-full text-[12.5px] sm:text-[13px] font-medium transition-colors cursor-pointer inline-flex items-center justify-center sm:justify-start gap-1.5 ${
                               isActive
                                 ? "bg-[#8CC2BA] text-[#111918] font-semibold"
                                 : "bg-white/8 text-[#F3F1EC] border border-white/15 hover:bg-white/14"
                             }`}
                           >
-                            <span className="mono-label text-[11px] opacity-80">{item.num}</span>
-                            <span>{shortNames[item.phase]}</span>
+                            <span className="mono-label text-[10px] sm:text-[11px] opacity-80">{item.num}</span>
+                            <span className="truncate">{shortNames[item.phase]}</span>
                           </button>
                         );
                       })}
@@ -2094,7 +2115,7 @@ export default function Home({ landingContent }: HomeProps) {
         {/* ================================================================= */}
         <section
           id="paket-harga"
-          className="relative bg-[#F3F1EC] text-[#111918] rounded-t-[28px] -mt-4 z-20 px-6 md:px-12 lg:px-16 py-20 md:py-24 scroll-mt-16 md:scroll-mt-20 overflow-x-clip"
+          className="relative bg-[#F3F1EC] text-[#111918] rounded-t-[24px] sm:rounded-t-[28px] -mt-4 z-20 px-4 sm:px-6 md:px-12 lg:px-16 py-14 sm:py-20 md:py-24 scroll-mt-16 md:scroll-mt-20 overflow-x-clip"
         >
           <ApricodeScrollSection className="w-full">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
@@ -2170,11 +2191,11 @@ export default function Home({ landingContent }: HomeProps) {
         {/* ================================================================= */}
         <section
           id="faq"
-          className="relative bg-[#F3F1EC] text-[#111918] rounded-t-[28px] -mt-4 z-20 px-6 md:px-12 lg:px-16 py-20 md:py-24 overflow-x-clip"
+          className="relative bg-[#F3F1EC] text-[#111918] rounded-t-[24px] sm:rounded-t-[28px] -mt-4 z-20 px-4 sm:px-6 md:px-12 lg:px-16 py-14 sm:py-20 md:py-24 overflow-x-clip"
         >
           <ApricodeScrollSection className="w-full">
-            <div className="mb-10">
-              <h2 className="text-[clamp(28px,3.6vw,48px)] leading-[1.06] tracking-[-0.03em] font-semibold text-[#111918]">
+            <div className="mb-8 sm:mb-10">
+              <h2 className="text-[clamp(26px,4vw,48px)] leading-[1.06] tracking-[-0.03em] font-semibold text-[#111918]">
                 Pertanyaan teknis &amp; operasional
               </h2>
             </div>
@@ -2190,18 +2211,18 @@ export default function Home({ landingContent }: HomeProps) {
                       onClick={() => setOpenFaq(isOpen ? null : i)}
                       aria-expanded={isOpen}
                       aria-controls={panelId}
-                      className="w-full py-5 text-left flex items-center justify-between gap-4 hover:opacity-80 transition-opacity cursor-pointer"
+                      className="w-full min-h-[44px] py-4 sm:py-5 text-left flex items-center justify-between gap-3 sm:gap-4 hover:opacity-80 transition-opacity cursor-pointer"
                     >
-                      <div className="flex items-baseline gap-4">
-                        <span className="mono-label text-[12px] text-[#136F63] shrink-0">
+                      <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
+                        <span className="mono-label text-[11px] sm:text-[12px] text-[#136F63] shrink-0">
                           0{i + 1}
                         </span>
-                        <span className="text-[16px] md:text-[18px] font-semibold text-[#111918]">
+                        <span className="text-[15px] sm:text-[16px] md:text-[18px] font-semibold text-[#111918]">
                           {faq.q}
                         </span>
                       </div>
                       <span
-                        className="text-[24px] leading-none font-light text-[#111918] shrink-0"
+                        className="text-[22px] sm:text-[24px] leading-none font-light text-[#111918] shrink-0"
                         aria-hidden="true"
                       >
                         {isOpen ? "-" : "+"}
@@ -2210,7 +2231,7 @@ export default function Home({ landingContent }: HomeProps) {
                     {isOpen && (
                       <div
                         id={panelId}
-                        className="pb-6 pl-9 md:pl-10 pr-4 text-[15px] leading-[1.68] text-[#33413F] max-w-[74ch]"
+                        className="pb-5 sm:pb-6 pl-6 sm:pl-9 md:pl-10 pr-2 sm:pr-4 text-[14px] sm:text-[15px] leading-[1.65] text-[#33413F] max-w-[74ch]"
                       >
                         {faq.a}
                       </div>
@@ -2226,29 +2247,29 @@ export default function Home({ landingContent }: HomeProps) {
       {/* ================================================================= */}
       {/* SEKSI 8: HELLOWORLDDSGN SWISS CONTACT & DEVELOPER FOOTER          */}
       {/* ================================================================= */}
-      <footer className="relative bg-white text-[#111918] border-t border-[#111918]/15 px-6 md:px-12 lg:px-16 pt-20 pb-10 overflow-x-clip">
-        <ApricodeScrollSection className="w-full space-y-16">
+      <footer className="relative bg-white text-[#111918] border-t border-[#111918]/15 px-4 sm:px-6 md:px-12 lg:px-16 pt-14 sm:pt-20 pb-8 sm:pb-10 overflow-x-clip">
+        <ApricodeScrollSection className="w-full space-y-12 sm:space-y-16">
           {/* Header Row */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="space-y-3">
-              <p className="text-[14px] text-[#485653]">
+              <p className="text-[13px] sm:text-[14px] text-[#485653]">
                 Sistem Monitoring &amp; Otomasi Kolam Ikan BanyuWening
               </p>
-              <h2 className="text-[clamp(32px,4.6vw,64px)] leading-[0.98] tracking-[-0.04em] font-semibold text-[#111918]">
+              <h2 className="text-[clamp(28px,5.2vw,64px)] leading-[1.02] tracking-[-0.04em] font-semibold text-[#111918]">
                 Mari bangun kolam presisi bersama.
               </h2>
             </div>
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto shrink-0">
               <Link
                 href="/demo"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#136F63] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#0D534A] transition-colors"
+                className="w-full sm:w-auto inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-[#136F63] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#0D534A] transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{landingContent?.cta_button_text || "Buka Versi Demo"}</span>
               </Link>
               <Link
                 href="/dashboard"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[#111918]/25 px-5 py-2.5 text-[13px] font-semibold text-[#111918] hover:bg-[#111918] hover:text-white transition-colors"
+                className="w-full sm:w-auto inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#111918]/25 px-5 py-2.5 text-[13px] font-semibold text-[#111918] hover:bg-[#111918] hover:text-white transition-colors"
               >
                 <span>Masuk Dashboard</span>
                 <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />

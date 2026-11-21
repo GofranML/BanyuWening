@@ -711,7 +711,60 @@ export function SuperAdminMlOpsPanel({
             </span>
             <span className="text-[11px] text-muted">Artefak tersimpan atomik di ml/models/versions/</span>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Card View (< md) */}
+          <div className="md:hidden divide-y divide-line">
+            {models.map((m) => (
+              <div key={`m-mod-${m.id}`} className="p-4 space-y-2 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-mono font-bold text-ink text-[13px]">{m.version}</div>
+                    <div className="text-[10.5px] text-muted">{m.trained_by}</div>
+                  </div>
+                  <span
+                    className={`inline-flex px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold shrink-0 ${
+                      m.is_active
+                        ? "bg-aman-bg text-aman-text"
+                        : m.status === "REJECTED"
+                        ? "bg-bahaya-bg text-bahaya-text"
+                        : "bg-surface-2 text-muted"
+                    }`}
+                  >
+                    {m.is_active ? "ACTIVE" : m.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] font-mono tnum">
+                  <div className="p-2 rounded bg-surface-2">
+                    <div className="text-[10px] text-muted">Akurasi</div>
+                    <div className="font-bold text-ink">{(m.accuracy * 100).toFixed(1)}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-surface-2">
+                    <div className="text-[10px] text-muted">Macro-F1</div>
+                    <div className="font-bold text-ink">{m.macro_f1.toFixed(4)}</div>
+                  </div>
+                  <div className="p-2 rounded bg-surface-2">
+                    <div className="text-[10px] text-muted">Recall BAHAYA</div>
+                    <div className="font-bold text-ink">
+                      {m.bahaya_recall !== null ? `${(m.bahaya_recall * 100).toFixed(0)}%` : "-"}
+                    </div>
+                  </div>
+                </div>
+                {!m.is_active && (
+                  <button
+                    type="button"
+                    disabled={busyAction === `promote-${m.id}`}
+                    onClick={() => handlePromoteModel(m)}
+                    className="w-full min-h-[40px] px-3 bg-brand/10 hover:bg-brand/20 text-brand rounded-[6px] text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Aktifkan / Rollback ke Versi Ini</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-2/60 border-b border-line text-muted uppercase text-[10px] font-semibold">
                 <tr>
