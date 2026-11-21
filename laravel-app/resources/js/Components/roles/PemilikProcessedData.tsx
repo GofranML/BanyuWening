@@ -18,12 +18,12 @@ export function PemilikProcessedData() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[12px] font-semibold mb-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-brand border border-brand/20 text-[12px] font-semibold mb-2">
           <Fish className="w-3.5 h-3.5" />
           <span>Laporan Eksekutif Pemilik Kolam (Data Terproses)</span>
         </div>
         <h1 className="text-[24px] md:text-[28px] font-display text-ink leading-tight">
-          Ringkasan Kesehatan & Produktivitas Kolam
+          Ringkasan Kesehatan &amp; Produktivitas Kolam
         </h1>
         <p className="text-[13px] text-muted mt-1 max-w-3xl">
           Laporan cerdas yang telah diolah dari sensor kolam menjadi informasi praktis,
@@ -32,18 +32,18 @@ export function PemilikProcessedData() {
       </div>
 
       {/* 1. Kartu Skor Kesehatan Kolam (Water Quality Index) */}
-      <div className="p-6 bg-surface border border-line rounded-[6px] shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
+      <div className="p-5 sm:p-6 bg-surface border border-line rounded-[6px] shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 min-w-0">
             <span className="text-[12px] font-semibold uppercase tracking-wider text-muted">
               Indeks Kualitas Air Keseluruhan (WQI)
             </span>
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-wrap items-baseline gap-3">
               <span className="text-[48px] md:text-[56px] font-bold font-display text-aman leading-none tnum">
                 94
               </span>
               <span className="text-[20px] font-semibold text-muted">/ 100</span>
-              <span className="px-3 py-1 rounded-full bg-aman/15 text-aman font-bold text-[13px]">
+              <span className="px-3 py-1 rounded-full bg-aman/15 text-aman-text font-bold text-[13px]">
                 Kondisi Sangat Prima
               </span>
             </div>
@@ -53,22 +53,22 @@ export function PemilikProcessedData() {
             </p>
           </div>
 
-          <div className="p-4 bg-surface-2 rounded-[6px] border border-line md:w-72 shrink-0 space-y-2 text-[12px]">
-            <div className="flex items-center justify-between font-medium">
-              <span className="text-muted">Status Risiko Prediktif:</span>
-              <span className="text-aman font-bold">100% AMAN</span>
+          <div className="p-4 bg-surface-2 rounded-[6px] border border-line w-full lg:w-[360px] shrink-0 divide-y divide-line/60 text-[12.5px]">
+            <div className="flex items-center justify-between gap-4 py-2 first:pt-0">
+              <span className="text-muted">Status Risiko Prediktif</span>
+              <span className="text-aman-text font-bold text-right whitespace-nowrap">100% AMAN</span>
             </div>
-            <div className="flex items-center justify-between font-medium">
-              <span className="text-muted">Kecukupan Oksigen:</span>
-              <span className="text-ink font-semibold">Tercukupi Penuh</span>
+            <div className="flex items-center justify-between gap-4 py-2">
+              <span className="text-muted">Kecukupan Oksigen</span>
+              <span className="text-ink font-semibold text-right whitespace-nowrap">Tercukupi Penuh</span>
             </div>
-            <div className="flex items-center justify-between font-medium">
-              <span className="text-muted">Kebersihan Kolam:</span>
-              <span className="text-ink font-semibold">Ideal (TDS 345 ppm)</span>
+            <div className="flex items-center justify-between gap-4 py-2">
+              <span className="text-muted">Kebersihan Kolam</span>
+              <span className="text-ink font-semibold text-right whitespace-nowrap">Ideal (TDS 345 ppm)</span>
             </div>
-            <div className="flex items-center justify-between font-medium">
-              <span className="text-muted">Keaktifan Petugas Lapangan:</span>
-              <span className="text-ink font-semibold">Standby (Operator)</span>
+            <div className="flex items-center justify-between gap-4 py-2 last:pb-0">
+              <span className="text-muted">Petugas Lapangan</span>
+              <span className="text-ink font-semibold text-right whitespace-nowrap">Standby (Operator)</span>
             </div>
           </div>
         </div>
