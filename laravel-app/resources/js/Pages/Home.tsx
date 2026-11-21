@@ -447,7 +447,7 @@ const ShowroomPlateSection = memo(function ShowroomPlateSection({
           <span>Time-lapse kolam (TLSVideos · CC BY 3.0)</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#111918]/12 border-b border-[#111918]/15">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-[#111918]/12 border-b border-[#111918]/15">
           {DIURNAL_PHASES.map((phase, idx) => {
             const selected = activeDiurnal === idx;
             return (
@@ -455,18 +455,18 @@ const ShowroomPlateSection = memo(function ShowroomPlateSection({
                 key={phase.time}
                 type="button"
                 onClick={() => onSelectDiurnal(idx)}
-                className={`p-5 text-left transition-colors cursor-pointer ${
+                className={`p-3.5 sm:p-5 text-left transition-colors cursor-pointer ${
                   selected ? "bg-white" : "hover:bg-white/60"
                 }`}
               >
-                <div className="inline-flex items-center gap-1.5 mono-label text-[11px] text-[#136F63]">
+                <div className="inline-flex items-center gap-1.5 mono-label text-[10px] sm:text-[11px] text-[#136F63]">
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   <span>{phase.time}</span>
                 </div>
-                <div className="mt-2 text-[16px] font-semibold text-[#111918]">
+                <div className="mt-1.5 sm:mt-2 text-[14px] sm:text-[16px] font-semibold text-[#111918] leading-snug">
                   {phase.title}
                 </div>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[#485653]">
+                <p className="mt-1 sm:mt-1.5 text-[12px] sm:text-[13px] leading-relaxed text-[#485653]">
                   {phase.detail}
                 </p>
               </button>
@@ -833,12 +833,12 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s1Visibility as any,
                 }
           }
-          className={`absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/72 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
+          className={`absolute bottom-2 sm:bottom-4 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-xl sm:rounded-2xl bg-[#0F2321]/68 backdrop-blur-md border border-white/12 p-3.5 sm:p-5 lg:border-0 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
             journeyStage === 0 ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
           <motion.div
-            className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-2.5 sm:mb-4 inline-flex items-center gap-2 will-change-transform"
+            className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-1.5 sm:mb-3 lg:mb-4 inline-flex items-center gap-2 will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1KickerY }}
           >
             <span
@@ -847,8 +847,8 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             />
             <span>01 / {landingContent?.hero_title || "BANYUWENING"}</span>
           </motion.div>
-          <h1 className="text-[clamp(28px,6.8vw,76px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
-            <span className="block overflow-hidden pb-1">
+          <h1 className="text-[clamp(22px,5.4vw,76px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
+            <span className="block overflow-hidden pb-0.5 sm:pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s1Line1Y }}
@@ -856,7 +856,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 Buat kualitas air
               </motion.span>
             </span>
-            <span className="block overflow-hidden pb-1">
+            <span className="block overflow-hidden pb-0.5 sm:pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s1Line2Y }}
@@ -866,19 +866,19 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             </span>
           </h1>
           <motion.p
-            className="mt-3 sm:mt-4 max-w-[54ch] text-[14px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#D9D4C7] will-change-transform"
+            className="mt-2 sm:mt-3.5 max-w-[54ch] text-[12.5px] sm:text-[15px] md:text-[18px] leading-[1.45] sm:leading-[1.55] text-[#D9D4C7] will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1BodyY }}
           >
             {landingContent?.hero_subtitle ||
               "Platform IoT akuakultur presisi dengan kecerdasan Edge Fuzzy lokal dan kontrol pompa otomatis untuk menjaga kualitas air kolam lele 24 jam penuh."}
           </motion.p>
           <motion.div
-            className="mt-4 sm:mt-7 flex flex-wrap items-center gap-3 sm:gap-6 will-change-transform"
+            className="mt-3 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-6 will-change-transform"
             style={shouldReduceMotion ? undefined : { y: s1CtaY }}
           >
             <a
               href="#arsitektur-3d"
-              className="group min-h-[44px] inline-flex items-center gap-2.5 px-1 border-b border-[#F2EFE7]/35 text-[13px] sm:text-[14px] font-medium text-[#F2EFE7] hover:border-[#F2EFE7] transition-colors"
+              className="group min-h-[40px] sm:min-h-[44px] inline-flex items-center gap-2 px-1 border-b border-[#F2EFE7]/35 text-[12.5px] sm:text-[14px] font-medium text-[#F2EFE7] hover:border-[#F2EFE7] transition-colors"
             >
               <span>Jelajahi sistem 3D</span>
               <ArrowRight
@@ -888,7 +888,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
             </a>
             <Link
               href="/demo"
-              className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-[#8CC2BA]/40 bg-[#0F2321]/65 backdrop-blur-md px-4 sm:px-5 py-2 text-[13px] font-medium text-[#8CC2BA] hover:bg-[#8CC2BA] hover:text-[#14302D] transition-colors"
+              className="min-h-[40px] sm:min-h-[44px] inline-flex items-center gap-2 rounded-full border border-[#8CC2BA]/40 bg-[#0F2321]/65 backdrop-blur-md px-3.5 sm:px-5 py-1.5 sm:py-2 text-[12.5px] sm:text-[13px] font-medium text-[#8CC2BA] hover:bg-[#8CC2BA] hover:text-[#14302D] transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{landingContent?.cta_button_text || "Buka Versi Demo"}</span>
@@ -911,22 +911,22 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s2Visibility as any,
                 }
           }
-          className="absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-6 sm:right-6 md:left-12 md:right-12 lg:left-16 lg:right-16 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-8 pointer-events-none"
+          className="absolute bottom-2 sm:bottom-4 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 left-4 right-4 sm:left-6 sm:right-6 md:left-12 md:right-12 lg:left-16 lg:right-16 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-8 pointer-events-none"
         >
           <div
-            className={`max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#0F2321]/72 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
+            className={`max-w-[760px] lg:max-w-[44vw] rounded-xl sm:rounded-2xl bg-[#0F2321]/68 backdrop-blur-md border border-white/12 p-3.5 sm:p-5 lg:border-0 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${
               journeyStage === 1 ? "pointer-events-auto" : "pointer-events-none"
             }`}
           >
-            <div className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-2.5 sm:mb-4 inline-flex items-center gap-2">
+            <div className="mono-label text-[10px] sm:text-[11px] text-[#8CC2BA] mb-1.5 sm:mb-3 lg:mb-4 inline-flex items-center gap-2">
               <span
                 aria-hidden="true"
                 className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#8CC2BA] shadow-[0_0_14px_#8CC2BA]"
               />
               <span>02 / LORONG TOPOLOGI CORE HUB</span>
             </div>
-            <h2 className="text-[clamp(26px,6.2vw,72px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
-              <span className="block overflow-hidden pb-1">
+            <h2 className="text-[clamp(21px,5.2vw,72px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
+              <span className="block overflow-hidden pb-0.5 sm:pb-1">
                 <motion.span
                   className="block hero-split-line will-change-transform"
                   style={shouldReduceMotion ? undefined : { y: s2Line1Y }}
@@ -934,7 +934,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   Satu inti hardware
                 </motion.span>
               </span>
-              <span className="block overflow-hidden pb-1">
+              <span className="block overflow-hidden pb-0.5 sm:pb-1">
                 <motion.span
                   className="block hero-split-line will-change-transform"
                   style={shouldReduceMotion ? undefined : { y: s2Line2Y }}
@@ -943,14 +943,14 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 </motion.span>
               </span>
             </h2>
-            <p className="mt-3 sm:mt-4 max-w-[52ch] text-[13.5px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#D9D4C7]">
+            <p className="mt-2 sm:mt-3.5 max-w-[52ch] text-[12.5px] sm:text-[15px] md:text-[18px] leading-[1.45] sm:leading-[1.55] text-[#D9D4C7]">
               Jalur kabel shielded GX16 mengisolasi pembacaan ADC 16-bit tiap kolam sekaligus mempertahankan efisiensi instalasi petambak UMKM.
             </p>
-            <div className="lg:hidden grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15">
+            <div className="lg:hidden grid grid-cols-3 gap-1.5 sm:gap-2 mt-2.5 sm:mt-3.5 pt-2.5 sm:pt-3 border-t border-white/15">
               {passageBeats.map((b) => (
-                <div key={b.num} className="rounded-lg bg-white/5 px-2.5 py-2">
-                  <div className="mono-label text-[9px] text-[#8CC2BA]">{b.num}</div>
-                  <div className="text-[11px] font-semibold text-[#F2EFE7] mt-0.5 leading-tight">{b.title}</div>
+                <div key={b.num} className="rounded-lg bg-white/6 px-2 py-1.5">
+                  <div className="mono-label text-[8.5px] text-[#8CC2BA]">{b.num}</div>
+                  <div className="text-[10.5px] font-semibold text-[#F2EFE7] mt-0.5 leading-tight">{b.title}</div>
                 </div>
               ))}
             </div>
@@ -985,19 +985,19 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   visibility: s3Visibility as any,
                 }
           }
-          className={`absolute top-1/2 -translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-2xl bg-[#F2EFE7]/88 backdrop-blur-md p-4 sm:p-6 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${journeyTextTone} ${
+          className={`absolute bottom-2 sm:bottom-4 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 left-4 right-4 sm:left-5 sm:right-5 md:left-12 md:right-12 lg:left-16 lg:right-auto max-w-[760px] lg:max-w-[44vw] rounded-xl sm:rounded-2xl bg-[#F2EFE7]/86 backdrop-blur-md border border-[#14302D]/10 p-3.5 sm:p-5 lg:border-0 lg:rounded-none lg:bg-transparent lg:backdrop-blur-none lg:p-0 ${journeyTextTone} ${
             journeyStage === 2 ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
-          <div className="mono-label text-[10px] sm:text-[11px] text-[#33706A] mb-2.5 sm:mb-4 inline-flex items-center gap-2">
+          <div className="mono-label text-[10px] sm:text-[11px] text-[#33706A] mb-1.5 sm:mb-3 lg:mb-4 inline-flex items-center gap-2">
             <span
               aria-hidden="true"
               className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#33706A]"
             />
             <span>03 / OTONOMI PENUH PINGGIR KOLAM</span>
           </div>
-          <h2 className="text-[clamp(26px,6.2vw,68px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#14302D] text-balance">
-            <span className="block overflow-hidden pb-1">
+          <h2 className="text-[clamp(21px,5.2vw,68px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#14302D] text-balance">
+            <span className="block overflow-hidden pb-0.5 sm:pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s3Line1Y }}
@@ -1005,7 +1005,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 Dibuat untuk eksplorasi.
               </motion.span>
             </span>
-            <span className="block overflow-hidden pb-1">
+            <span className="block overflow-hidden pb-0.5 sm:pb-1">
               <motion.span
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s3Line2Y }}
@@ -1014,13 +1014,13 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
               </motion.span>
             </span>
           </h2>
-          <p className="mt-3 sm:mt-4 max-w-[50ch] text-[14px] sm:text-[16px] md:text-[18px] leading-[1.55] text-[#4B5D5A]">
+          <p className="mt-2 sm:mt-3.5 max-w-[50ch] text-[12.5px] sm:text-[15px] md:text-[18px] leading-[1.45] sm:leading-[1.55] text-[#4B5D5A]">
             Tetap menjaga pH, suhu, kekeruhan, dan pompa aerasi walaupun WiFi kolam terputus melalui Edge Fuzzy &amp; Mode Offline-Plus Rp0.
           </p>
-          <div className="mt-4 sm:mt-7">
+          <div className="mt-3 sm:mt-6">
             <a
               href="#arsitektur-3d"
-              className="min-h-[44px] inline-flex items-center gap-2.5 px-1 border-b border-[#14302D]/35 text-[13px] sm:text-[14px] font-medium text-[#14302D] hover:border-[#14302D]"
+              className="min-h-[40px] sm:min-h-[44px] inline-flex items-center gap-2 px-1 border-b border-[#14302D]/35 text-[12.5px] sm:text-[14px] font-medium text-[#14302D] hover:border-[#14302D]"
             >
               <span>Lihat arsitektur sistem</span>
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1155,7 +1155,7 @@ const PipelineCard = memo(function PipelineCard({
   return (
     <motion.article
       aria-hidden={!active}
-      className="absolute inset-0 flex items-stretch justify-center pointer-events-none py-1 sm:py-2 will-change-transform"
+      className="absolute inset-0 flex items-center lg:items-stretch justify-center pointer-events-none py-1 sm:py-2 will-change-transform"
       style={{
         opacity,
         visibility: visibility as any,
@@ -1168,7 +1168,7 @@ const PipelineCard = memo(function PipelineCard({
       }}
     >
       <div
-        className="relative w-full h-full grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-3 sm:gap-5 lg:gap-8 items-center rounded-2xl sm:rounded-3xl bg-[#051B18]/94 border border-white/15 p-4 sm:p-6 lg:p-8 xl:p-10 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)] overflow-hidden"
+        className="relative w-full h-auto max-h-full lg:h-full flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-3.5 sm:gap-5 lg:gap-8 items-stretch lg:items-center rounded-2xl sm:rounded-3xl bg-[#051B18]/94 border border-white/15 p-4 sm:p-6 lg:p-8 xl:p-10 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)] overflow-y-auto lg:overflow-hidden no-scrollbar"
         style={{ contain: "layout style" }}
       >
         <motion.span
@@ -1179,8 +1179,8 @@ const PipelineCard = memo(function PipelineCard({
           {st.num}
         </motion.span>
 
-        <div className="lg:col-span-6 h-full min-h-0 flex items-center justify-center">
-          <div className="relative w-full h-full min-h-[160px] max-h-[22vh] sm:max-h-[32vh] lg:max-h-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] border border-white/10 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
+        <div className="lg:col-span-6 lg:h-full min-h-0 flex items-center justify-center shrink-0">
+          <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] max-h-[24vh] sm:max-h-[30vh] lg:aspect-auto lg:h-full lg:max-h-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] border border-white/10 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
             <img
               src={st.img}
               alt={st.title}
@@ -1194,7 +1194,7 @@ const PipelineCard = memo(function PipelineCard({
         </div>
 
         <div className="lg:col-span-6 min-h-0 flex flex-col justify-center space-y-2 sm:space-y-3 lg:space-y-4 lg:px-2">
-          <div className="flex items-baseline gap-3 sm:gap-4">
+          <div className="flex items-baseline gap-2.5 sm:gap-4">
             <span className="text-[clamp(28px,4.5vw,68px)] font-bold leading-none tracking-[-0.04em] tnum text-white/95">
               {st.num}
             </span>
@@ -1205,7 +1205,7 @@ const PipelineCard = memo(function PipelineCard({
           <h3 className="text-[clamp(18px,2.8vw,36px)] leading-[1.12] tracking-[-0.025em] font-semibold text-white">
             {st.title}
           </h3>
-          <p className="text-[13px] sm:text-[15px] lg:text-[16px] xl:text-[17px] leading-[1.55] sm:leading-[1.6] text-white/85 max-w-[58ch]">
+          <p className="text-[13px] sm:text-[15px] lg:text-[16px] xl:text-[17px] leading-[1.52] sm:leading-[1.6] text-white/85 max-w-[58ch]">
             {st.detail}
           </p>
           <div className="pt-2 sm:pt-3 border-t border-white/20 mono-label text-[10px] sm:text-[11.5px] lg:text-[12px] text-[#A9F2E8]">
@@ -1831,35 +1831,35 @@ export default function Home({ landingContent }: HomeProps) {
             />
 
             {/* Col 5-12 Architectural Detail + Stats Table */}
-            <div className="mt-16 pt-10 border-t border-[#111918]/15 grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-4 space-y-2">
-                <div className="mono-label text-[11px] text-[#53625E]">PRINSIP DESAIN</div>
-                <div className="text-[20px] font-semibold text-[#111918]">
+            <div className="mt-8 sm:mt-16 pt-6 sm:pt-10 border-t border-[#111918]/15 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
+              <div className="lg:col-span-4 space-y-1.5 sm:space-y-2">
+                <div className="mono-label text-[10.5px] sm:text-[11px] text-[#53625E]">PRINSIP DESAIN</div>
+                <div className="text-[18px] sm:text-[20px] font-semibold text-[#111918]">
                   Anti-Bricking &amp; Otomasi Lokal
                 </div>
               </div>
-              <div className="lg:col-span-8 lg:pl-6 space-y-8">
-                <p className="text-[17px] leading-[1.65] text-[#283331] max-w-[66ch]">
+              <div className="lg:col-span-8 lg:pl-6 space-y-5 sm:space-y-8">
+                <p className="text-[14.5px] sm:text-[17px] leading-[1.6] sm:leading-[1.65] text-[#283331] max-w-[66ch]">
                   {landingContent?.intro_desc ||
                     "Arsitektur 1 Core Hub untuk 1-4 Modul Kolam dengan Edge Fuzzy + LittleFS Store-and-Forward, Sensor Health Watchdog, dan WeningBot WhatsApp-First. Mode Offline-Plus Rp0 aktif permanen."}
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-[#111918]/15">
+                <div className="grid grid-cols-3 gap-2 sm:gap-0 border-t border-[#111918]/15">
                   {[
-                    { val: "<15 ms", label: "Inferensi Edge Fuzzy Lokal" },
-                    { val: "72 Jam", label: "Retensi Log LittleFS Offline" },
-                    { val: "Rp0", label: "Biaya Mode Offline-Plus" },
+                    { val: "<15 ms", label: "Inferensi Edge Fuzzy" },
+                    { val: "72 Jam", label: "Log LittleFS Offline" },
+                    { val: "Rp0", label: "Mode Offline-Plus" },
                   ].map((stat, idx) => (
                     <div
                       key={stat.label}
-                      className={`py-5 ${
-                        idx > 0 ? "sm:border-l border-[#111918]/15 sm:pl-6" : "pr-6"
+                      className={`py-3.5 sm:py-5 ${
+                        idx > 0 ? "border-l border-[#111918]/15 pl-2.5 sm:pl-6" : "pr-1.5 sm:pr-6"
                       }`}
                     >
-                      <div className="text-[36px] md:text-[44px] font-bold tracking-[-0.03em] text-[#111918] tnum leading-none">
+                      <div className="text-[20px] sm:text-[36px] md:text-[44px] font-bold tracking-[-0.03em] text-[#111918] tnum leading-none">
                         {stat.val}
                       </div>
-                      <div className="mt-2 text-[13px] font-medium text-[#53625E]">
+                      <div className="mt-1.5 sm:mt-2 text-[10.5px] sm:text-[13px] leading-snug font-medium text-[#53625E]">
                         {stat.label}
                       </div>
                     </div>

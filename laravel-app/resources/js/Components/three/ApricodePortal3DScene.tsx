@@ -2531,10 +2531,10 @@ export function ApricodePortal3DScene({
       portalGroup.rotation.set(artRotX, artRotY, artRotZ);
 
       const sCamX = isNarrow ? 3.6 : 8.8;
-      const sCamY = isNarrow ? 2.2 : 1.5;
-      const sCamZ = isNarrow ? 22.5 : 17.3;
-      const sLookX = isNarrow ? 0.2 : -0.85;
-      const sLookY = isNarrow ? 0.1 : 0.45;
+      const sCamY = isNarrow ? 2.0 : 1.5;
+      const sCamZ = isNarrow ? 22.8 : 17.3;
+      const sLookX = isNarrow ? 0.25 : -0.85;
+      const sLookY = isNarrow ? -1.15 : 0.45;
 
       startLocalTmp.set(sCamX - artPosX, sCamY - artPosY, sCamZ).applyEuler(invEulerTmp);
       startLookDirTmp
@@ -2584,8 +2584,8 @@ export function ApricodePortal3DScene({
 
       ARRIVE_LOOK_X_KEYS[2][1] = isNarrow ? 3 : 0.9;
       ARRIVE_LOOK_X_KEYS[3][1] = isNarrow ? 3 : 0.9;
-      ARRIVE_LOOK_Y_KEYS[2][1] = isNarrow ? -2.9 : -1.95;
-      ARRIVE_LOOK_Y_KEYS[3][1] = isNarrow ? -2.9 : -1.95;
+      ARRIVE_LOOK_Y_KEYS[2][1] = isNarrow ? -3.45 : -1.95;
+      ARRIVE_LOOK_Y_KEYS[3][1] = isNarrow ? -3.45 : -1.95;
 
       arriveCamTmp.set(
         sampleMonotoneSpline(ARRIVE_X_KEYS, prog),
@@ -2600,6 +2600,10 @@ export function ApricodePortal3DScene({
 
       camPosTmp.lerp(arriveCamTmp, arriveBlend);
       lookTargetTmp.lerp(arriveLookTmp, arriveBlend);
+      if (isNarrow) {
+        // Geser framing model 3D sedikit ke atas layar mobile agar tidak tertutup kartu copy di bawah
+        lookTargetTmp.y -= 0.55 * smootherstep(0.18, 0.72, prog) * (1 - arriveBlend);
+      }
 
       const fovBase =
         lerp(isMobile ? 44 : 42, 40, smootherstep(0.1, 0.32, routeP)) +
