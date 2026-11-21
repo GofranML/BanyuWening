@@ -1151,19 +1151,11 @@ const PipelineCard = memo(function PipelineCard({
     smoothPipeline,
     (p) => Math.max(-0.8, Math.min(0.8, (p - stepCenter) * 4)) * 96
   );
-  const imgY = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (stepCenter - p) * 4)) * 34
-  );
-  const textY = useTransform(
-    smoothPipeline,
-    (p) => Math.max(-0.8, Math.min(0.8, (p - stepCenter) * 4)) * 26
-  );
 
   return (
     <motion.article
       aria-hidden={!active}
-      className="absolute inset-0 flex items-stretch justify-center pointer-events-none py-2 will-change-transform"
+      className="absolute inset-0 flex items-stretch justify-center pointer-events-none py-1 sm:py-2 will-change-transform"
       style={{
         opacity,
         visibility: visibility as any,
@@ -1176,22 +1168,19 @@ const PipelineCard = memo(function PipelineCard({
       }}
     >
       <div
-        className="relative w-full h-full grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 lg:gap-12 items-stretch rounded-2xl sm:rounded-3xl bg-[#051B18]/94 border border-white/15 p-4 sm:p-7 lg:p-12 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)] overflow-y-auto no-scrollbar"
+        className="relative w-full h-full grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-3 sm:gap-5 lg:gap-8 items-center rounded-2xl sm:rounded-3xl bg-[#051B18]/94 border border-white/15 p-4 sm:p-6 lg:p-8 xl:p-10 shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)] overflow-hidden"
         style={{ contain: "layout style" }}
       >
         <motion.span
           aria-hidden="true"
-          className="pointer-events-none hidden sm:block absolute top-2 right-6 md:right-12 text-[clamp(84px,12vw,180px)] font-bold leading-none tracking-[-0.05em] text-white/[0.06] select-none tnum will-change-transform"
+          className="pointer-events-none hidden sm:block absolute top-2 right-6 md:right-12 text-[clamp(84px,12vw,160px)] font-bold leading-none tracking-[-0.05em] text-white/[0.06] select-none tnum will-change-transform"
           style={{ y: ghostY }}
         >
           {st.num}
         </motion.span>
 
-        <motion.div
-          className="lg:col-span-6 h-full min-h-0 flex items-center justify-center will-change-transform"
-          style={{ y: imgY }}
-        >
-          <div className="relative w-full aspect-[16/9] max-h-[20vh] sm:max-h-[36vh] lg:max-h-[56vh] overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
+        <div className="lg:col-span-6 h-full min-h-0 flex items-center justify-center">
+          <div className="relative w-full h-full min-h-[160px] max-h-[22vh] sm:max-h-[32vh] lg:max-h-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#0B2320] border border-white/10 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)]">
             <img
               src={st.img}
               alt={st.title}
@@ -1202,30 +1191,27 @@ const PipelineCard = memo(function PipelineCard({
               className="absolute inset-0 h-full w-full object-cover object-center"
             />
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="lg:col-span-6 h-full flex flex-col justify-center space-y-2.5 sm:space-y-4 lg:space-y-6 lg:px-4 will-change-transform"
-          style={{ y: textY }}
-        >
+        <div className="lg:col-span-6 min-h-0 flex flex-col justify-center space-y-2 sm:space-y-3 lg:space-y-4 lg:px-2">
           <div className="flex items-baseline gap-3 sm:gap-4">
-            <span className="text-[clamp(32px,7vw,120px)] font-bold leading-none tracking-[-0.04em] tnum text-white/95">
+            <span className="text-[clamp(28px,4.5vw,68px)] font-bold leading-none tracking-[-0.04em] tnum text-white/95">
               {st.num}
             </span>
-            <span className="mono-label text-[11px] sm:text-[13px] text-[#A9F2E8]">
+            <span className="mono-label text-[10.5px] sm:text-[12px] text-[#A9F2E8]">
               TAHAP {st.verb}
             </span>
           </div>
-          <h3 className="text-[clamp(20px,4.5vw,52px)] leading-[1.1] tracking-[-0.025em] font-semibold text-white">
+          <h3 className="text-[clamp(18px,2.8vw,36px)] leading-[1.12] tracking-[-0.025em] font-semibold text-white">
             {st.title}
           </h3>
-          <p className="text-[13.5px] sm:text-[17px] lg:text-[19px] leading-[1.55] sm:leading-[1.65] text-white/85 max-w-[60ch]">
+          <p className="text-[13px] sm:text-[15px] lg:text-[16px] xl:text-[17px] leading-[1.55] sm:leading-[1.6] text-white/85 max-w-[58ch]">
             {st.detail}
           </p>
-          <div className="pt-2.5 sm:pt-3 border-t border-white/20 mono-label text-[10px] sm:text-[13px] text-[#A9F2E8]">
+          <div className="pt-2 sm:pt-3 border-t border-white/20 mono-label text-[10px] sm:text-[11.5px] lg:text-[12px] text-[#A9F2E8]">
             {st.spec}
           </div>
-        </motion.div>
+        </div>
       </div>
     </motion.article>
   );
@@ -1286,7 +1272,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
   const meterScaleX = useTransform(smoothPipeline, [0, 1], [0.1, 1]);
 
   return (
-    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-4 sm:px-6 md:px-12 lg:px-16 pt-18 sm:pt-20 md:pt-24 pb-3 sm:pb-6 md:pb-8">
+    <div className="sticky top-0 h-[100svh] w-full overflow-hidden flex flex-col justify-between px-4 sm:px-6 md:px-12 lg:px-16 pt-14 sm:pt-16 md:pt-20 pb-3 sm:pb-5">
       {/* Layer 0: Full-Bleed WebGL 5-Point Mesh Gradient + 3D Perspective Floor Grid */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <HelloWorldMeshCanvas className="h-full w-full" />

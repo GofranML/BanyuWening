@@ -193,11 +193,16 @@ export function SuperAdminDocs({
       </div>
 
       {activeSubTab === "ota-esp32" ? (
-        <SuperAdminOtaProtocolPanel initialOverview={otaOverview} realtimeConfig={realtimeConfig} />
+        <SuperAdminOtaProtocolPanel
+          initialOverview={otaOverview}
+          realtimeConfig={realtimeConfig}
+          users={users}
+        />
       ) : activeSubTab === "ml-rf-ops" ? (
         <SuperAdminMlOpsPanel initialOverview={mlOverview} devices={devices} />
       ) : activeSubTab === "api" ? (
         <SuperAdminApiDocs
+          users={users}
           devices={devices}
           realtimeConfig={realtimeConfig}
           activeTransport={activeTransport}

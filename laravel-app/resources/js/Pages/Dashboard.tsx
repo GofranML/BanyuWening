@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Rocket,
+  Building2,
 } from "lucide-react";
 
 import { StatusCard } from "@/Components/StatusCard";
@@ -40,6 +42,7 @@ import { SuperAdminUserManagement } from "@/Components/roles/SuperAdminUserManag
 import { SuperAdminNotificationConfig } from "@/Components/roles/SuperAdminNotificationConfig";
 import { SuperAdminContentManagement } from "@/Components/roles/SuperAdminContentManagement";
 import { SuperAdminSecurityBackup } from "@/Components/roles/SuperAdminSecurityBackup";
+import { SuperAdminOtaProtocolPanel } from "@/Components/roles/SuperAdminOtaProtocolPanel";
 import { OperatorTutorial } from "@/Components/roles/OperatorTutorial";
 import { AnalisDetailedData } from "@/Components/roles/AnalisDetailedData";
 import { PemilikProcessedData } from "@/Components/roles/PemilikProcessedData";
@@ -89,7 +92,19 @@ type TabId =
   | "keamanan-backup"
   | "tutorial"
   | "analisis-lengkap"
-  | "laporan-pemilik";
+  | "laporan-pemilik"
+  | "ota-mandiri";
+
+interface TenantDeviceSummary {
+  id: number;
+  device_code: string;
+  name: string;
+  pond_name: string;
+  tenant_code?: string | null;
+  firmware_version: string;
+  hardware_profile: string;
+  status: string;
+}
 
 interface DashboardProps {
   user: User;
@@ -98,6 +113,8 @@ interface DashboardProps {
   allReadings: SensorReading[];
   alerts: AlertItem[];
   device: DeviceInfo;
+  tenantDevices?: TenantDeviceSummary[];
+  activeDeviceCode?: string | null;
   aeratorState: AeratorState;
   users: User[];
   devices?: ManagedDevice[];
@@ -118,6 +135,8 @@ export default function Dashboard({
   allReadings: initialAllReadings = [],
   alerts: initialAlerts = [],
   device: propDevice,
+  tenantDevices: initialTenantDevices = [],
+  activeDeviceCode: propActiveDeviceCode,
   aeratorState: initialAeratorState,
   users = [],
   devices: initialDevices = [],
@@ -132,6 +151,10 @@ export default function Dashboard({
   const landingContent = initialLandingContent || pageProps.landingContent;
   const backups = initialBackups.length > 0 ? initialBackups : pageProps.backups || [];
   const securityStats = initialSecurityStats || pageProps.securityStats;
+  const tenantDevices: TenantDeviceSummary[] =
+    initialTenantDevices.length > 0 ? initialTenantDevices : pageProps.tenantDevices || [];
+  const activeDeviceCode: string | null =
+    propActiveDeviceCode !== undefined ? propActiveDeviceCode : pageProps.activeDeviceCode || null;
   const managedDevices: ManagedDevice[] =
     initialDevices.length > 0 ? initialDevices : pageProps.devices || [];
   const otaOverview: OtaOverview | null =
@@ -222,51 +245,55 @@ export default function Dashboard({
   useEffect(() => {
     if (!realtimeConfig) return;
 
-    const client = new BanyuWeningRealtimeClient(realtimeConfig, {
-      onModeChange: (mode, reason) => {
-        setRealtimeMode(mode);
-        if (reason) setTransportReason(reason);
-      },
-      onTelemetry: (reading, devicePatch) => {
-        setCurrentReading(reading);
-        setAllReadings((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.ts === reading.ts) return prev;
-          return [...prev.slice(-287), reading];
-        });
-        if (devicePatch) {
-          setDevice((prev) => ({ ...prev, ...devicePatch }));
-        }
-        setAeratorState((prev) => ({
-          ...prev,
-          isOn: Boolean(reading.aerator_on),
-          mode: reading.mode || prev.mode,
-        }));
-      },
-      onPrediction: (nextPrediction, nextAlert) => {
-        setPrediction(nextPrediction);
-        if (nextAlert) {
-          setAlerts((prev) => {
-            if (prev.some((a) => a.id === nextAlert.id)) return prev;
-            return [nextAlert, ...prev].slice(0, 50);
+    const client = new BanyuWeningRealtimeClient(
+      realtimeConfig,
+      {
+        onModeChange: (mode, reason) => {
+          setRealtimeMode(mode);
+          if (reason) setTransportReason(reason);
+        },
+        onTelemetry: (reading, devicePatch) => {
+          setCurrentReading(reading);
+          setAllReadings((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.ts === reading.ts) return prev;
+            return [...prev.slice(-287), reading];
           });
-        }
+          if (devicePatch) {
+            setDevice((prev) => ({ ...prev, ...devicePatch }));
+          }
+          setAeratorState((prev) => ({
+            ...prev,
+            isOn: Boolean(reading.aerator_on),
+            mode: reading.mode || prev.mode,
+          }));
+        },
+        onPrediction: (nextPrediction, nextAlert) => {
+          setPrediction(nextPrediction);
+          if (nextAlert) {
+            setAlerts((prev) => {
+              if (prev.some((a) => a.id === nextAlert.id)) return prev;
+              return [nextAlert, ...prev].slice(0, 50);
+            });
+          }
+        },
+        onAlertsRefresh: (nextAlerts) => {
+          setAlerts(nextAlerts);
+        },
+        onControlUpdate: (ctrl) => {
+          setAeratorState((prev) => ({
+            ...prev,
+            isOn: typeof ctrl.aerator_on === "boolean" ? ctrl.aerator_on : prev.isOn,
+            mode: ctrl.mode || prev.mode,
+          }));
+        },
       },
-      onAlertsRefresh: (nextAlerts) => {
-        setAlerts(nextAlerts);
-      },
-      onControlUpdate: (ctrl) => {
-        setAeratorState((prev) => ({
-          ...prev,
-          isOn: typeof ctrl.aerator_on === "boolean" ? ctrl.aerator_on : prev.isOn,
-          mode: ctrl.mode || prev.mode,
-        }));
-      },
-    });
+      activeDeviceCode || device.device_code
+    );
 
     client.start();
     return () => client.stop();
-  }, [realtimeConfig]);
+  }, [realtimeConfig, activeDeviceCode]);
 
   // Dark mode effect
   useEffect(() => {
@@ -322,6 +349,12 @@ export default function Dashboard({
         {
           action,
           duration_minutes: durationMin,
+          device_code:
+            activeDeviceCode && activeDeviceCode !== "BELUM-TERHUBUNG"
+              ? activeDeviceCode
+              : device.device_code !== "BELUM-TERHUBUNG"
+              ? device.device_code
+              : undefined,
         },
         {
           preserveScroll: true,
@@ -517,6 +550,22 @@ export default function Dashboard({
               >
                 <FileSpreadsheet className="w-4 h-4 shrink-0" />
                 <span className="truncate whitespace-nowrap">Ekspor CSV</span>
+              </button>
+            )}
+
+            {/* Update Firmware Alat Mandiri (Peternak Self-OTA) */}
+            {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+              <button
+                onClick={() => setActiveTab("ota-mandiri")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                  activeTab === "ota-mandiri"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "text-ink hover:bg-surface-2"
+                }`}
+                title="Update Firmware Alat IoT Saya"
+              >
+                <Rocket className="w-4 h-4 shrink-0" />
+                <span className="truncate whitespace-nowrap">Update Firmware Alat</span>
               </button>
             )}
 
@@ -878,6 +927,17 @@ export default function Dashboard({
                       <span className="truncate">Laporan Kolam</span>
                     </button>
                   )}
+                  {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+                    <button
+                      onClick={() => selectMobileTab("ota-mandiri")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "ota-mandiri" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Rocket className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Update Firmware</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1082,6 +1142,19 @@ export default function Dashboard({
             </button>
           )}
 
+          {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+            <button
+              onClick={() => setActiveTab("ota-mandiri")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                activeTab === "ota-mandiri"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Update Firmware
+            </button>
+          )}
+
           {hasPerm("view_docs_api") && (
             <button
               onClick={() => setActiveTab("dokumentasi")}
@@ -1205,13 +1278,60 @@ export default function Dashboard({
                   : "Menghubungkan WS..."}
               </span>
             </div>
-            <div className="text-muted truncate">
-              Unit: <strong className="text-ink">{user.pond_name || device.pond_name}</strong>
+            <div className="flex flex-wrap items-center gap-2 text-muted min-w-0">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-line font-mono text-[10px] text-brand font-semibold">
+                <Building2 className="w-3 h-3 shrink-0" />
+                <span>
+                  {user.role === "ADMIN"
+                    ? "Super Admin · Semua Tenant"
+                    : user.tenant_code || "TENANT-UTAMA"}
+                </span>
+              </span>
+
+              {tenantDevices.length > 0 ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] text-muted hidden sm:inline">Alat Aktif:</span>
+                  <select
+                    value={activeDeviceCode || device.device_code}
+                    onChange={(e) =>
+                      router.get(
+                        "/dashboard",
+                        { device_code: e.target.value },
+                        { preserveScroll: true }
+                      )
+                    }
+                    className="h-8 px-2 bg-surface-2 border border-line rounded-[4px] font-mono text-[11px] font-semibold text-ink cursor-pointer max-w-[230px]"
+                    aria-label="Pilih Alat IoT Aktif"
+                  >
+                    {tenantDevices.map((td) => (
+                      <option key={td.id} value={td.device_code}>
+                        {td.device_code} · {td.pond_name}
+                        {user.role === "ADMIN" && td.tenant_code ? ` (${td.tenant_code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="text-muted truncate">
+                  Unit: <strong className="text-ink">{user.pond_name || device.pond_name}</strong>
+                </div>
+              )}
             </div>
           </div>
 
           {/* TAB: PENGATURAN PROFIL & 2FA (Semua Role) */}
           {activeTab === "profil" && <UserProfileSettings user={user} />}
+
+          {/* TAB: UPDATE FIRMWARE MANDIRI (Peternak Self-OTA Terisolasi Tenant) */}
+          {activeTab === "ota-mandiri" &&
+            (hasPerm("update_device_firmware") || hasPerm("view_docs_api")) && (
+              <SuperAdminOtaProtocolPanel
+                initialOverview={otaOverview}
+                realtimeConfig={realtimeConfig}
+                users={users}
+                isTenantMode={user.role !== "ADMIN" && !hasPerm("view_docs_api")}
+              />
+            )}
 
           {/* TAB: LAPORAN PEMILIK */}
           {activeTab === "laporan-pemilik" && hasPerm("view_owner_report") && <PemilikProcessedData />}

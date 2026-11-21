@@ -34,41 +34,58 @@ class DashboardController extends Controller
     ): Response
     {
         $user = Auth::user();
-        $device = Device::first();
+        $accessibleDevices = Device::accessibleBy($user);
+        $accessibleDeviceIds = $accessibleDevices->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
 
-        // 1. Bacaan sensor terakhir dari node IoT
-        $latest = SensorReading::latest('recorded_at')->first();
+        $requestedDeviceCode = trim((string) $request->query('device_code', ''));
+        $device = ($requestedDeviceCode !== ''
+            ? $accessibleDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0)
+            : null) ?? $accessibleDevices->first();
 
-        // 2. Prediksi ML terakhir jika ada data telemetri
+        // 1. Bacaan sensor terakhir khusus node IoT milik tenant yang sedang aktif
+        $latest = $device
+            ? SensorReading::where('device_id', $device->id)->latest('recorded_at')->first()
+            : null;
+
+        // 2. Prediksi ML terakhir untuk node tenant tersebut
         $prediction = null;
         if ($latest) {
-            $prediction = Prediction::latest('predicted_at')->first();
-            if (!$prediction) {
-                $prediction = $mlService->predict($latest);
-            }
+            $prediction = Prediction::where('sensor_reading_id', $latest->id)->latest('predicted_at')->first()
+                ?? $mlService->predict($latest);
         }
 
-        // 3. Riwayat 288 data (24 jam)
-        $allReadings = SensorReading::latest('recorded_at')
-            ->take(288)
-            ->get()
-            ->reverse()
-            ->values()
-            ->map(function ($r) {
-                return [
-                    'ts' => $r->recorded_at->toIso8601String(),
-                    'ph' => $r->ph,
-                    'temperature_c' => $r->temperature_c,
-                    'tds_ppm' => $r->tds_ppm,
-                    'turbidity_ntu' => $r->turbidity_ntu,
-                    'water_level' => $r->water_level,
-                    'aerator_on' => (bool)$r->aerator_on,
-                    'mode' => $r->mode,
-                ];
-            });
+        // 3. Riwayat 288 data (24 jam) khusus device tenant aktif
+        $allReadings = $device
+            ? SensorReading::where('device_id', $device->id)
+                ->latest('recorded_at')
+                ->take(288)
+                ->get()
+                ->reverse()
+                ->values()
+                ->map(function ($r) {
+                    return [
+                        'ts' => $r->recorded_at->toIso8601String(),
+                        'ph' => $r->ph,
+                        'temperature_c' => $r->temperature_c,
+                        'tds_ppm' => $r->tds_ppm,
+                        'turbidity_ntu' => $r->turbidity_ntu,
+                        'water_level' => $r->water_level,
+                        'aerator_on' => (bool)$r->aerator_on,
+                        'mode' => $r->mode,
+                    ];
+                })
+            : collect();
 
-        // 4. Daftar Alert
-        $alerts = Alert::latest()->take(50)->get()->map(function ($a) {
+        // 4. Daftar Alert terisolasi per tenant (Super Admin melihat semua tenant)
+        $alertsQuery = Alert::latest();
+        if ($user && !$user->isAdmin()) {
+            if (empty($accessibleDeviceIds)) {
+                $alertsQuery->whereRaw('1 = 0');
+            } else {
+                $alertsQuery->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $accessibleDeviceIds));
+            }
+        }
+        $alerts = $alertsQuery->take(50)->get()->map(function ($a) {
             return [
                 'id' => $a->id,
                 'ts' => $a->created_at->toIso8601String(),
@@ -84,7 +101,7 @@ class DashboardController extends Controller
             ];
         });
 
-        // 5. Data Tambahan khusus Admin
+        // 5. Data Tambahan khusus Admin & Self-OTA Tenant
         $users = [];
         $notificationConfig = null;
         $dispatchLogs = [];
@@ -97,12 +114,13 @@ class DashboardController extends Controller
         $canManageNotif = $user && ($user->isAdmin() || $user->hasPermission('manage_notifications'));
         $canManageBackups = $user && ($user->isAdmin() || $user->hasPermission('manage_backups'));
         $canViewDocsApi = $user && ($user->isAdmin() || $user->hasPermission('view_docs_api'));
+        $canSelfOta = $user && ($user->isAdmin() || $user->hasPermission('update_device_firmware'));
 
         if ($canManageLanding) {
             $landingContent = LandingContent::getAllSettings();
         }
 
-        if ($canManageUsers) {
+        if ($canManageUsers || $canViewDocsApi) {
             $users = User::latest()->get()->map(fn (User $u) => $this->serializeUserForAdmin($u))->values()->all();
         }
 
@@ -167,9 +185,11 @@ class DashboardController extends Controller
         $devices = [];
         $otaOverview = null;
         $mlOverview = null;
+        if ($canViewDocsApi || $canSelfOta) {
+            $devices = $accessibleDevices->map(fn (Device $d) => $this->serializeDeviceForAdmin($d))->values()->all();
+            $otaOverview = app(FirmwareOtaService::class)->getOverview($user);
+        }
         if ($canViewDocsApi) {
-            $devices = Device::orderBy('id')->get()->map(fn (Device $d) => $this->serializeDeviceForAdmin($d))->values()->all();
-            $otaOverview = app(FirmwareOtaService::class)->getOverview();
             $mlOverview = app(MlSelfLearningAgentService::class)->getPerformanceMetrics(24);
         }
 
@@ -181,6 +201,8 @@ class DashboardController extends Controller
                 'role' => $user->role ?? 'OPERATOR',
                 'title' => $user->title ?? 'Operator Lapangan',
                 'pond_name' => $user->pond_name ?? 'Kolam Terpal Sangkuriang 01',
+                'tenant_code' => $user->tenant_code,
+                'assigned_device_ids' => $accessibleDeviceIds,
                 'avatar_initials' => $user->avatar_initials ?? 'BW',
                 'phone' => $user->phone ?? '',
                 'two_factor_enabled' => (bool) $user->hasTwoFactor(),
@@ -215,15 +237,27 @@ class DashboardController extends Controller
             'allReadings' => $allReadings,
             'alerts' => $alerts,
             'device' => [
-                'device_code' => $device?->device_code ?? 'ESP32-NODE-01',
-                'name' => $device?->name ?? 'Node Sensor Kolam 01',
-                'pond_name' => $device?->pond_name ?? 'Kolam Terpal Sangkuriang 01',
-                'firmware_version' => $device?->firmware_version ?? 'v1.4.2-failsafe',
-                'status' => $latest ? ($device?->status ?? 'ONLINE') : 'STANDBY',
+                'device_code' => $device?->device_code ?? 'BELUM-TERHUBUNG',
+                'name' => $device?->name ?? 'Belum Ada Alat Terkait Akun',
+                'pond_name' => $device?->pond_name ?? ($user->pond_name ?: 'Menunggu Penugasan Alat IoT'),
+                'tenant_code' => $device?->tenant_code ?? $user->tenant_code,
+                'firmware_version' => $device?->firmware_version ?? '-',
+                'status' => ($device && $latest) ? ($device->status ?? 'ONLINE') : 'STANDBY',
                 'transport_protocol' => $device?->transport_protocol ?? 'STANDBY',
                 'mode' => $device?->mode ?? 'AUTO',
                 'aerator_on' => (bool)($device?->aerator_on ?? false),
             ],
+            'tenantDevices' => $accessibleDevices->map(fn (Device $d) => [
+                'id' => $d->id,
+                'device_code' => $d->device_code,
+                'name' => $d->name,
+                'pond_name' => $d->pond_name,
+                'tenant_code' => $d->tenant_code,
+                'firmware_version' => $d->firmware_version,
+                'hardware_profile' => $d->hardware_profile ?: 'ESP32-WROOM-CoreHub-v2',
+                'status' => $d->status,
+            ])->values()->all(),
+            'activeDeviceCode' => $device?->device_code,
             'aeratorState' => [
                 'isOn' => (bool)($latest?->aerator_on ?? false),
                 'mode' => $latest?->mode ?? 'AUTO',
@@ -256,48 +290,52 @@ class DashboardController extends Controller
             'device_code' => ['nullable', 'string'],
         ]);
 
+        $accessibleDevices = Device::accessibleBy($user);
         $device = !empty($validated['device_code'])
             ? Device::where('device_code', $validated['device_code'])->first()
-            : Device::first();
+            : $accessibleDevices->first();
+
+        if (!$device || !$device->isAccessibleBy($user)) {
+            abort(403, 'Perangkat IoT ini tidak termasuk dalam tenant / hak akses akun Anda.');
+        }
+
         $action = $validated['action'];
 
         $isOn = $action === 'ON';
         $mode = $action === 'AUTO' ? 'AUTO' : 'MANUAL';
         $durationSec = $validated['duration'] ?? (isset($validated['duration_minutes']) ? $validated['duration_minutes'] * 60 : 1800);
 
-        if ($device) {
-            $commandPayload = [
-                'command_id' => 'cmd-' . Str::lower(Str::random(10)),
-                'action' => $action,
-                'aerator_on' => $isOn,
-                'mode' => $mode,
-                'duration_seconds' => $durationSec,
-                'issued_by' => $user ? "{$user->name} ({$user->role})" : 'Operator',
-                'issued_at' => now()->toIso8601String(),
-            ];
+        $commandPayload = [
+            'command_id' => 'cmd-' . Str::lower(Str::random(10)),
+            'action' => $action,
+            'aerator_on' => $isOn,
+            'mode' => $mode,
+            'duration_seconds' => $durationSec,
+            'issued_by' => $user ? "{$user->name} ({$user->role})" : 'Operator',
+            'issued_at' => now()->toIso8601String(),
+        ];
 
-            $device->update([
-                'aerator_on' => $isOn,
-                'mode' => $mode,
-                'pending_command' => $commandPayload,
-            ]);
+        $device->update([
+            'aerator_on' => $isOn,
+            'mode' => $mode,
+            'pending_command' => $commandPayload,
+        ]);
 
-            RelayLog::create([
-                'device_id' => $device->id,
-                'action' => $action,
-                'mode' => $mode,
-                'reason' => 'Perintah kontrol dari Dashboard Web',
-                'actor' => $user ? "{$user->name} ({$user->role})" : 'Operator',
-                'duration_seconds' => $durationSec,
-                'triggered_at' => now(),
-            ]);
+        RelayLog::create([
+            'device_id' => $device->id,
+            'action' => $action,
+            'mode' => $mode,
+            'reason' => 'Perintah kontrol dari Dashboard Web',
+            'actor' => $user ? "{$user->name} ({$user->role})" : 'Operator',
+            'duration_seconds' => $durationSec,
+            'triggered_at' => now(),
+        ]);
 
-            // Push instan ke kanal WebSocket banyuwening.control.v1 (juga tersedia via HTTP Fallback /api/http/commands)
-            $broadcaster->publish('control', 'control.command', $commandPayload, $device->device_code);
-        }
+        // Push instan ke kanal WebSocket banyuwening.control.v1 (juga tersedia via HTTP Fallback /api/http/commands)
+        $broadcaster->publish('control', 'control.command', $commandPayload, $device->device_code);
 
-        // Simpan juga ke reading terakhir
-        $latest = SensorReading::latest('recorded_at')->first();
+        // Simpan juga ke reading terakhir milik alat tenant ini
+        $latest = SensorReading::where('device_id', $device->id)->latest('recorded_at')->first();
         if ($latest) {
             $latest->update([
                 'aerator_on' => $isOn,
@@ -305,7 +343,7 @@ class DashboardController extends Controller
             ]);
         }
 
-        return back()->with('success', "Status aerator berhasil diperbarui menjadi {$action} ({$mode}).");
+        return back()->with('success', "Status aerator {$device->device_code} berhasil diperbarui menjadi {$action} ({$mode}).");
     }
 
     public function acknowledgeAlert(Alert $alert)
@@ -313,6 +351,17 @@ class DashboardController extends Controller
         $user = Auth::user();
         if (!$user || !$user->hasPermission('ack_alerts')) {
             abort(403, 'Akun Anda tidak memiliki hak akses konfirmasi peringatan.');
+        }
+
+        $alert->loadMissing('sensorReading');
+        if (!$user->isAdmin()) {
+            $accessibleIds = Device::accessibleBy($user)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            if ($alert->sensorReading && !in_array((int) $alert->sensorReading->device_id, $accessibleIds, true)) {
+                abort(403, 'Peringatan ini milik tenant peternak lain.');
+            }
+            if (!$alert->sensorReading && empty($accessibleIds)) {
+                abort(403, 'Akun Anda belum memiliki akses ke alat IoT tenant mana pun.');
+            }
         }
 
         $alert->update([
@@ -336,8 +385,11 @@ class DashboardController extends Controller
             'password' => ['required', 'string', 'min:5'],
             'role' => ['required', 'in:ADMIN,OPERATOR,ANALIS,PEMILIK'],
             'pond_name' => ['nullable', 'string'],
+            'tenant_code' => ['nullable', 'string', 'max:80'],
             'phone' => ['nullable', 'string'],
             'custom_permissions' => ['nullable', 'array'],
+            'assigned_device_ids' => ['nullable', 'array'],
+            'assigned_device_ids.*' => ['integer', 'exists:devices,id'],
         ]);
 
         $titleMap = [
@@ -353,20 +405,32 @@ class DashboardController extends Controller
             ->join('');
 
         $customPerms = User::sanitizeCustomPermissions($request->input('custom_permissions'), $validated['role']);
+        $tenantCode = $validated['role'] === 'ADMIN'
+            ? (!empty($validated['tenant_code']) ? User::normalizeTenantCode($validated['tenant_code']) : null)
+            : User::normalizeTenantCode($validated['tenant_code'] ?? null, $validated['pond_name'] ?? $validated['name']);
 
-        User::create([
+        $createdUser = User::create([
             'name' => $validated['name'],
             'email' => strtolower($validated['email']),
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
             'title' => $titleMap[$validated['role']] ?? 'Pengguna Kolam',
             'pond_name' => $validated['pond_name'] ?? 'Kolam Terpal 01',
+            'tenant_code' => $tenantCode,
             'avatar_initials' => strtoupper($initials) ?: 'BW',
             'phone' => $validated['phone'] ?? '-',
             'custom_permissions' => $customPerms,
         ]);
 
-        return back()->with('success', "Pengguna {$validated['name']} berhasil ditambahkan!");
+        if (!empty($validated['assigned_device_ids'])) {
+            foreach (Device::whereIn('id', $validated['assigned_device_ids'])->get() as $dev) {
+                $existing = is_array($dev->assigned_user_ids) ? array_map('intval', $dev->assigned_user_ids) : [];
+                $existing[] = (int) $createdUser->id;
+                $dev->syncAssignedUsers($dev->owner_user_id ?: $createdUser->id, $existing, $dev->tenant_code ?: $tenantCode);
+            }
+        }
+
+        return back()->with('success', "Pengguna {$validated['name']} berhasil ditambahkan (Tenant: " . ($tenantCode ?: 'GLOBAL') . ")!");
     }
 
     public function destroyUser($id)
@@ -411,11 +475,14 @@ class DashboardController extends Controller
             'email' => ['required', 'email', 'unique:users,email,' . $targetUser->id],
             'role' => ['required', 'in:ADMIN,OPERATOR,ANALIS,PEMILIK'],
             'pond_name' => ['nullable', 'string', 'max:255'],
+            'tenant_code' => ['nullable', 'string', 'max:80'],
             'phone' => ['nullable', 'string', 'max:50'],
             'password' => ['nullable', 'string', 'min:5'],
             'reset_2fa' => ['nullable', 'boolean'],
             'custom_permissions' => ['nullable', 'array'],
             'reset_permissions' => ['nullable', 'boolean'],
+            'assigned_device_ids' => ['nullable', 'array'],
+            'assigned_device_ids.*' => ['integer', 'exists:devices,id'],
         ]);
 
         if ($targetUser->email === 'admin@banyuwening.id' && $validated['role'] !== 'ADMIN') {
@@ -439,6 +506,12 @@ class DashboardController extends Controller
         $targetUser->role = $validated['role'];
         $targetUser->title = $titleMap[$validated['role']] ?? $targetUser->title;
         $targetUser->pond_name = $validated['pond_name'] ?? $targetUser->pond_name;
+        if (array_key_exists('tenant_code', $validated)) {
+            $rawTenant = trim((string) ($validated['tenant_code'] ?? ''));
+            $targetUser->tenant_code = $rawTenant !== ''
+                ? User::normalizeTenantCode($rawTenant)
+                : ($validated['role'] === 'ADMIN' ? null : User::normalizeTenantCode(null, $targetUser->pond_name ?: $targetUser->name));
+        }
         $targetUser->phone = $validated['phone'] ?? $targetUser->phone;
         $targetUser->avatar_initials = strtoupper($initials) ?: $targetUser->avatar_initials;
 
@@ -463,6 +536,22 @@ class DashboardController extends Controller
         }
 
         $targetUser->save();
+
+        if ($request->has('assigned_device_ids')) {
+            $wantedDeviceIds = array_map('intval', $validated['assigned_device_ids'] ?? []);
+            foreach (Device::all() as $dev) {
+                $currentIds = array_map('intval', is_array($dev->assigned_user_ids) ? $dev->assigned_user_ids : []);
+                $shouldHave = in_array((int) $dev->id, $wantedDeviceIds, true);
+                if ($shouldHave && !in_array((int) $targetUser->id, $currentIds, true)) {
+                    $currentIds[] = (int) $targetUser->id;
+                    $dev->syncAssignedUsers($dev->owner_user_id ?: (int) $targetUser->id, $currentIds, $dev->tenant_code ?: $targetUser->tenant_code);
+                } elseif (!$shouldHave && in_array((int) $targetUser->id, $currentIds, true)) {
+                    $nextIds = array_values(array_diff($currentIds, [(int) $targetUser->id]));
+                    $nextOwner = (int) $dev->owner_user_id === (int) $targetUser->id ? ($nextIds[0] ?? null) : $dev->owner_user_id;
+                    $dev->syncAssignedUsers($nextOwner, $nextIds);
+                }
+            }
+        }
 
         return back()->with('success', "Akun {$targetUser->name} berhasil diperbarui!");
     }
@@ -858,7 +947,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Super Admin: Daftarkan node alat IoT baru dan terbitkan token unik per alat.
+     * Super Admin: Daftarkan node alat IoT baru, tetapkan tenant/pemilik peternak, & terbitkan token unik per alat.
      */
     public function storeDevice(Request $request)
     {
@@ -872,13 +961,35 @@ class DashboardController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'pond_name' => ['required', 'string', 'max:120'],
             'firmware_version' => ['nullable', 'string', 'max:40'],
+            'hardware_profile' => ['nullable', 'string', 'max:80'],
+            'tenant_code' => ['nullable', 'string', 'max:80'],
+            'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_ids' => ['nullable', 'array'],
+            'assigned_user_ids.*' => ['integer', 'exists:users,id'],
+            'grant_ota_permission' => ['nullable', 'boolean'],
         ]);
+
+        $ownerId = !empty($validated['owner_user_id']) ? (int) $validated['owner_user_id'] : null;
+        $assignedIds = array_values(array_unique(array_map('intval', $validated['assigned_user_ids'] ?? [])));
+        if ($ownerId && !in_array($ownerId, $assignedIds, true)) {
+            array_unshift($assignedIds, $ownerId);
+        }
+
+        $resolvedTenant = !empty($validated['tenant_code'])
+            ? User::normalizeTenantCode($validated['tenant_code'])
+            : ($ownerId
+                ? (User::find($ownerId)?->tenant_code ?: User::normalizeTenantCode(null, $validated['pond_name']))
+                : User::normalizeTenantCode(null, $validated['pond_name']));
 
         $device = Device::create([
             'device_code' => strtoupper($validated['device_code']),
             'name' => $validated['name'],
             'pond_name' => $validated['pond_name'],
-            'firmware_version' => ($validated['firmware_version'] ?? null) ?: 'edge-ws-fallback',
+            'tenant_code' => $resolvedTenant,
+            'owner_user_id' => $ownerId,
+            'assigned_user_ids' => $assignedIds,
+            'firmware_version' => ($validated['firmware_version'] ?? null) ?: 'v1.4.2-failsafe',
+            'hardware_profile' => ($validated['hardware_profile'] ?? null) ?: 'ESP32-WROOM-CoreHub-v2',
             'mqtt_topic' => 'banyuwening/' . Str::lower($validated['device_code']) . '/telemetry',
             'status' => 'STANDBY',
             'transport_protocol' => 'STANDBY',
@@ -888,10 +999,14 @@ class DashboardController extends Controller
 
         $plainToken = $device->issueToken();
 
+        if ($request->boolean('grant_ota_permission') && !empty($assignedIds)) {
+            $this->grantSelfOtaPermissionToUsers($assignedIds);
+        }
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Perangkat {$device->device_code} terdaftar dan token baru diterbitkan.",
+                'message' => "Perangkat {$device->device_code} terdaftar (Tenant {$device->tenant_code}) dan token baru diterbitkan.",
                 'device' => $this->serializeDeviceForAdmin($device->fresh()),
                 'plain_token' => $plainToken,
             ], 201);
@@ -903,6 +1018,66 @@ class DashboardController extends Controller
                 'device_code' => $device->device_code,
                 'token' => $plainToken,
             ]);
+    }
+
+    /**
+     * Super Admin: Atur penugasan alat IoT ke akun peternak tertentu, kode tenant, & izin Self-OTA.
+     */
+    public function updateDeviceAssignment(Request $request, Device $device)
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        $validated = $request->validate([
+            'tenant_code' => ['nullable', 'string', 'max:80'],
+            'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_ids' => ['present', 'array'],
+            'assigned_user_ids.*' => ['integer', 'exists:users,id'],
+            'grant_ota_permission' => ['nullable', 'boolean'],
+        ]);
+
+        $ownerId = !empty($validated['owner_user_id']) ? (int) $validated['owner_user_id'] : null;
+        $assignedIds = array_values(array_unique(array_map('intval', $validated['assigned_user_ids'])));
+        if ($ownerId && !in_array($ownerId, $assignedIds, true)) {
+            array_unshift($assignedIds, $ownerId);
+        }
+
+        $tenantCode = !empty($validated['tenant_code'])
+            ? User::normalizeTenantCode($validated['tenant_code'])
+            : ($ownerId ? User::find($ownerId)?->tenant_code : $device->tenant_code);
+
+        $updated = $device->syncAssignedUsers($ownerId, $assignedIds, $tenantCode);
+
+        if ($request->boolean('grant_ota_permission') && !empty($assignedIds)) {
+            $this->grantSelfOtaPermissionToUsers($assignedIds);
+        }
+
+        $msg = "Hak akses & isolasi tenant alat {$updated->device_code} diperbarui ({$updated->tenant_code}).";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'device' => $this->serializeDeviceForAdmin($updated),
+                'overview' => app(FirmwareOtaService::class)->getOverview($user),
+            ]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    private function grantSelfOtaPermissionToUsers(array $userIds): void
+    {
+        foreach (User::whereIn('id', $userIds)->get() as $targetUser) {
+            if ($targetUser->isAdmin() || $targetUser->hasPermission('update_device_firmware')) {
+                continue;
+            }
+            $merged = array_merge($targetUser->resolvedPermissions(), ['update_device_firmware' => true]);
+            $targetUser->custom_permissions = User::sanitizeCustomPermissions($merged, $targetUser->role);
+            $targetUser->save();
+        }
     }
 
     /**
@@ -1003,6 +1178,8 @@ class DashboardController extends Controller
             'title' => $u->title,
             'pond_name' => $u->pond_name,
             'pondName' => $u->pond_name,
+            'tenant_code' => $u->tenant_code,
+            'assigned_device_ids' => Device::accessibleBy($u)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'avatar_initials' => $u->avatar_initials ?? 'BW',
             'avatarInitials' => $u->avatar_initials ?? 'BW',
             'created_at' => $u->created_at?->format('Y-m-d'),
@@ -1022,7 +1199,12 @@ class DashboardController extends Controller
             'device_code' => $d->device_code,
             'name' => $d->name,
             'pond_name' => $d->pond_name,
+            'tenant_code' => $d->tenant_code,
+            'owner_user_id' => $d->owner_user_id ? (int) $d->owner_user_id : null,
+            'owner_name' => $d->owner?->name,
+            'assigned_user_ids' => array_values(array_unique(array_map('intval', is_array($d->assigned_user_ids) ? $d->assigned_user_ids : []))),
             'firmware_version' => $d->firmware_version,
+            'hardware_profile' => $d->hardware_profile ?: 'ESP32-WROOM-CoreHub-v2',
             'status' => $d->status,
             'transport_protocol' => $d->transport_protocol ?? 'STANDBY',
             'mode' => $d->mode,

@@ -11,6 +11,7 @@ export type PermissionKey =
   | "view_tutorial"
   | "view_analis_data"
   | "view_owner_report"
+  | "update_device_firmware"
   | "manage_users"
   | "manage_landing"
   | "manage_notifications"
@@ -88,6 +89,12 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
     category: "Analitik & Pelaporan",
   },
   {
+    key: "update_device_firmware",
+    label: "Update Firmware Alat IoT (Self-OTA)",
+    description: "Mengizinkan akun peternak melakukan update & uji simulasi firmware pada alat IoT yang ditugaskan kepadanya.",
+    category: "Monitoring & Operasional",
+  },
+  {
     key: "manage_users",
     label: "Buat & Kelola Akun + Hak Akses",
     description: "Menambah, mengedit, menghapus akun serta mengkustom hak akses pengguna.",
@@ -131,6 +138,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     view_tutorial: false,
     view_analis_data: false,
     view_owner_report: false,
+    update_device_firmware: true,
     manage_users: true,
     manage_landing: true,
     manage_notifications: true,
@@ -148,6 +156,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     view_tutorial: true,
     view_analis_data: false,
     view_owner_report: false,
+    update_device_firmware: false,
     manage_users: false,
     manage_landing: false,
     manage_notifications: false,
@@ -165,6 +174,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     view_tutorial: false,
     view_analis_data: true,
     view_owner_report: false,
+    update_device_firmware: false,
     manage_users: false,
     manage_landing: false,
     manage_notifications: false,
@@ -182,6 +192,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     view_tutorial: false,
     view_analis_data: false,
     view_owner_report: true,
+    update_device_firmware: false,
     manage_users: false,
     manage_landing: false,
     manage_notifications: false,
@@ -197,6 +208,8 @@ export interface User {
   role: UserRole;
   title?: string;
   pond_name?: string;
+  tenant_code?: string | null;
+  assigned_device_ids?: number[];
   avatar_initials?: string;
   phone?: string;
   two_factor_enabled?: boolean;
@@ -278,12 +291,14 @@ export interface DeviceInfo {
   device_code: string;
   name: string;
   pond_name: string;
+  tenant_code?: string | null;
   firmware_version: string;
   status: string;
   transport_protocol?: string;
   mode: DeviceMode;
   aerator_on: boolean;
   hardware_variant?: "ENTRY_1K" | "STARTER_2K" | "JURAGAN_4K" | string;
+  hardware_profile?: string;
   pond_count?: number;
   backup_mode?: string;
   backup_health_pct?: number;
@@ -294,6 +309,10 @@ export interface DeviceInfo {
 
 export interface ManagedDevice extends DeviceInfo {
   id: number;
+  tenant_code?: string | null;
+  owner_user_id?: number | null;
+  owner_name?: string | null;
+  assigned_user_ids?: number[];
   api_token_prefix: string | null;
   has_token: boolean;
   token_active: boolean;
@@ -417,6 +436,7 @@ export interface FirmwareReleaseItem {
   version: string;
   channel: "stable" | "beta" | "canary" | string;
   target_hardware: string;
+  allowed_device_ids: number[];
   file_name: string;
   file_size_bytes: number;
   sha256_checksum: string;
@@ -457,10 +477,38 @@ export interface OtaOverviewDevice {
   device_code: string;
   name: string;
   pond_name: string;
+  tenant_code?: string | null;
+  owner_user_id?: number | null;
+  owner_name?: string | null;
+  assigned_user_ids?: number[];
   firmware_version: string;
+  hardware_profile: string;
   status: string;
   transport_protocol: string;
+  api_token_prefix: string | null;
+  has_token: boolean;
+  token_active: boolean;
+  plain_token: string | null;
+  allowed_release_ids: number[];
   last_heartbeat_at: string | null;
+}
+
+export interface OtaSimulationStep {
+  step: string;
+  status: "OK" | "BLOCKED" | "FAILED" | "ROLLED_BACK" | string;
+  detail: string;
+}
+
+export interface OtaSimulationResult {
+  scenario: string;
+  passed: boolean;
+  http_status: number;
+  device_code: string;
+  target_version: string;
+  final_device_version: string;
+  active_partition: string;
+  summary: string;
+  steps: OtaSimulationStep[];
 }
 
 export interface OtaOverview {

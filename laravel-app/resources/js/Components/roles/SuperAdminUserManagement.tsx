@@ -48,6 +48,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("OPERATOR");
   const [pondName, setPondName] = useState("");
+  const [tenantCode, setTenantCode] = useState("");
   const [phone, setPhone] = useState("");
   const [showCreatePerms, setShowCreatePerms] = useState(false);
   const [createPerms, setCreatePerms] = useState<UserPermissions>({
@@ -60,6 +61,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<UserRole>("OPERATOR");
   const [editPondName, setEditPondName] = useState("");
+  const [editTenantCode, setEditTenantCode] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [editReset2fa, setEditReset2fa] = useState(false);
@@ -104,6 +106,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         role,
         title: titleByRole[role],
         pond_name: pondName.trim() || "Kolam Terpal 01",
+        tenant_code: tenantCode.trim() || undefined,
         phone: phone.trim() || "-",
         custom_permissions: showCreatePerms ? (createPerms as Record<string, boolean>) : undefined,
       },
@@ -116,6 +119,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
           setPassword("");
           setRole("OPERATOR");
           setPondName("");
+          setTenantCode("");
           setPhone("");
           setShowCreatePerms(false);
           setCreatePerms({ ...DEFAULT_ROLE_PERMISSIONS.OPERATOR });
@@ -136,6 +140,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
     setEditEmail(u.email);
     setEditRole(u.role);
     setEditPondName(u.pond_name || "");
+    setEditTenantCode(u.tenant_code || "");
     setEditPhone(u.phone || "");
     setEditPassword("");
     setEditReset2fa(false);
@@ -159,6 +164,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         email: editEmail.trim(),
         role: editRole,
         pond_name: editPondName.trim() || "-",
+        tenant_code: editTenantCode.trim(),
         phone: editPhone.trim() || "-",
         password: editPassword.trim() || undefined,
         reset_2fa: editReset2fa,
@@ -358,6 +364,19 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
 
             <div className="space-y-1.5">
               <label className="text-[12px] font-semibold text-ink">
+                Kode Tenant / Toko Tambak
+              </label>
+              <input
+                type="text"
+                value={tenantCode}
+                onChange={(e) => setTenantCode(e.target.value)}
+                placeholder="TENANT-TAMBAK-BUDI (otomatis jika kosong)"
+                className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-semibold text-ink">
                 Nomor Telepon / WhatsApp
               </label>
               <input
@@ -508,7 +527,20 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                   />
                 </div>
 
-                <div className="space-y-1.5 md:col-span-2">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Kode Tenant / Toko Tambak
+                  </label>
+                  <input
+                    type="text"
+                    value={editTenantCode}
+                    onChange={(e) => setEditTenantCode(e.target.value)}
+                    placeholder="TENANT-TAMBAK-A"
+                    className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-ink">
                     Nomor WhatsApp / Telepon
                   </label>
@@ -881,6 +913,11 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                     <div className="flex items-center gap-1.5 text-ink text-[12px]">
                       <Building2 className="w-3.5 h-3.5 text-muted shrink-0" />
                       <span>{u.pond_name || "-"}</span>
+                    </div>
+                    <div className="mt-1">
+                      <span className="px-1.5 py-0.5 rounded bg-surface-2 border border-line font-mono text-[10px] text-brand font-semibold">
+                        {u.role === "ADMIN" && !u.tenant_code ? "SEMUA TENANT" : u.tenant_code || "TENANT-UTAMA"}
+                      </span>
                     </div>
                   </td>
 

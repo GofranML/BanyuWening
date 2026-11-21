@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 
 class Device extends Model
@@ -17,7 +19,11 @@ class Device extends Model
         'device_code',
         'name',
         'pond_name',
+        'tenant_code',
+        'owner_user_id',
+        'assigned_user_ids',
         'firmware_version',
+        'hardware_profile',
         'ip_address',
         'mac_address',
         'mqtt_topic',
@@ -44,6 +50,8 @@ class Device extends Model
     protected function casts(): array
     {
         return [
+            'owner_user_id' => 'integer',
+            'assigned_user_ids' => 'array',
             'aerator_on' => 'boolean',
             'token_active' => 'boolean',
             'last_heartbeat_at' => 'datetime',
@@ -115,6 +123,99 @@ class Device extends Model
         }
 
         return hash_equals($device->api_token_hash, $hash) ? $device : null;
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /**
+     * Cek apakah pengguna berhak mengakses alat IoT ini berdasarkan kepemilikan/penugasan atau tenant.
+     */
+    public function isAccessibleBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($this->owner_user_id && (int) $this->owner_user_id === (int) $user->id) {
+            return true;
+        }
+
+        $assignedIds = array_map('intval', is_array($this->assigned_user_ids) ? $this->assigned_user_ids : []);
+        if (in_array((int) $user->id, $assignedIds, true)) {
+            return true;
+        }
+
+        if (!empty($user->tenant_code) && !empty($this->tenant_code)) {
+            return strcasecmp((string) $user->tenant_code, (string) $this->tenant_code) === 0;
+        }
+
+        // Fallback kompatibilitas bila seluruh perangkat belum dikonfigurasi tenant/kepemilikan
+        if (empty($user->tenant_code)) {
+            $hasAnyTenantScoping = static::whereNotNull('owner_user_id')
+                ->orWhereNotNull('tenant_code')
+                ->orWhereNotNull('assigned_user_ids')
+                ->exists();
+            if (!$hasAnyTenantScoping) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Daftar alat IoT yang boleh dilihat & dikelola oleh pengguna (terisolasi per tenant).
+     *
+     * @return Collection<int, Device>
+     */
+    public static function accessibleBy(?User $user): Collection
+    {
+        if (!$user) {
+            return collect();
+        }
+
+        $all = static::orderBy('id')->get();
+        if ($user->isAdmin()) {
+            return $all;
+        }
+
+        return $all->filter(fn (self $device) => $device->isAccessibleBy($user))->values();
+    }
+
+    /**
+     * Tetapkan pemilik & daftar akun peternak yang diberi akses ke alat IoT ini.
+     *
+     * @param  array<int, int|string>  $assignedUserIds
+     */
+    public function syncAssignedUsers(?int $ownerUserId, array $assignedUserIds = [], ?string $tenantCode = null): self
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $assignedUserIds))));
+        if ($ownerUserId && !in_array($ownerUserId, $ids, true)) {
+            array_unshift($ids, $ownerUserId);
+        }
+
+        $resolvedTenant = trim((string) ($tenantCode ?? ''));
+        if ($resolvedTenant === '' && $ownerUserId) {
+            $owner = User::find($ownerUserId);
+            if ($owner && !empty($owner->tenant_code)) {
+                $resolvedTenant = (string) $owner->tenant_code;
+            }
+        }
+
+        $this->forceFill([
+            'owner_user_id' => $ownerUserId,
+            'assigned_user_ids' => $ids,
+            'tenant_code' => $resolvedTenant !== '' ? strtoupper($resolvedTenant) : $this->tenant_code,
+        ])->save();
+
+        return $this->fresh();
     }
 
     public function sensorReadings(): HasMany

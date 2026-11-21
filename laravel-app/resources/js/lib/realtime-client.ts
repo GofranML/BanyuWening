@@ -33,7 +33,8 @@ export class BanyuWeningRealtimeClient {
 
   constructor(
     private readonly config: RealtimeConfig,
-    private readonly callbacks: RealtimeCallbacks
+    private readonly callbacks: RealtimeCallbacks,
+    private readonly activeDeviceCode?: string | null
   ) {}
 
   public start(): void {
@@ -182,6 +183,16 @@ export class BanyuWeningRealtimeClient {
     const payload = msg?.payload;
     if (!event || !payload) return;
 
+    const msgDeviceCode = msg?.device_code || payload?.device?.device_code || payload?.reading?.device_code;
+    if (
+      this.activeDeviceCode &&
+      this.activeDeviceCode !== "BELUM-TERHUBUNG" &&
+      msgDeviceCode &&
+      String(msgDeviceCode).toUpperCase() !== String(this.activeDeviceCode).toUpperCase()
+    ) {
+      return;
+    }
+
     if (event === "telemetry.update" && payload.reading) {
       this.callbacks.onTelemetry?.(payload.reading, payload.device);
       return;
@@ -240,10 +251,19 @@ export class BanyuWeningRealtimeClient {
   private async pollHttpSnapshot(): Promise<void> {
     if (this.destroyed) return;
 
+    const deviceQuery =
+      this.activeDeviceCode && this.activeDeviceCode !== "BELUM-TERHUBUNG"
+        ? `?device_code=${encodeURIComponent(this.activeDeviceCode)}`
+        : "";
+    const alertsQuery =
+      this.activeDeviceCode && this.activeDeviceCode !== "BELUM-TERHUBUNG"
+        ? `?limit=25&device_code=${encodeURIComponent(this.activeDeviceCode)}`
+        : "?limit=25";
+
     try {
       const [latestRes, alertsRes] = await Promise.all([
-        fetch("/api/latest", { headers: { Accept: "application/json" } }),
-        fetch("/api/alerts/recent?limit=25", { headers: { Accept: "application/json" } }),
+        fetch(`/api/latest${deviceQuery}`, { headers: { Accept: "application/json" } }),
+        fetch(`/api/alerts/recent${alertsQuery}`, { headers: { Accept: "application/json" } }),
       ]);
 
       if (latestRes.ok) {

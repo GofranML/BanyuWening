@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'ADMIN',
                 'title' => 'Super Administrator / Pengembang Sistem',
                 'pond_name' => 'Seluruh Unit Kolam BanyuWening',
+                'tenant_code' => null,
                 'avatar_initials' => 'GM',
                 'phone' => '+62 812-7890-1122',
             ],
@@ -40,6 +41,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'OPERATOR',
                 'title' => 'Operator Teknis Lapangan',
                 'pond_name' => 'Kolam Produksi Lele 01 (Terpal)',
+                'tenant_code' => 'TENANT-UTAMA',
                 'avatar_initials' => 'RH',
                 'phone' => '+62 813-4455-6677',
             ],
@@ -50,6 +52,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'ANALIS',
                 'title' => 'Pakar Akuakultur & Kualitas Air',
                 'pond_name' => 'Unit Riset & Analisis Tambak',
+                'tenant_code' => 'TENANT-UTAMA',
                 'avatar_initials' => 'HW',
                 'phone' => '+62 821-3322-1100',
             ],
@@ -60,6 +63,7 @@ class DatabaseSeeder extends Seeder
                 'role' => 'PEMILIK',
                 'title' => 'Pemilik Budidaya Tambak',
                 'pond_name' => 'Kolam Terpal Sangkuriang 1 & 2',
+                'tenant_code' => 'TENANT-UTAMA',
                 'avatar_initials' => 'BS',
                 'phone' => '+62 811-9988-7766',
             ],
@@ -69,13 +73,20 @@ class DatabaseSeeder extends Seeder
             User::updateOrCreate(['email' => $u['email']], $u);
         }
 
+        $tenantUtamaUsers = User::where('tenant_code', 'TENANT-UTAMA')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $defaultOwnerId = User::where('email', 'pemilik@banyuwening.id')->value('id');
+
         // 2. Node Perangkat ESP32 (Status Awal Standby Menunggu Sambungan Fisik)
         $device = Device::updateOrCreate(
             ['device_code' => 'ESP32-NODE-01'],
             [
                 'name' => 'ESP32 Node Sensor Kolam 01',
                 'pond_name' => 'Kolam Terpal Sangkuriang 01',
+                'tenant_code' => 'TENANT-UTAMA',
+                'owner_user_id' => $defaultOwnerId ? (int) $defaultOwnerId : null,
+                'assigned_user_ids' => $tenantUtamaUsers,
                 'firmware_version' => 'v1.4.2-failsafe',
+                'hardware_profile' => 'ESP32-WROOM-CoreHub-v2',
                 'ip_address' => '192.168.1.104',
                 'mac_address' => 'A4:CF:12:89:BC:42',
                 'mqtt_topic' => 'banyuwening/pond01/telemetry',

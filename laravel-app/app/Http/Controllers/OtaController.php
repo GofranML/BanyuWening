@@ -50,6 +50,25 @@ class OtaController extends Controller
             ], 404);
         }
 
+        $compat = $this->otaService->evaluateCompatibility($device, $release);
+
+        if (!$compat['authorized']) {
+            return response()->json([
+                'success' => false,
+                'error' => 'FIRMWARE_ACCESS_DENIED_FOR_DEVICE',
+                'message' => "Token alat {$device->device_code} tidak diberi hak akses untuk mengunduh firmware {$release->version}.",
+            ], 403);
+        }
+
+        if (!$compat['compatible']) {
+            return response()->json([
+                'success' => false,
+                'error' => 'FIRMWARE_INCOMPATIBLE_WITH_DEVICE',
+                'message' => 'Firmware tidak kompatibel dengan perangkat ini: ' . implode(' ', $compat['reasons']),
+                'reasons' => $compat['reasons'],
+            ], 422);
+        }
+
         $absPath = $this->otaService->absoluteBinaryPath($release);
         if (!is_file($absPath)) {
             return response()->json([
@@ -119,15 +138,15 @@ class OtaController extends Controller
     }
 
     /**
-     * Super Admin: Ringkasan rilis firmware & status rollout seluruh perangkat.
+     * Super Admin / Peternak Self-OTA: Ringkasan rilis firmware & status rollout perangkat terotorisasi.
      */
     public function overview(): JsonResponse
     {
-        $this->authorizeAdmin();
+        $user = $this->authorizeOtaOperator();
 
         return response()->json([
             'success' => true,
-            'overview' => $this->otaService->getOverview(),
+            'overview' => $this->otaService->getOverview($user),
         ]);
     }
 
@@ -146,6 +165,8 @@ class OtaController extends Controller
             'rollback_timeout_s' => ['nullable', 'integer', 'min:15', 'max:300'],
             'changelog' => ['nullable', 'string', 'max:2000'],
             'is_mandatory' => ['nullable', 'boolean'],
+            'allowed_device_ids' => ['nullable', 'array'],
+            'allowed_device_ids.*' => ['integer', 'exists:devices,id'],
             'firmware_file' => ['required', 'file', 'max:16384'],
         ]);
 
@@ -173,17 +194,116 @@ class OtaController extends Controller
     }
 
     /**
-     * Super Admin: Jadwalkan rollout ke perangkat terpilih dan siarkan ke /ws/ota.
+     * Super Admin: Buat sampel firmware binary .bin bertanda tangan resmi langsung di server untuk pengujian OTA.
      */
-    public function initiateRollout(Request $request): JsonResponse
+    public function storeSampleRelease(Request $request): JsonResponse
     {
         $admin = $this->authorizeAdmin();
 
         $validated = $request->validate([
+            'version' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'channel' => ['nullable', 'in:stable,beta,canary'],
+            'target_hardware' => ['nullable', 'string', 'max:80'],
+            'min_previous_version' => ['nullable', 'string', 'max:64'],
+            'allowed_device_ids' => ['nullable', 'array'],
+            'allowed_device_ids.*' => ['integer', 'exists:devices,id'],
+        ]);
+
+        $release = $this->otaService->createSampleRelease(
+            $validated,
+            $admin->name . ' (' . $admin->role . ')'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Sampel firmware uji {$release->version} berhasil dibuat ({$release->target_hardware}).",
+            'release' => $release,
+            'overview' => $this->otaService->getOverview(),
+        ], 201);
+    }
+
+    /**
+     * Super Admin: Atur alat IoT mana saja yang berhak mengakses rilis firmware tertentu.
+     */
+    public function updateReleaseAccess(Request $request, FirmwareRelease $release): JsonResponse
+    {
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'allowed_device_ids' => ['present', 'array'],
+            'allowed_device_ids.*' => ['integer', 'exists:devices,id'],
+        ]);
+
+        $updated = $this->otaService->syncDeviceAccess($release, $validated['allowed_device_ids']);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Hak akses perangkat untuk rilis {$updated->version} berhasil diperbarui.",
+            'release' => $updated,
+            'overview' => $this->otaService->getOverview(),
+        ]);
+    }
+
+    /**
+     * Super Admin / Peternak Self-OTA: Perbarui profil hardware & izin rilis untuk satu alat IoT tertentu.
+     */
+    public function updateDeviceOtaProfile(Request $request, Device $device): JsonResponse
+    {
+        $user = $this->authorizeOtaOperator();
+        if (!$user->isAdmin() && !$device->isAccessibleBy($user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'TENANT_DEVICE_FORBIDDEN',
+                'message' => "Alat {$device->device_code} bukan milik tenant akun Anda.",
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'hardware_profile' => ['required', 'string', 'max:80'],
+            'firmware_version' => ['nullable', 'string', 'max:64'],
+            'allowed_release_ids' => ['nullable', 'array'],
+            'allowed_release_ids.*' => ['integer', 'exists:firmware_releases,id'],
+        ]);
+
+        // Peternak non-admin tidak boleh memberi izin rilis baru secara sepihak lewat endpoint ini
+        if (!$user->isAdmin()) {
+            unset($validated['allowed_release_ids'], $validated['firmware_version']);
+        }
+
+        $updated = $this->otaService->updateDeviceProfile($device, $validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Profil OTA untuk {$updated->device_code} berhasil disimpan.",
+            'overview' => $this->otaService->getOverview($user),
+        ]);
+    }
+
+    /**
+     * Super Admin / Peternak Self-OTA: Jadwalkan rollout ke perangkat terpilih (wajib per-alat, terisolasi tenant & kompatibel).
+     */
+    public function initiateRollout(Request $request): JsonResponse
+    {
+        $actorUser = $this->authorizeOtaOperator();
+
+        $validated = $request->validate([
             'release_id' => ['required', 'integer', 'exists:firmware_releases,id'],
-            'device_ids' => ['nullable', 'array'],
+            'device_ids' => ['required', 'array', 'min:1'],
             'device_ids.*' => ['integer', 'exists:devices,id'],
         ]);
+
+        $targetDevices = Device::whereIn('id', $validated['device_ids'])->get();
+        if (!$actorUser->isAdmin()) {
+            foreach ($targetDevices as $targetDev) {
+                if (!$targetDev->isAccessibleBy($actorUser)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'TENANT_DEVICE_FORBIDDEN',
+                        'message' => "Akses ditolak: alat {$targetDev->device_code} milik tenant peternak lain.",
+                    ], 403);
+                }
+            }
+        }
 
         $release = FirmwareRelease::findOrFail($validated['release_id']);
         if (!$release->is_active) {
@@ -193,19 +313,78 @@ class OtaController extends Controller
             ], 422);
         }
 
-        $rollouts = $this->otaService->initiateRollout(
-            $release,
-            $validated['device_ids'] ?? [],
-            $admin->name . ' (' . $admin->role . ')',
-            $request->getSchemeAndHttpHost()
-        );
+        if (!$actorUser->isAdmin()) {
+            foreach ($targetDevices as $targetDev) {
+                if (!$release->isDeviceAllowed((int) $targetDev->id)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'FIRMWARE_ACCESS_DENIED_FOR_DEVICE',
+                        'message' => "Alat {$targetDev->device_code} belum diberi izin akses ke versi {$release->version} oleh Super Admin.",
+                    ], 403);
+                }
+            }
+        }
+
+        try {
+            $rollouts = $this->otaService->initiateRollout(
+                $release,
+                $validated['device_ids'],
+                $actorUser->name . ' (' . $actorUser->role . ')',
+                $request->getSchemeAndHttpHost()
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'OTA_DEVICE_INCOMPATIBLE',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,
             'message' => count($rollouts) . " rollout OTA untuk versi {$release->version} berhasil dijadwalkan.",
             'rollouts' => $rollouts,
-            'overview' => $this->otaService->getOverview(),
+            'overview' => $this->otaService->getOverview($actorUser),
         ], 201);
+    }
+
+    /**
+     * Super Admin / Peternak Self-OTA: Jalankan simulasi end-to-end protokol Dual-OTA untuk perangkat yang diizinkan.
+     */
+    public function simulate(Request $request): JsonResponse
+    {
+        $actorUser = $this->authorizeOtaOperator();
+
+        $validated = $request->validate([
+            'device_id' => ['required', 'integer', 'exists:devices,id'],
+            'release_id' => ['required', 'integer', 'exists:firmware_releases,id'],
+            'scenario' => ['required', 'in:NORMAL_SUCCESS,INCOMPATIBLE_BLOCKED,CHECKSUM_TAMPERED,WATCHDOG_ROLLBACK_60S'],
+        ]);
+
+        $device = Device::findOrFail($validated['device_id']);
+        if (!$actorUser->isAdmin() && !$device->isAccessibleBy($actorUser)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'TENANT_DEVICE_FORBIDDEN',
+                'message' => "Akses ditolak: alat {$device->device_code} milik tenant peternak lain.",
+            ], 403);
+        }
+
+        $release = FirmwareRelease::findOrFail($validated['release_id']);
+
+        $simulation = $this->otaService->simulateOtaFlow(
+            $device,
+            $release,
+            $validated['scenario'],
+            $actorUser->name . ' (' . $actorUser->role . ')',
+            $request->getSchemeAndHttpHost()
+        );
+
+        return response()->json([
+            'success' => true,
+            'simulation' => $simulation,
+            'overview' => $this->otaService->getOverview($actorUser),
+        ]);
     }
 
     /**
@@ -251,6 +430,18 @@ class OtaController extends Controller
         $user = Auth::user();
         if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator atau pengguna dengan izin Dokumentasi & API.');
+        }
+        return $user;
+    }
+
+    private function authorizeOtaOperator()
+    {
+        $user = Auth::user();
+        if (
+            !$user ||
+            (!$user->isAdmin() && !$user->hasPermission('view_docs_api') && !$user->hasPermission('update_device_firmware'))
+        ) {
+            abort(403, 'Akun Anda tidak memiliki hak akses Update Firmware Alat IoT.');
         }
         return $user;
     }

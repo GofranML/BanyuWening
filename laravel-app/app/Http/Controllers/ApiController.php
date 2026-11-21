@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\Prediction;
 use App\Models\RelayLog;
 use App\Models\SensorReading;
+use App\Models\User;
 use App\Services\RealtimeBroadcaster;
 use App\Services\TelemetryIngestionService;
 use Carbon\Carbon;
@@ -233,11 +234,59 @@ class ApiController extends Controller
     }
 
     /**
-     * Endpoint status terkini (GET /api/latest) — juga dipakai sebagai HTTP Fallback Dashboard
+     * Endpoint status terkini (GET /api/latest) — juga dipakai sebagai HTTP Fallback Dashboard (terisolasi per tenant)
      */
     public function getLatest(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        $requestedCode = $request->query('device_code') ?? $request->query('device_id');
         $device = $this->resolveOptionalDevice($request);
+
+        if ($user instanceof User && !$user->isAdmin()) {
+            $accessible = Device::accessibleBy($user);
+            $accessibleIds = $accessible->pluck('id')->all();
+
+            if ($requestedCode && (!$device || !$device->isAccessibleBy($user))) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'TENANT_ACCESS_DENIED',
+                    'message' => 'Alat IoT ini bukan milik tenant akun Anda.',
+                ], 403);
+            }
+
+            if (!$device || !$device->isAccessibleBy($user)) {
+                $device = $accessible->first();
+            }
+
+            if (!$device) {
+                return response()->json([
+                    'success' => true,
+                    'transport_mode' => 'HTTP_FALLBACK',
+                    'reading' => null,
+                    'prediction' => null,
+                    'device' => null,
+                    'server_time' => now()->toIso8601String(),
+                ]);
+            }
+
+            $latest = SensorReading::where('device_id', $device->id)
+                ->latest('recorded_at')
+                ->first();
+            $prediction = $latest
+                ? Prediction::where('sensor_reading_id', $latest->id)->latest('predicted_at')->first()
+                : Prediction::whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $accessibleIds))
+                    ->latest('predicted_at')
+                    ->first();
+
+            return response()->json([
+                'success' => true,
+                'transport_mode' => 'HTTP_FALLBACK',
+                'reading' => $latest,
+                'prediction' => $prediction,
+                'device' => $device,
+                'server_time' => now()->toIso8601String(),
+            ]);
+        }
 
         $latestQuery = SensorReading::latest('recorded_at');
         if ($device) {
@@ -263,12 +312,51 @@ class ApiController extends Controller
     }
 
     /**
-     * Endpoint riwayat data sensor (GET /api/history)
+     * Endpoint riwayat data sensor (GET /api/history) — terisolasi per tenant untuk akun peternak
      */
     public function getHistory(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->input('limit', 72), 1), 288);
+        $user = Auth::user();
+        $requestedCode = $request->query('device_code') ?? $request->query('device_id');
         $device = $this->resolveOptionalDevice($request);
+
+        if ($user instanceof User && !$user->isAdmin()) {
+            $accessible = Device::accessibleBy($user);
+            $accessibleIds = $accessible->pluck('id')->all();
+
+            if ($requestedCode && (!$device || !$device->isAccessibleBy($user))) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'TENANT_ACCESS_DENIED',
+                    'message' => 'Alat IoT ini bukan milik tenant akun Anda.',
+                ], 403);
+            }
+
+            if (empty($accessibleIds)) {
+                return response()->json([
+                    'success' => true,
+                    'count' => 0,
+                    'device_code' => null,
+                    'data' => [],
+                ]);
+            }
+
+            $query = SensorReading::latest('recorded_at');
+            if ($device && $device->isAccessibleBy($user)) {
+                $query->where('device_id', $device->id);
+            } else {
+                $query->whereIn('device_id', $accessibleIds);
+            }
+            $readings = $query->take($limit)->get()->reverse()->values();
+
+            return response()->json([
+                'success' => true,
+                'count' => $readings->count(),
+                'device_code' => $device?->device_code ?? $accessible->first()?->device_code,
+                'data' => $readings,
+            ]);
+        }
 
         $query = SensorReading::latest('recorded_at');
         if ($device) {
@@ -290,8 +378,42 @@ class ApiController extends Controller
     public function getRecentAlerts(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->input('limit', 25), 1), 100);
+        $user = Auth::user();
+        $requestedCode = $request->query('device_code') ?? $request->query('device_id');
+        $device = $this->resolveOptionalDevice($request);
 
-        $alerts = Alert::latest()->take($limit)->get()->map(function ($a) {
+        $alertsQuery = Alert::latest();
+        $predictionQuery = Prediction::latest('predicted_at');
+
+        if ($user instanceof User && !$user->isAdmin()) {
+            $accessible = Device::accessibleBy($user);
+            $accessibleIds = $accessible->pluck('id')->all();
+
+            if ($requestedCode && (!$device || !$device->isAccessibleBy($user))) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'TENANT_ACCESS_DENIED',
+                    'message' => 'Alat IoT ini bukan milik tenant akun Anda.',
+                ], 403);
+            }
+
+            $targetIds = ($device && $device->isAccessibleBy($user)) ? [$device->id] : $accessibleIds;
+            if (empty($targetIds)) {
+                return response()->json([
+                    'success' => true,
+                    'transport_mode' => 'HTTP_FALLBACK',
+                    'count' => 0,
+                    'alerts' => [],
+                    'prediction' => null,
+                    'server_time' => now()->toIso8601String(),
+                ]);
+            }
+
+            $alertsQuery->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $targetIds));
+            $predictionQuery->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $targetIds));
+        }
+
+        $alerts = $alertsQuery->take($limit)->get()->map(function ($a) {
             return [
                 'id' => $a->id,
                 'ts' => $a->created_at->toIso8601String(),
@@ -307,7 +429,7 @@ class ApiController extends Controller
             ];
         });
 
-        $prediction = Prediction::latest('predicted_at')->first();
+        $prediction = $predictionQuery->first();
 
         return response()->json([
             'success' => true,

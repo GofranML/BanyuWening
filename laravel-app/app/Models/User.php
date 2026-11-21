@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -21,6 +22,7 @@ class User extends Authenticatable
         'view_tutorial',
         'view_analis_data',
         'view_owner_report',
+        'update_device_firmware',
         'manage_users',
         'manage_landing',
         'manage_notifications',
@@ -35,6 +37,7 @@ class User extends Authenticatable
         'role',
         'title',
         'pond_name',
+        'tenant_code',
         'avatar_initials',
         'phone',
         'two_factor_enabled',
@@ -124,6 +127,7 @@ class User extends Authenticatable
                 'view_tutorial' => false,
                 'view_analis_data' => false,
                 'view_owner_report' => false,
+                'update_device_firmware' => true,
                 'manage_users' => true,
                 'manage_landing' => true,
                 'manage_notifications' => true,
@@ -141,6 +145,7 @@ class User extends Authenticatable
                 'view_tutorial' => true,
                 'view_analis_data' => false,
                 'view_owner_report' => false,
+                'update_device_firmware' => false,
                 'manage_users' => false,
                 'manage_landing' => false,
                 'manage_notifications' => false,
@@ -158,6 +163,7 @@ class User extends Authenticatable
                 'view_tutorial' => false,
                 'view_analis_data' => true,
                 'view_owner_report' => false,
+                'update_device_firmware' => false,
                 'manage_users' => false,
                 'manage_landing' => false,
                 'manage_notifications' => false,
@@ -175,6 +181,7 @@ class User extends Authenticatable
                 'view_tutorial' => false,
                 'view_analis_data' => false,
                 'view_owner_report' => true,
+                'update_device_firmware' => false,
                 'manage_users' => false,
                 'manage_landing' => false,
                 'manage_notifications' => false,
@@ -183,6 +190,21 @@ class User extends Authenticatable
             ],
             default => self::defaultPermissionsForRole('OPERATOR'),
         };
+    }
+
+    /**
+     * Normalisasi kode tenant agar seragam (contoh: TENANT-KOLAM-01).
+     */
+    public static function normalizeTenantCode(?string $code, ?string $fallbackName = null): string
+    {
+        $raw = trim((string) $code);
+        if ($raw !== '') {
+            $slug = strtoupper(Str::slug($raw, '-'));
+            return $slug !== '' ? $slug : 'TENANT-UTAMA';
+        }
+
+        $fallbackSlug = strtoupper(Str::slug((string) ($fallbackName ?: 'KOLAM'), '-'));
+        return 'TENANT-' . ($fallbackSlug !== '' ? $fallbackSlug : 'UTAMA');
     }
 
     /**

@@ -14,6 +14,7 @@ class FirmwareRelease extends Model
         'version',
         'channel',
         'target_hardware',
+        'allowed_device_ids',
         'file_path',
         'file_name',
         'file_size_bytes',
@@ -31,12 +32,22 @@ class FirmwareRelease extends Model
     protected function casts(): array
     {
         return [
+            'allowed_device_ids' => 'array',
             'file_size_bytes' => 'integer',
             'rollback_timeout_s' => 'integer',
             'is_active' => 'boolean',
             'is_mandatory' => 'boolean',
             'released_at' => 'datetime',
         ];
+    }
+
+    public function isDeviceAllowed(int $deviceId): bool
+    {
+        if (!is_array($this->allowed_device_ids) || empty($this->allowed_device_ids)) {
+            return false;
+        }
+
+        return in_array($deviceId, array_map('intval', $this->allowed_device_ids), true);
     }
 
     /**

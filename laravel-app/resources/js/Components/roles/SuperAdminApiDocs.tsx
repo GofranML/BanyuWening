@@ -19,12 +19,13 @@ import {
   Layers,
   AlertTriangle,
 } from "lucide-react";
-import type { ManagedDevice, RealtimeConfig, RealtimeTransportMode } from "@/Types";
+import type { ManagedDevice, RealtimeConfig, RealtimeTransportMode, User } from "@/Types";
 
 type SubTab = "swagger" | "asyncapi" | "tokens" | "protocols" | "snippets";
 type SnippetLang = "esp32" | "python" | "curl";
 
 interface SuperAdminApiDocsProps {
+  users?: User[];
   devices?: ManagedDevice[];
   realtimeConfig?: RealtimeConfig;
   activeTransport?: RealtimeTransportMode;
@@ -37,6 +38,7 @@ function getCsrfToken(): string {
 }
 
 export function SuperAdminApiDocs({
+  users = [],
   devices: initialDevices = [],
   realtimeConfig,
   activeTransport = "HTTP_FALLBACK",
@@ -52,7 +54,11 @@ export function SuperAdminApiDocs({
   const [newDeviceCode, setNewDeviceCode] = useState("");
   const [newDeviceName, setNewDeviceName] = useState("");
   const [newPondName, setNewPondName] = useState("Kolam Terpal Sangkuriang 02");
-  const [newFirmware, setNewFirmware] = useState("edge-ws-fallback");
+  const [newFirmware, setNewFirmware] = useState("v1.4.2-failsafe");
+  const [newHardwareProfile, setNewHardwareProfile] = useState("ESP32-WROOM-CoreHub-v2");
+  const [newTenantCode, setNewTenantCode] = useState("");
+  const [newOwnerUserId, setNewOwnerUserId] = useState<number | "">("");
+  const [newGrantOtaPerm, setNewGrantOtaPerm] = useState(true);
   const [deviceBusyId, setDeviceBusyId] = useState<number | "new" | null>(null);
   const [deviceNotice, setDeviceNotice] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [issuedTokenBanner, setIssuedTokenBanner] = useState<{
@@ -113,7 +119,12 @@ export function SuperAdminApiDocs({
           device_code: newDeviceCode.trim().toUpperCase(),
           name: newDeviceName.trim(),
           pond_name: newPondName.trim(),
-          firmware_version: newFirmware.trim() || "edge-ws-fallback",
+          firmware_version: newFirmware.trim() || "v1.4.2-failsafe",
+          hardware_profile: newHardwareProfile,
+          tenant_code: newTenantCode.trim() || undefined,
+          owner_user_id: newOwnerUserId ? Number(newOwnerUserId) : undefined,
+          assigned_user_ids: newOwnerUserId ? [Number(newOwnerUserId)] : [],
+          grant_ota_permission: newGrantOtaPerm,
         }),
       });
       const json = await res.json();
@@ -133,6 +144,8 @@ export function SuperAdminApiDocs({
         setSwaggerRefreshKey((k) => k + 1);
         setNewDeviceCode("");
         setNewDeviceName("");
+        setNewTenantCode("");
+        setNewOwnerUserId("");
         setDeviceNotice({ type: "ok", text: json.message });
       }
     } catch (err: any) {
@@ -805,7 +818,68 @@ curl -X GET ${origin}/api/http/commands \\
                   className="w-full h-9 px-3 rounded-[6px] bg-surface-2 border border-line text-xs font-mono text-ink"
                 />
               </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted mb-1">
+                  Profil Hardware ESP32
+                </label>
+                <select
+                  value={newHardwareProfile}
+                  onChange={(e) => setNewHardwareProfile(e.target.value)}
+                  className="w-full h-9 px-2.5 rounded-[6px] bg-surface-2 border border-line text-xs font-mono text-ink cursor-pointer"
+                >
+                  <option value="ESP32-WROOM-CoreHub-v2">ESP32-WROOM-CoreHub-v2</option>
+                  <option value="ESP32-WROOM-Entry1K-v1">ESP32-WROOM-Entry1K-v1</option>
+                  <option value="ESP32-S3-Juragan4K-v2">ESP32-S3-Juragan4K-v2</option>
+                  <option value="ESP32-C3-MiniNode-v1">ESP32-C3-MiniNode-v1</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted mb-1">
+                  Kode Tenant (Isolasi Toko)
+                </label>
+                <input
+                  type="text"
+                  placeholder="TENANT-PETAMBAK-B"
+                  value={newTenantCode}
+                  onChange={(e) => setNewTenantCode(e.target.value)}
+                  className="w-full h-9 px-3 rounded-[6px] bg-surface-2 border border-line text-xs font-mono text-ink"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-semibold text-muted mb-1">
+                  Beri Akses Eksklusif ke Akun Peternak (Tenant Pemilik)
+                </label>
+                <select
+                  value={newOwnerUserId}
+                  onChange={(e) => {
+                    const uid = e.target.value ? Number(e.target.value) : "";
+                    setNewOwnerUserId(uid);
+                    const picked = users.find((u) => Number(u.id) === Number(uid));
+                    if (picked?.tenant_code) setNewTenantCode(picked.tenant_code);
+                  }}
+                  className="w-full h-9 px-3 rounded-[6px] bg-surface-2 border border-line text-xs text-ink cursor-pointer"
+                >
+                  <option value="">-- Pilih Akun Peternak Pemilik Alat --</option>
+                  {users
+                    .filter((u) => u.role !== "ADMIN")
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.role} · {u.tenant_code || "TENANT-UTAMA"})
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
+
+            <label className="inline-flex items-center gap-2 text-xs text-ink cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newGrantOtaPerm}
+                onChange={(e) => setNewGrantOtaPerm(e.target.checked)}
+                className="rounded border-line"
+              />
+              <span>Izinkan akun peternak pemilik untuk update &amp; uji simulasi firmware alat ini secara mandiri</span>
+            </label>
 
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-muted">
@@ -917,6 +991,14 @@ curl -X GET ${origin}/api/http/commands \\
                         <div className="font-mono font-semibold text-ink">{d.device_code}</div>
                         <div className="text-[11px] text-muted">
                           {d.name} · {d.pond_name}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="px-1.5 py-0.2 rounded bg-surface-2 border border-line font-mono text-[10px] text-brand font-semibold">
+                            {d.tenant_code || "TENANT-UTAMA"}
+                          </span>
+                          {d.owner_name && (
+                            <span className="text-[10px] text-muted">Pemilik: {d.owner_name}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
