@@ -553,19 +553,32 @@ export default function Dashboard({
               </button>
             )}
 
-            {/* Update Firmware Alat Mandiri (Peternak Self-OTA) */}
+            {/* Update Firmware Per Alat Mandiri (Peternak Self-OTA) */}
             {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
               <button
                 onClick={() => setActiveTab("ota-mandiri")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
                   activeTab === "ota-mandiri"
                     ? "bg-brand text-brand-ink font-semibold"
                     : "text-ink hover:bg-surface-2"
                 }`}
-                title="Update Firmware Alat IoT Saya"
+                title="Update Firmware Per Alat IoT Saya"
               >
-                <Rocket className="w-4 h-4 shrink-0" />
-                <span className="truncate whitespace-nowrap">Update Firmware Alat</span>
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <Rocket className="w-4 h-4 shrink-0" />
+                  <span className="truncate whitespace-nowrap">Update Firmware Per Alat</span>
+                </span>
+                {tenantDevices.length > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                      activeTab === "ota-mandiri"
+                        ? "bg-brand-ink/15 text-brand-ink"
+                        : "bg-brand/10 text-brand"
+                    }`}
+                  >
+                    {tenantDevices.length}
+                  </span>
+                )}
               </button>
             )}
 
@@ -575,6 +588,32 @@ export default function Dashboard({
                 <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted">
                   Menu Super Admin
                 </div>
+
+                {(hasPerm("view_docs_api") || hasPerm("update_device_firmware")) && (
+                  <button
+                    onClick={() => setActiveTab("ota-mandiri")}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "ota-mandiri"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Update Firmware ESP32 Per Alat IoT, Token Unik & Simulator OTA"
+                  >
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <Rocket className="w-4 h-4 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Update Firmware Per Alat</span>
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                        activeTab === "ota-mandiri"
+                          ? "bg-brand-ink/15 text-brand-ink"
+                          : "bg-brand/10 text-brand"
+                      }`}
+                    >
+                      {managedDevices.length || tenantDevices.length || 1} Alat
+                    </span>
+                  </button>
+                )}
 
                 {hasPerm("view_docs_api") && (
                   <button
@@ -935,7 +974,7 @@ export default function Dashboard({
                       }`}
                     >
                       <Rocket className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Update Firmware</span>
+                      <span className="truncate">Update Firmware Per Alat</span>
                     </button>
                   )}
                 </div>
@@ -948,6 +987,17 @@ export default function Dashboard({
                     Menu Super Admin
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(hasPerm("view_docs_api") || hasPerm("update_device_firmware")) && (
+                      <button
+                        onClick={() => selectMobileTab("ota-mandiri")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                          activeTab === "ota-mandiri" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <Rocket className="w-4 h-4 shrink-0" />
+                        <span>Update Firmware Per Alat (OTA)</span>
+                      </button>
+                    )}
                     {hasPerm("view_docs_api") && (
                       <button
                         onClick={() => selectMobileTab("dokumentasi")}
@@ -1142,7 +1192,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+          {(hasPerm("update_device_firmware") || hasPerm("view_docs_api")) && (
             <button
               onClick={() => setActiveTab("ota-mandiri")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
@@ -1151,7 +1201,7 @@ export default function Dashboard({
                   : "bg-surface-2 text-ink"
               }`}
             >
-              Update Firmware
+              Update Firmware Per Alat
             </button>
           )}
 

@@ -263,7 +263,6 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     {
       text: statements[0],
       tone: "text-[#111918]",
-      indent: "",
       icon: <Cpu className="w-[54%] h-[54%]" />,
       tileCls: "bg-[#111918] text-[#F3F1EC] rounded-full -rotate-6",
       x: x0,
@@ -272,7 +271,6 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     {
       text: statements[1],
       tone: "text-[#3A4A47]",
-      indent: "md:pl-[7vw]",
       icon: <Waves className="w-[58%] h-[58%]" />,
       tileCls: "bg-[#136F63] text-white rounded-[0.22em] rotate-6",
       x: x1,
@@ -281,7 +279,6 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     {
       text: statements[2],
       tone: "text-[#136F63]",
-      indent: "md:pl-[14vw]",
       icon: <ShieldCheck className="w-[58%] h-[58%]" />,
       tileCls: "bg-[#1CA392] text-white rounded-[30%] -rotate-3",
       x: x2,
@@ -290,7 +287,6 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     {
       text: statements[3],
       tone: "text-[#3A4A47]",
-      indent: "md:pl-[21vw]",
       icon: null,
       tileCls: "",
       x: x3,
@@ -299,7 +295,6 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
     {
       text: statements[4],
       tone: "text-[#111918]",
-      indent: "md:pl-[28vw]",
       icon: null,
       tileCls: "",
       x: x4,
@@ -310,22 +305,33 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
   return (
     <div
       ref={containerRef}
-      className="py-2 sm:py-4 space-y-3 md:space-y-6 text-[clamp(24px,6vw,82px)] leading-[1.08] tracking-[-0.035em] font-semibold"
+      className="py-2 sm:py-4 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start"
     >
-      {rows.map((row, idx) => (
-        <motion.p
-          key={idx}
-          style={shouldReduceMotion ? undefined : { x: row.x, opacity: row.opacity }}
-          className={`${row.tone} ${row.indent} will-change-transform`}
-        >
-          {row.text}
-          {row.icon && (
-            <span className={`hw-tile ${row.tileCls}`} aria-hidden="true">
-              {row.icon}
-            </span>
-          )}
-        </motion.p>
-      ))}
+      <div className="lg:col-span-4 space-y-2 lg:pt-2">
+        <div className="mono-label text-[10.5px] sm:text-[11px] text-[#53625E]">
+          01 / KETAHANAN OPERASIONAL 24 JAM
+        </div>
+        <p className="text-[13px] sm:text-[14px] leading-relaxed text-[#485653] max-w-[30ch]">
+          Dirancang untuk tetap menjaga oksigen dan kualitas air kolam sekalipun koneksi internet terputus.
+        </p>
+      </div>
+
+      <div className="lg:col-span-8 lg:pl-6 space-y-2.5 sm:space-y-4 text-[clamp(22px,3.1vw,46px)] leading-[1.16] tracking-[-0.03em] font-semibold">
+        {rows.map((row, idx) => (
+          <motion.p
+            key={idx}
+            style={shouldReduceMotion ? undefined : { x: row.x, opacity: row.opacity }}
+            className={`${row.tone} will-change-transform`}
+          >
+            {row.text}
+            {row.icon && (
+              <span className={`hw-tile ${row.tileCls}`} aria-hidden="true">
+                {row.icon}
+              </span>
+            )}
+          </motion.p>
+        ))}
+      </div>
     </div>
   );
 });

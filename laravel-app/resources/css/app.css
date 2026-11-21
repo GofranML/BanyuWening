@@ -112,26 +112,14 @@
   box-shadow: 0 -30px 80px rgba(0, 0, 0, 0.35);
 }
 
-@media (min-width: 1024px) {
-  .swiss-sheet-rule::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 33.3333%;
-    width: 1px;
-    background: rgba(17, 25, 24, 0.12);
-    pointer-events: none;
-  }
-}
-
 .hw-tile {
   display: inline-grid;
   place-items: center;
-  width: 1.15em;
-  height: 1.15em;
-  margin: 0 0.12em;
-  vertical-align: -0.18em;
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 0.32em;
+  margin-right: 0.15em;
+  vertical-align: -0.14em;
   transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 .hw-tile:hover {

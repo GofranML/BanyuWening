@@ -150,9 +150,10 @@ export function SuperAdminOtaProtocolPanel({
     (initialOverview?.devices || []).map((d) => d.id)
   );
 
-  // Per-device token visibility + hardware editing
+  // Per-device token visibility + hardware editing + device filter selector
   const [revealedTokens, setRevealedTokens] = useState<Record<number, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [selectedDeviceFilter, setSelectedDeviceFilter] = useState<number | "ALL">("ALL");
 
   // Simulator state
   const [simDeviceId, setSimDeviceId] = useState<number>(initialOverview?.devices?.[0]?.id || 1);
@@ -583,6 +584,10 @@ export function SuperAdminOtaProtocolPanel({
   const rollouts = overview?.rollouts || [];
   const devices = overview?.devices || [];
   const stats = overview?.stats;
+  const visibleDevices =
+    selectedDeviceFilter === "ALL"
+      ? devices
+      : devices.filter((d) => d.id === selectedDeviceFilter);
 
   const activeSimDevice = devices.find((d) => d.id === simDeviceId) || devices[0];
   const sampleToken =
@@ -1063,8 +1068,60 @@ curl -X POST ${origin}/api/http/ota/status \\
           </form>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {devices.map((dev) => {
+        {/* Bar Pemilih Alat IoT (Fokus Per Alat atau Semua Alat) */}
+        {devices.length > 0 && (
+          <div className="p-3 bg-surface border border-line rounded-[8px] space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              Pilih Alat IoT untuk Kelola Token, Versi Firmware &amp; Uji Update:
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedDeviceFilter("ALL")}
+                className={`min-h-[38px] px-3 py-1.5 rounded-[6px] border text-xs font-semibold cursor-pointer transition-colors ${
+                  selectedDeviceFilter === "ALL"
+                    ? "bg-brand text-brand-ink border-brand"
+                    : "bg-surface-2 text-ink border-line hover:border-brand/50"
+                }`}
+              >
+                Semua Alat IoT ({devices.length})
+              </button>
+              {devices.map((dev) => {
+                const isSelected = selectedDeviceFilter === dev.id;
+                return (
+                  <button
+                    key={`tab-dev-${dev.id}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDeviceFilter(dev.id);
+                      setSimDeviceId(dev.id);
+                    }}
+                    className={`min-h-[38px] px-3 py-1.5 rounded-[6px] border text-xs font-medium cursor-pointer transition-colors flex items-center gap-2 ${
+                      isSelected
+                        ? "bg-brand text-brand-ink border-brand font-semibold"
+                        : "bg-surface-2 text-ink border-line hover:border-brand/50"
+                    }`}
+                  >
+                    <span className="font-mono font-bold">{dev.device_code}</span>
+                    <span className={isSelected ? "opacity-85" : "text-muted"}>· {dev.pond_name}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] ${
+                        isSelected
+                          ? "bg-brand-ink/15 text-brand-ink"
+                          : "bg-surface border border-line text-brand"
+                      }`}
+                    >
+                      {dev.firmware_version}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className={`grid grid-cols-1 ${selectedDeviceFilter === "ALL" ? "lg:grid-cols-2" : ""} gap-4`}>
+          {visibleDevices.map((dev) => {
             const showFull = Boolean(revealedTokens[dev.id]);
             const tokenValue = showFull
               ? dev.plain_token || dev.api_token_prefix || "(token belum diterbitkan)"
@@ -1124,7 +1181,12 @@ curl -X POST ${origin}/api/http/ota/status \\
                     )}
                     <button
                       type="button"
-                      onClick={() => setSimDeviceId(dev.id)}
+                      onClick={() => {
+                        setSimDeviceId(dev.id);
+                        const matchRel = releases.find((r) => checkClientCompat(dev, r).compatible);
+                        if (matchRel) setSimReleaseId(matchRel.id);
+                        document.getElementById("ota-simulator-lab")?.scrollIntoView({ behavior: "smooth" });
+                      }}
                       className={`min-h-[34px] px-2.5 rounded-[6px] text-[11px] font-semibold border cursor-pointer inline-flex items-center gap-1 ${
                         simDeviceId === dev.id
                           ? "bg-brand text-brand-ink border-brand"
@@ -1132,7 +1194,7 @@ curl -X POST ${origin}/api/http/ota/status \\
                       }`}
                     >
                       <FlaskConical className="w-3 h-3" />
-                      <span>{simDeviceId === dev.id ? "Terpilih di Simulator" : "Uji Alat Ini"}</span>
+                      <span>{simDeviceId === dev.id ? "Terpilih di Simulator" : "Uji Simulasi Alat Ini"}</span>
                     </button>
                   </div>
                 </div>
@@ -1381,7 +1443,7 @@ curl -X POST ${origin}/api/http/ota/status \\
       {/* ================================================================= */}
       {/* LABORATORIUM UJI & SIMULATOR UPDATE FIRMWARE DUAL-OTA              */}
       {/* ================================================================= */}
-      <div className="p-4 sm:p-6 bg-surface border border-brand/35 rounded-[8px] space-y-4">
+      <div id="ota-simulator-lab" className="p-4 sm:p-6 bg-surface border border-brand/35 rounded-[8px] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
           <div>
             <div className="flex items-center gap-2 text-brand text-xs font-semibold uppercase tracking-wider mb-1">
