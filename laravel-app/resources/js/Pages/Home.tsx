@@ -217,9 +217,21 @@ const PACKAGES_OVERVIEW = [
 ];
 
 const DEVELOPER_TEAM = [
-  { num: "01", name: "Gofran Muttaqi Likhan" },
-  { num: "02", name: "M. Ilham Nandari" },
-  { num: "03", name: "Monika Lisbet Lase" },
+  {
+    num: "01",
+    name: "Gofran Muttaqi Likhan",
+    url: "https://portofolio-gofran.vercel.app",
+  },
+  {
+    num: "02",
+    name: "M. Ilham Nandari",
+    url: "https://www.instagram.com/muhammadilhamnandari?jplx=dm5hcXBsZDY5bWdx",
+  },
+  {
+    num: "03",
+    name: "Monika Lisbet Lase",
+    url: "https://www.instagram.com/monciii_19?jplx=MjBtZDJzeDA2cDFk",
+  },
 ];
 
 const NAV_LINKS = [
@@ -2267,9 +2279,18 @@ export default function Home({ landingContent }: HomeProps) {
                 <div className="mono-label text-[11px] text-[#53625E]">
                   {member.num} / TIM PENGEMBANG
                 </div>
-                <div className="text-[18px] font-semibold text-[#111918] sm:text-right">
-                  {member.name}
-                </div>
+                <a
+                  href={member.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex min-h-[44px] items-center gap-1.5 text-[18px] font-semibold text-[#111918] hover:text-[#136F63] transition-colors sm:justify-end"
+                >
+                  <span>{member.name}</span>
+                  <ArrowUpRight
+                    className="w-4 h-4 text-[#53625E] group-hover:text-[#136F63] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0"
+                    aria-hidden="true"
+                  />
+                </a>
               </div>
             ))}
 
