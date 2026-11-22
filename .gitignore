@@ -31,3 +31,5 @@ random_forest_experiment/
 # Local temporary & agent state files
 tmp/
 .omc/
+.playwright-mcp/
+laravel-app/storage/framework/realtime-bus.jsonl

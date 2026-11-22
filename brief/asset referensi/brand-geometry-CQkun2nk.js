@@ -1,0 +1,1 @@
+var e=1/Math.sqrt(3),t=42,n=66,r=[[68,0],[68-116*e,116],[68-74*e,116],[68,t]],i=[r,r.map(([e,t])=>[144-e,t]),[[72,n],[72-50*e,116],[72+50*e,116]]],a=e=>Number(e.toFixed(6));i.map(e=>e.map(([e,t],n)=>`${n?`L`:`M`}${a(e)} ${a(t)}`).join(``)+`Z`);export{i as t};
