@@ -1,5 +1,9 @@
 <?php
 
+if (!enum_exists('SortDirection', false)) {
+    eval("enum SortDirection: string { case Ascending = 'asc'; case Descending = 'desc'; }");
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
