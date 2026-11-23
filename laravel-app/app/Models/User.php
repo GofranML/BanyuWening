@@ -275,4 +275,9 @@ class User extends Authenticatable
     {
         return is_array($this->custom_permissions) && count($this->custom_permissions) > 0;
     }
+
+    public function tenant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_code', 'code');
+    }
 }

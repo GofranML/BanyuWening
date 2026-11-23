@@ -388,49 +388,49 @@ export default function Login({
               <button
                 type="button"
                 onClick={() => handleQuickDemo("ADMIN")}
-                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-brand/10 border border-line rounded-[6px] text-left transition-colors group cursor-pointer"
+                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-surface border border-line hover:border-purple-500/50 rounded-[6px] text-left transition-all group cursor-pointer border-l-[3px] border-l-purple-500 shadow-xs"
               >
-                <div className="font-semibold text-brand flex items-center justify-between">
-                  <span>Super Administrator</span>
-                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-brand transition-colors" aria-hidden="true" />
+                <div className="font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-between">
+                  <span>Super Admin</span>
+                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-purple-600 transition-colors" aria-hidden="true" />
                 </div>
-                <div className="text-[11px] text-muted">Demo Akses Penuh</div>
+                <div className="text-[11px] text-muted">Akses Penuh Sistem</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickDemo("OPERATOR")}
-                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-brand/10 border border-line rounded-[6px] text-left transition-colors group cursor-pointer"
+                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-surface border border-line hover:border-blue-500/50 rounded-[6px] text-left transition-all group cursor-pointer border-l-[3px] border-l-blue-500 shadow-xs"
               >
-                <div className="font-semibold text-ink flex items-center justify-between">
-                  <span>Operator Kolam</span>
-                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-ink transition-colors" aria-hidden="true" />
+                <div className="font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-between">
+                  <span>Operator</span>
+                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-blue-600 transition-colors" aria-hidden="true" />
                 </div>
-                <div className="text-[11px] text-muted">Demo Kendali Lapangan</div>
+                <div className="text-[11px] text-muted">Kendali Relay Kolam</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickDemo("ANALIS")}
-                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-brand/10 border border-line rounded-[6px] text-left transition-colors group cursor-pointer"
+                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-surface border border-line hover:border-amber-500/50 rounded-[6px] text-left transition-all group cursor-pointer border-l-[3px] border-l-amber-500 shadow-xs"
               >
-                <div className="font-semibold text-waspada-text flex items-center justify-between">
-                  <span>Analis Akuakultur</span>
-                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-waspada-text transition-colors" aria-hidden="true" />
+                <div className="font-semibold text-amber-700 dark:text-amber-300 flex items-center justify-between">
+                  <span>Analis</span>
+                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-amber-600 transition-colors" aria-hidden="true" />
                 </div>
-                <div className="text-[11px] text-muted">Demo Analitik & Ekspor</div>
+                <div className="text-[11px] text-muted">Model ML &amp; Ekspor</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickDemo("PEMILIK")}
-                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-brand/10 border border-line rounded-[6px] text-left transition-colors group cursor-pointer"
+                className="min-h-[44px] p-2.5 bg-surface-2 hover:bg-surface border border-line hover:border-emerald-500/50 rounded-[6px] text-left transition-all group cursor-pointer border-l-[3px] border-l-emerald-500 shadow-xs"
               >
-                <div className="font-semibold text-aman-text flex items-center justify-between">
-                  <span>Pemilik (Petambak)</span>
-                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-aman-text transition-colors" aria-hidden="true" />
+                <div className="font-semibold text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+                  <span>Pemilik Tambak</span>
+                  <ArrowRight className="w-3 h-3 text-muted group-hover:text-emerald-600 transition-colors" aria-hidden="true" />
                 </div>
-                <div className="text-[11px] text-muted">Demo Data Terproses</div>
+                <div className="text-[11px] text-muted">Laporan WQI Eksekutif</div>
               </button>
             </div>
           </div>

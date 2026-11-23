@@ -201,6 +201,29 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
   },
 };
 
+export interface Tenant {
+  id: number;
+  code: string;
+  name: string;
+  pond_name: string;
+  pic_name?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  owner_user_id?: number | null;
+  owner?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    phone?: string | null;
+  } | null;
+  status: "ACTIVE" | "TRIAL" | "SUSPENDED";
+  notes?: string | null;
+  users_count?: number;
+  devices_count?: number;
+  created_at?: string;
+}
+
 export interface User {
   id: number | string;
   name: string;

@@ -39,6 +39,7 @@ import { ExportSection } from "@/Components/ExportSection";
 // Role-specific views
 import { SuperAdminDocs } from "@/Components/roles/SuperAdminDocs";
 import { SuperAdminUserManagement } from "@/Components/roles/SuperAdminUserManagement";
+import { SuperAdminTenantManagement } from "@/Components/roles/SuperAdminTenantManagement";
 import { SuperAdminNotificationConfig } from "@/Components/roles/SuperAdminNotificationConfig";
 import { SuperAdminContentManagement } from "@/Components/roles/SuperAdminContentManagement";
 import { SuperAdminSecurityBackup } from "@/Components/roles/SuperAdminSecurityBackup";
@@ -60,6 +61,7 @@ import {
   type BackupItem,
   type SecurityStats,
   type ManagedDevice,
+  type Tenant,
   type MlPerformanceOverview,
   type OtaOverview,
   type PermissionKey,
@@ -87,6 +89,7 @@ type TabId =
   | "ekspor"
   | "dokumentasi"
   | "manajemen-akun"
+  | "manajemen-tenant"
   | "manajemen-konten"
   | "konfigurasi-bot"
   | "keamanan-backup"
@@ -117,6 +120,7 @@ interface DashboardProps {
   activeDeviceCode?: string | null;
   aeratorState: AeratorState;
   users: User[];
+  tenants?: Tenant[];
   devices?: ManagedDevice[];
   otaOverview?: OtaOverview | null;
   mlOverview?: MlPerformanceOverview | null;
@@ -139,6 +143,7 @@ export default function Dashboard({
   activeDeviceCode: propActiveDeviceCode,
   aeratorState: initialAeratorState,
   users = [],
+  tenants: initialTenants = [],
   devices: initialDevices = [],
   otaOverview: initialOtaOverview,
   mlOverview: initialMlOverview,
@@ -157,6 +162,8 @@ export default function Dashboard({
     propActiveDeviceCode !== undefined ? propActiveDeviceCode : pageProps.activeDeviceCode || null;
   const managedDevices: ManagedDevice[] =
     initialDevices.length > 0 ? initialDevices : pageProps.devices || [];
+  const tenants: Tenant[] =
+    initialTenants.length > 0 ? initialTenants : pageProps.tenants || [];
   const otaOverview: OtaOverview | null =
     initialOtaOverview !== undefined ? initialOtaOverview : pageProps.otaOverview || null;
   const mlOverview: MlPerformanceOverview | null =
@@ -221,6 +228,18 @@ export default function Dashboard({
   );
 
   // Sinkronisasi props Inertia saat reload parsial / navigasi
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get("tab");
+      if (tabParam === "tenant" || tabParam === "manajemen-tenant" || tabParam === "tenants") {
+        setActiveTab("manajemen-tenant");
+      } else if (tabParam === "users" || tabParam === "akun" || tabParam === "manajemen-akun") {
+        setActiveTab("manajemen-akun");
+      }
+    }
+  }, []);
+
   useEffect(() => {
     setCurrentReading(initialCurrentReading);
   }, [initialCurrentReading]);
@@ -632,6 +651,32 @@ export default function Dashboard({
 
                 {hasPerm("manage_users") && (
                   <button
+                    onClick={() => setActiveTab("manajemen-tenant")}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                      activeTab === "manajemen-tenant"
+                        ? "bg-brand text-brand-ink font-semibold"
+                        : "text-ink hover:bg-surface-2"
+                    }`}
+                    title="Kelola Mitra Multi-Tenant Tambak & Alokasi Node IoT"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Building2 className="w-4 h-4 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Mitra Multi-Tenant</span>
+                    </div>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                        activeTab === "manajemen-tenant"
+                          ? "bg-brand-ink/20 text-brand-ink"
+                          : "bg-brand/10 text-brand"
+                      }`}
+                    >
+                      {tenants.length} Tenant
+                    </span>
+                  </button>
+                )}
+
+                {hasPerm("manage_users") && (
+                  <button
                     onClick={() => setActiveTab("manajemen-akun")}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
                       activeTab === "manajemen-akun"
@@ -1011,6 +1056,22 @@ export default function Dashboard({
                     )}
                     {hasPerm("manage_users") && (
                       <button
+                        onClick={() => selectMobileTab("manajemen-tenant")}
+                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center justify-between gap-2 border text-left ${
+                          activeTab === "manajemen-tenant" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Building2 className="w-4 h-4 shrink-0" />
+                          <span className="truncate">Mitra Multi-Tenant</span>
+                        </div>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-ink/15 font-mono font-bold">
+                          {tenants.length}
+                        </span>
+                      </button>
+                    )}
+                    {hasPerm("manage_users") && (
+                      <button
                         onClick={() => selectMobileTab("manajemen-akun")}
                         className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
                           activeTab === "manajemen-akun" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
@@ -1220,6 +1281,19 @@ export default function Dashboard({
 
           {hasPerm("manage_users") && (
             <button
+              onClick={() => setActiveTab("manajemen-tenant")}
+              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "manajemen-tenant"
+                  ? "bg-brand text-brand-ink font-semibold"
+                  : "bg-surface-2 text-ink"
+              }`}
+            >
+              Mitra Tenant ({tenants.length})
+            </button>
+          )}
+
+          {hasPerm("manage_users") && (
+            <button
               onClick={() => setActiveTab("manajemen-akun")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === "manajemen-akun"
@@ -1300,9 +1374,14 @@ export default function Dashboard({
         {/* Content Body */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1280px] w-full mx-auto">
           {/* Status Bar Operasional Kolam */}
-          <div className="mb-5 sm:mb-6 p-3 sm:p-3.5 bg-surface border border-line rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11.5px] sm:text-[12px]">
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${device.status === "ONLINE" ? "bg-aman animate-pulse" : "bg-muted"}`} />
+          <div className="mb-5 sm:mb-6 p-3 sm:p-3.5 bg-surface border border-line rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11.5px] sm:text-[12px] shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                {device.status === "ONLINE" && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aman opacity-75" />
+                )}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${device.status === "ONLINE" ? "bg-aman" : "bg-muted"}`} />
+              </span>
               <span className="font-semibold text-ink">
                 {device.status === "ONLINE" ? "ESP32 Terhubung:" : "Status ESP32:"}
               </span>
@@ -1314,9 +1393,9 @@ export default function Dashboard({
               <span
                 className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold ${
                   realtimeMode === "WEBSOCKET"
-                    ? "bg-emerald-500/10 text-emerald-700"
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                     : realtimeMode === "HTTP_FALLBACK"
-                    ? "bg-amber-500/10 text-amber-700"
+                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
                     : "bg-surface-2 text-muted"
                 }`}
                 title={transportReason || "Status kanal realtime dashboard"}
@@ -1329,18 +1408,29 @@ export default function Dashboard({
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-muted min-w-0">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-line font-mono text-[10px] text-brand font-semibold">
-                <Building2 className="w-3 h-3 shrink-0" />
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasPerm("manage_users")) {
+                    setActiveTab("manajemen-tenant");
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-brand/10 border border-brand/25 font-mono text-[11px] text-brand font-semibold shadow-2xs ${
+                  hasPerm("manage_users") ? "cursor-pointer hover:bg-brand/20 transition-colors" : ""
+                }`}
+                title={hasPerm("manage_users") ? "Buka Manajemen Mitra Multi-Tenant" : undefined}
+              >
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
                 <span>
                   {user.role === "ADMIN"
-                    ? "Super Admin · Semua Tenant"
+                    ? `Super Admin · ${tenants.length} Tenant Terdaftar`
                     : user.tenant_code || "TENANT-UTAMA"}
                 </span>
-              </span>
+              </button>
 
               {tenantDevices.length > 0 ? (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] text-muted hidden sm:inline">Alat Aktif:</span>
+                  <span className="text-[11px] text-muted hidden sm:inline font-medium">Alat Aktif:</span>
                   <select
                     value={activeDeviceCode || device.device_code}
                     onChange={(e) =>
@@ -1350,7 +1440,7 @@ export default function Dashboard({
                         { preserveScroll: true }
                       )
                     }
-                    className="h-8 px-2 bg-surface-2 border border-line rounded-[4px] font-mono text-[11px] font-semibold text-ink cursor-pointer max-w-[230px]"
+                    className="h-8.5 px-2.5 bg-surface-2 border border-line hover:border-brand/50 rounded-[6px] font-mono text-[11.5px] font-semibold text-ink cursor-pointer max-w-[240px] transition-colors focus:ring-2 focus:ring-brand/20"
                     aria-label="Pilih Alat IoT Aktif"
                   >
                     {tenantDevices.map((td) => (
@@ -1399,9 +1489,23 @@ export default function Dashboard({
             />
           )}
 
+          {/* TAB: MANAJEMEN TENANT (Multi-Tenant Tambak & Alokasi Node IoT) */}
+          {activeTab === "manajemen-tenant" && hasPerm("manage_users") && (
+            <SuperAdminTenantManagement
+              tenants={tenants}
+              users={users}
+              devices={managedDevices}
+              onFilterUsersByTenant={() => setActiveTab("manajemen-akun")}
+            />
+          )}
+
           {/* TAB: MANAJEMEN AKUN */}
           {activeTab === "manajemen-akun" && hasPerm("manage_users") && (
-            <SuperAdminUserManagement users={users} />
+            <SuperAdminUserManagement
+              users={users}
+              tenants={tenants}
+              devices={managedDevices}
+            />
           )}
 
           {/* TAB: MANAJEMEN KONTEN LANDING */}

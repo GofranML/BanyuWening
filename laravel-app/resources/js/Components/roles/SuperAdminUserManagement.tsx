@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import {
   DEFAULT_ROLE_PERMISSIONS,
+  type ManagedDevice,
+  type Tenant,
   type User,
   type UserPermissions,
   type UserRole,
@@ -24,10 +26,13 @@ import {
   countCustomOverrides,
   UserPermissionsEditor,
 } from "@/Components/roles/UserPermissionsEditor";
+import { SuperAdminTenantManagement } from "@/Components/roles/SuperAdminTenantManagement";
 import { getRoleBadgeLabel } from "@/lib/formatters";
 
 interface SuperAdminUserManagementProps {
   users: User[];
+  tenants?: Tenant[];
+  devices?: ManagedDevice[];
 }
 
 function getEffectivePermissions(u: { role: UserRole; permissions?: UserPermissions }): UserPermissions {
@@ -37,7 +42,15 @@ function getEffectivePermissions(u: { role: UserRole; permissions?: UserPermissi
   };
 }
 
-export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProps) {
+export function SuperAdminUserManagement({
+  users,
+  tenants = [],
+  devices = [],
+}: SuperAdminUserManagementProps) {
+  const [activeSubView, setActiveSubView] = useState<"users" | "tenants">("users");
+  const [tenantFilter, setTenantFilter] = useState<string>("ALL");
+  const [customTenantMode, setCustomTenantMode] = useState(false);
+  const [editCustomTenantMode, setEditCustomTenantMode] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,25 +265,88 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 text-[12px] font-semibold mb-2">
             <Users className="w-3.5 h-3.5" />
-            <span>Kontrol Hak Akses & Akun</span>
+            <span>Kontrol Hak Akses & Multi-Tenant</span>
           </div>
           <h1 className="text-[24px] md:text-[28px] font-display text-ink leading-tight">
-            Buat & Kelola Akun Pengguna
+            {activeSubView === "users" ? "Buat & Kelola Akun Pengguna" : "Manajemen Mitra Multi-Tenant"}
           </h1>
           <p className="text-[13px] text-muted mt-1">
-            Khusus Super Administrator: Tambah akun baru, edit informasi profil pengguna, ubah hak akses (role),
-            dan reset keamanan 2FA akun operasional.
+            {activeSubView === "users"
+              ? "Khusus Super Administrator: Tambah akun baru, edit informasi profil pengguna, ubah hak akses (role), dan reset keamanan 2FA akun operasional."
+              : "Khusus Super Administrator: Kelola entitas tenant/petambak mitra, isolasi telemetri multi-tenant, dan alokasi perangkat IoT."}
           </p>
         </div>
 
+        <div className="flex items-center gap-2.5 self-start flex-wrap">
+          <button
+            onClick={() => setActiveSubView(activeSubView === "tenants" ? "users" : "tenants")}
+            className={`h-10 px-3.5 rounded-[6px] text-[13px] font-semibold inline-flex items-center gap-2 cursor-pointer transition-colors ${
+              activeSubView === "tenants"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                : "border border-line text-ink hover:border-brand"
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-cyan-400" />
+            <span>{activeSubView === "tenants" ? "Buka Daftar Akun" : `Kelola Tenant (${tenants.length})`}</span>
+          </button>
+
+          {activeSubView === "users" && (
+            <button
+              onClick={() => setIsFormOpen(!isFormOpen)}
+              className="h-10 px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{isFormOpen ? "Tutup Formulir" : "Tambah Akun Baru"}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Sub-view Switcher Tabs */}
+      <div className="flex items-center gap-2 border-b border-line pb-2">
         <button
-          onClick={() => setIsFormOpen(!isFormOpen)}
-          className="h-10 px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer self-start shadow-xs"
+          onClick={() => setActiveSubView("users")}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[6px] text-[13px] font-medium transition-colors cursor-pointer ${
+            activeSubView === "users"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink hover:bg-surface-2"
+          }`}
         >
-          <UserPlus className="w-4 h-4" />
-          <span>{isFormOpen ? "Tutup Formulir" : "Tambah Akun Baru"}</span>
+          <Users className="w-4 h-4" />
+          <span>Akun Pengguna</span>
+          <span className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-black/15 font-semibold">
+            {users.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubView("tenants")}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-[6px] text-[13px] font-medium transition-colors cursor-pointer ${
+            activeSubView === "tenants"
+              ? "bg-brand text-brand-ink font-semibold"
+              : "text-muted hover:text-ink hover:bg-surface-2"
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Mitra Multi-Tenant</span>
+          <span className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-black/15 font-semibold">
+            {tenants.length}
+          </span>
         </button>
       </div>
+
+      {activeSubView === "tenants" ? (
+        <SuperAdminTenantManagement
+          tenants={tenants}
+          users={users}
+          devices={devices}
+          onFilterUsersByTenant={(code) => {
+            setTenantFilter(code);
+            setActiveSubView("users");
+          }}
+        />
+      ) : (
+        <>
 
       {/* Form Tambah Pengguna Baru */}
       {isFormOpen && (
@@ -363,16 +439,48 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[12px] font-semibold text-ink">
-                Kode Tenant / Toko Tambak
-              </label>
-              <input
-                type="text"
-                value={tenantCode}
-                onChange={(e) => setTenantCode(e.target.value)}
-                placeholder="TENANT-TAMBAK-BUDI (otomatis jika kosong)"
-                className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
-              />
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] font-semibold text-ink">
+                  Tenant / Kemitraan Tambak
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCustomTenantMode(!customTenantMode)}
+                  className="text-[11px] text-brand hover:underline cursor-pointer"
+                >
+                  {customTenantMode ? "← Pilih Daftar" : "Kustom..."}
+                </button>
+              </div>
+
+              {!customTenantMode ? (
+                <select
+                  value={tenantCode}
+                  onChange={(e) => {
+                    if (e.target.value === "__NEW_TENANT__") {
+                      setActiveSubView("tenants");
+                    } else {
+                      setTenantCode(e.target.value);
+                    }
+                  }}
+                  className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand cursor-pointer"
+                >
+                  <option value="">-- Otomatis Sesuai Kolam --</option>
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.code}>
+                      {t.code} — {t.name}
+                    </option>
+                  ))}
+                  <option value="__NEW_TENANT__">+ Daftarkan Tenant Baru di Sistem...</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={tenantCode}
+                  onChange={(e) => setTenantCode(e.target.value)}
+                  placeholder="TENANT-TAMBAK-BUDI (otomatis jika kosong)"
+                  className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -528,16 +636,48 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[12px] font-semibold text-ink">
-                    Kode Tenant / Toko Tambak
-                  </label>
-                  <input
-                    type="text"
-                    value={editTenantCode}
-                    onChange={(e) => setEditTenantCode(e.target.value)}
-                    placeholder="TENANT-TAMBAK-A"
-                    className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-semibold text-ink">
+                      Tenant / Kemitraan Tambak
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditCustomTenantMode(!editCustomTenantMode)}
+                      className="text-[11px] text-brand hover:underline cursor-pointer"
+                    >
+                      {editCustomTenantMode ? "← Pilih Daftar" : "Kustom..."}
+                    </button>
+                  </div>
+                  {!editCustomTenantMode ? (
+                    <select
+                      value={editTenantCode}
+                      onChange={(e) => {
+                        if (e.target.value === "__NEW_TENANT__") {
+                          setEditingUser(null);
+                          setActiveSubView("tenants");
+                        } else {
+                          setEditTenantCode(e.target.value);
+                        }
+                      }}
+                      className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand cursor-pointer"
+                    >
+                      <option value="">-- Tanpa Tenant Khusus --</option>
+                      {tenants.map((t) => (
+                        <option key={t.id} value={t.code}>
+                          {t.code} — {t.name}
+                        </option>
+                      ))}
+                      <option value="__NEW_TENANT__">+ Daftarkan Tenant Baru di Sistem...</option>
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editTenantCode}
+                      onChange={(e) => setEditTenantCode(e.target.value)}
+                      placeholder="TENANT-TAMBAK-A"
+                      className="w-full h-10 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand"
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -741,20 +881,45 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
 
       {/* Tabel Daftar Pengguna */}
       <div className="bg-surface border border-line rounded-[6px] overflow-hidden">
-        <div className="p-4 border-b border-line flex items-center justify-between flex-wrap gap-2">
+        <div className="p-4 border-b border-line flex items-center justify-between flex-wrap gap-3">
           <div>
             <h3 className="text-[15px] font-semibold text-ink">
-              Daftar Pengguna Aktif ({users.length} Akun)
+              Daftar Pengguna Aktif ({displayedUsers.length} dari {users.length} Akun)
             </h3>
             <span className="text-[12px] text-muted">
               Tersimpan di sistem basis data autentikasi Laravel BanyuWening
             </span>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-muted font-medium">Filter Tenant:</span>
+            <select
+              value={tenantFilter}
+              onChange={(e) => setTenantFilter(e.target.value)}
+              className="h-8.5 px-2.5 bg-surface-2 border border-line rounded-[6px] text-[12px] text-ink focus:outline-hidden focus:border-brand cursor-pointer font-mono"
+            >
+              <option value="ALL">Semua Tenant ({users.length})</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.code}>
+                  {t.code} — {t.name}
+                </option>
+              ))}
+            </select>
+            {tenantFilter !== "ALL" && (
+              <button
+                type="button"
+                onClick={() => setTenantFilter("ALL")}
+                className="text-[11px] text-brand hover:underline font-semibold cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile Card View (< md) */}
         <div className="md:hidden divide-y divide-line">
-          {users.map((u) => {
+          {displayedUsers.map((u) => {
             const overrideCount = countCustomOverrides(u.role, getEffectivePermissions(u));
             return (
               <div key={`m-${u.id}`} className="p-4 space-y-3">
@@ -862,7 +1027,7 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
               </tr>
             </thead>
             <tbody className="divide-y divide-line text-muted">
-              {users.map((u) => (
+              {displayedUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-surface-2/40 transition-colors">
                   <td className="p-3">
                     <div className="flex items-center gap-3">
@@ -983,6 +1148,8 @@ export function SuperAdminUserManagement({ users }: SuperAdminUserManagementProp
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

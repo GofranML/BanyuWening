@@ -45,6 +45,11 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['post', 'put'], '/dashboard/users/{id}/permissions', [DashboardController::class, 'updateUserPermissions'])->name('dashboard.users.permissions');
     Route::match(['post', 'put'], '/dashboard/users/{id}', [DashboardController::class, 'updateUser']);
     Route::delete('/dashboard/users/{id}', [DashboardController::class, 'destroyUser'])->name('dashboard.users.destroy');
+
+    // Super Admin: Manajemen Tenant & Multi-Tenancy
+    Route::post('/dashboard/tenants', [DashboardController::class, 'storeTenant'])->name('dashboard.tenants.store');
+    Route::match(['post', 'put'], '/dashboard/tenants/{tenant}', [DashboardController::class, 'updateTenant'])->name('dashboard.tenants.update');
+    Route::delete('/dashboard/tenants/{tenant}', [DashboardController::class, 'destroyTenant'])->name('dashboard.tenants.destroy');
     Route::post('/dashboard/notifications/config', [DashboardController::class, 'saveNotificationConfig'])->name('dashboard.notifications.config');
     Route::post('/dashboard/notifications/test', [DashboardController::class, 'testNotification'])->name('dashboard.notifications.test');
     Route::post('/dashboard/notifications/logs/clear', [DashboardController::class, 'clearDispatchLogs'])->name('dashboard.notifications.logs.clear');

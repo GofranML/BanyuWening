@@ -32,4 +32,4 @@ random_forest_experiment/
 tmp/
 .omc/
 .playwright-mcp/
-laravel-app/storage/framework/realtime-bus.jsonl
+laravel-app/storage/framework/*.jsonl

@@ -130,6 +130,11 @@ class Device extends Model
         return $this->belongsTo(User::class, 'owner_user_id');
     }
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_code', 'code');
+    }
+
     /**
      * Cek apakah pengguna berhak mengakses alat IoT ini berdasarkan kepemilikan/penugasan atau tenant.
      */

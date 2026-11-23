@@ -179,6 +179,22 @@
     cursor: not-allowed;
   }
 
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+  select:focus,
+  textarea:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+
+  button:active:not(:disabled) {
+    transform: scale(0.985);
+    transition: transform 90ms ease-out;
+  }
+
   /* Sleek custom scrollbars */
   * {
     scrollbar-width: thin;

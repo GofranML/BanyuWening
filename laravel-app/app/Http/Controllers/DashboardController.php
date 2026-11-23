@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\User;
+use App\Models\Tenant;
 use App\Models\Device;
 use App\Models\SensorReading;
 use App\Models\Prediction;
@@ -103,6 +104,7 @@ class DashboardController extends Controller
 
         // 5. Data Tambahan khusus Admin & Self-OTA Tenant
         $users = [];
+        $tenants = [];
         $notificationConfig = null;
         $dispatchLogs = [];
         $landingContent = null;
@@ -122,6 +124,13 @@ class DashboardController extends Controller
 
         if ($canManageUsers || $canViewDocsApi) {
             $users = User::latest()->get()->map(fn (User $u) => $this->serializeUserForAdmin($u))->values()->all();
+            $tenants = Tenant::with(['owner:id,name,email,role,phone'])
+                ->withCount(['users', 'devices'])
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Tenant $t) => $this->serializeTenantForAdmin($t))
+                ->values()
+                ->all();
         }
 
         if ($canManageNotif) {
@@ -264,6 +273,7 @@ class DashboardController extends Controller
                 'dailyDuration' => $latest ? '3 jam 20 menit' : '0 menit (Standby)',
             ],
             'users' => $users,
+            'tenants' => $tenants,
             'devices' => $devices,
             'otaOverview' => $otaOverview,
             'mlOverview' => $mlOverview,
@@ -598,6 +608,183 @@ class DashboardController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * Super Admin: Daftarkan Tenant / Mitra Tambak baru, opsional buat akun pemilik & alokasikan alat IoT.
+     */
+    public function storeTenant(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+            abort(403, 'Akses terbatas untuk Administrator.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'code' => ['nullable', 'string', 'max:80'],
+            'pond_name' => ['nullable', 'string', 'max:120'],
+            'pic_name' => ['nullable', 'string', 'max:120'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'status' => ['nullable', 'string', 'in:ACTIVE,TRIAL,SUSPENDED'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'create_owner_account' => ['nullable', 'boolean'],
+            'owner_name' => ['nullable', 'string', 'max:120'],
+            'owner_email' => ['nullable', 'email', 'max:120'],
+            'owner_password' => ['nullable', 'string', 'min:6'],
+            'assign_device_ids' => ['nullable', 'array'],
+            'assign_device_ids.*' => ['integer', 'exists:devices,id'],
+        ]);
+
+        $baseCode = !empty($validated['code'])
+            ? User::normalizeTenantCode($validated['code'])
+            : User::normalizeTenantCode(null, $validated['name']);
+
+        // Pastikan kode unik, bila ada duplikasi tambahkan nomor urut
+        $tenantCode = $baseCode;
+        $counter = 1;
+        while (Tenant::where('code', $tenantCode)->exists()) {
+            $tenantCode = $baseCode . '-' . str_pad((string)$counter, 2, '0', STR_PAD_LEFT);
+            $counter++;
+        }
+
+        $ownerId = !empty($validated['owner_user_id']) ? (int) $validated['owner_user_id'] : null;
+
+        if ($request->boolean('create_owner_account') && !empty($validated['owner_email'])) {
+            $existingEmail = User::where('email', strtolower(trim($validated['owner_email'])))->exists();
+            if ($existingEmail) {
+                return back()->with('error', "Email pemilik {$validated['owner_email']} sudah digunakan oleh akun lain.");
+            }
+
+            $ownerUser = User::create([
+                'name' => !empty($validated['owner_name']) ? $validated['owner_name'] : (!empty($validated['pic_name']) ? $validated['pic_name'] : $validated['name']),
+                'email' => strtolower(trim($validated['owner_email'])),
+                'password' => Hash::make(!empty($validated['owner_password']) ? $validated['owner_password'] : 'BanyuWening@123'),
+                'role' => 'PEMILIK',
+                'title' => 'Pemilik Budidaya Tambak',
+                'pond_name' => !empty($validated['pond_name']) ? $validated['pond_name'] : 'Kolam Terpal Sangkuriang',
+                'tenant_code' => $tenantCode,
+                'phone' => $validated['phone'] ?? '',
+                'avatar_initials' => strtoupper(substr(!empty($validated['owner_name']) ? $validated['owner_name'] : 'BW', 0, 2)),
+            ]);
+
+            $ownerId = (int) $ownerUser->id;
+        }
+
+        $tenant = Tenant::create([
+            'code' => $tenantCode,
+            'name' => $validated['name'],
+            'pond_name' => !empty($validated['pond_name']) ? $validated['pond_name'] : 'Kolam Terpal Sangkuriang',
+            'pic_name' => $validated['pic_name'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'owner_user_id' => $ownerId,
+            'status' => $validated['status'] ?? 'ACTIVE',
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        // Sinkronisasi data owner bila sudah ada
+        if ($ownerId) {
+            $owner = User::find($ownerId);
+            if ($owner) {
+                $ownerUpdates = [];
+                if (empty($owner->tenant_code) || $owner->tenant_code === 'TENANT-UTAMA') {
+                    $ownerUpdates['tenant_code'] = $tenantCode;
+                }
+                if (!empty($validated['pond_name']) && empty($owner->pond_name)) {
+                    $ownerUpdates['pond_name'] = $validated['pond_name'];
+                }
+                if (!empty($ownerUpdates)) {
+                    $owner->forceFill($ownerUpdates)->save();
+                }
+            }
+        }
+
+        // Alokasikan perangkat jika ada yang dipilih
+        if (!empty($validated['assign_device_ids'])) {
+            $devicesToAssign = Device::whereIn('id', $validated['assign_device_ids'])->get();
+            foreach ($devicesToAssign as $dev) {
+                $assigned = array_map('intval', is_array($dev->assigned_user_ids) ? $dev->assigned_user_ids : []);
+                if ($ownerId && !in_array($ownerId, $assigned, true)) {
+                    $assigned[] = $ownerId;
+                }
+                $dev->syncAssignedUsers($dev->owner_user_id ?: $ownerId, $assigned, $tenantCode);
+            }
+        }
+
+        return back()->with('success', "Tenant {$tenant->name} ({$tenant->code}) berhasil ditambahkan ke sistem.");
+    }
+
+    /**
+     * Super Admin: Update data tenant / mitra tambak.
+     */
+    public function updateTenant(Request $request, Tenant $tenant)
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+            abort(403, 'Akses terbatas untuk Administrator.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'pond_name' => ['nullable', 'string', 'max:120'],
+            'pic_name' => ['nullable', 'string', 'max:120'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'status' => ['required', 'string', 'in:ACTIVE,TRIAL,SUSPENDED'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $ownerId = !empty($validated['owner_user_id']) ? (int) $validated['owner_user_id'] : null;
+
+        $tenant->update([
+            'name' => $validated['name'],
+            'pond_name' => $validated['pond_name'] ?? $tenant->pond_name,
+            'pic_name' => $validated['pic_name'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'owner_user_id' => $ownerId,
+            'status' => $validated['status'],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        if ($ownerId) {
+            $owner = User::find($ownerId);
+            if ($owner && (empty($owner->tenant_code) || $owner->tenant_code === 'TENANT-UTAMA')) {
+                $owner->forceFill(['tenant_code' => $tenant->code])->save();
+            }
+        }
+
+        return back()->with('success', "Data tenant {$tenant->name} ({$tenant->code}) berhasil diperbarui.");
+    }
+
+    /**
+     * Super Admin: Hapus tenant (proteksi khusus TENANT-UTAMA).
+     */
+    public function destroyTenant(Request $request, Tenant $tenant)
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+            abort(403, 'Akses terbatas untuk Administrator.');
+        }
+
+        if ($tenant->code === 'TENANT-UTAMA') {
+            return back()->with('error', 'Tenant bawaan sistem (TENANT-UTAMA) tidak dapat dihapus.');
+        }
+
+        $code = $tenant->code;
+        $name = $tenant->name;
+
+        // Migrasikan pengguna dan perangkat yang terikat ke TENANT-UTAMA
+        User::where('tenant_code', $code)->update(['tenant_code' => 'TENANT-UTAMA']);
+        Device::where('tenant_code', $code)->update(['tenant_code' => 'TENANT-UTAMA']);
+
+        $tenant->delete();
+
+        return back()->with('success', "Tenant {$name} ({$code}) berhasil dihapus. Akun dan alat terkait telah dialihkan ke TENANT-UTAMA.");
     }
 
     public function updateProfile(Request $request)
@@ -1216,6 +1403,32 @@ class DashboardController extends Controller
             'token_last_used_at' => $d->token_last_used_at?->toIso8601String(),
             'last_heartbeat_at' => $d->last_heartbeat_at?->toIso8601String(),
             'ws_connected_at' => $d->ws_connected_at?->toIso8601String(),
+        ];
+    }
+
+    private function serializeTenantForAdmin(Tenant $t): array
+    {
+        return [
+            'id' => $t->id,
+            'code' => $t->code,
+            'name' => $t->name,
+            'pond_name' => $t->pond_name ?: 'Kolam Terpal Sangkuriang',
+            'pic_name' => $t->pic_name,
+            'phone' => $t->phone,
+            'address' => $t->address,
+            'owner_user_id' => $t->owner_user_id ? (int) $t->owner_user_id : null,
+            'owner' => $t->owner ? [
+                'id' => $t->owner->id,
+                'name' => $t->owner->name,
+                'email' => $t->owner->email,
+                'role' => $t->owner->role,
+                'phone' => $t->owner->phone,
+            ] : null,
+            'status' => $t->status ?: 'ACTIVE',
+            'notes' => $t->notes,
+            'users_count' => (int) ($t->users_count ?? 0),
+            'devices_count' => (int) ($t->devices_count ?? 0),
+            'created_at' => $t->created_at?->format('Y-m-d H:i') . ' WIB',
         ];
     }
 }
