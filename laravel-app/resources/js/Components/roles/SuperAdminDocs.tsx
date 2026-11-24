@@ -454,7 +454,7 @@ export function SuperAdminDocs({
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-3.5 h-3.5 text-aman shrink-0 mt-0.5" />
-                      <span><strong>Keamanan & Backup Basis Data:</strong> Membuat snapshot backup SQLite instan, mengunduh arsip database, dan mengawasi audit trail sistem.</span>
+                      <span><strong>Keamanan & Backup Basis Data:</strong> Membuat dump PostgreSQL (pg_dump) dan snapshot JSON, mengunduh atau menghapus arsip, serta memantau status keamanan. Khusus Super Admin.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-3.5 h-3.5 text-aman shrink-0 mt-0.5" />

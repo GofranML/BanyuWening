@@ -481,6 +481,9 @@ export interface SecurityStats {
   failsafe_hardware: string;
   last_backup: string;
   csrf_protection: string;
+  admins_without_2fa?: number;
+  login_throttle?: string;
+  security_headers?: string;
 }
 
 export interface FirmwareReleaseItem {

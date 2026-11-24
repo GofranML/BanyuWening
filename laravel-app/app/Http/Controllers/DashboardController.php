@@ -301,7 +301,7 @@ class DashboardController extends Controller
         $canManageUsers = $user && ($user->isAdmin() || $user->hasPermission('manage_users'));
         $canManageLanding = $user && ($user->isAdmin() || $user->hasPermission('manage_landing'));
         $canManageNotif = $user && ($user->isAdmin() || $user->hasPermission('manage_notifications'));
-        $canManageBackups = $user && ($user->isAdmin() || $user->hasPermission('manage_backups'));
+        $canManageBackups = $user && $user->isAdmin();
         $canViewDocsApi = $user && ($user->isAdmin() || $user->hasPermission('view_docs_api'));
         $canSelfOta = $user && ($user->isAdmin() || $user->hasPermission('update_device_firmware'));
 
@@ -401,7 +401,10 @@ class DashboardController extends Controller
                 'db_size' => $dbSizeHuman,
                 'total_readings' => SensorReading::count(),
                 'total_predictions' => Prediction::count(),
-                'mqtt_tls' => 'Aktif (Port 8883 - TLS 1.3)',
+                'mqtt_tls' => (config('services.mqtt.tls') ? 'TLS aktif' : 'Tanpa TLS di broker (TLS diterminasi di EMQX/proxy)') . ' - ' . config('services.mqtt.host') . ':' . config('services.mqtt.port'),
+                'admins_without_2fa' => User::where('role', 'ADMIN')->where(function ($q) { $q->where('two_factor_enabled', false)->orWhereNull('two_factor_confirmed_at'); })->count(),
+                'login_throttle' => '5 percobaan / 60 detik per email+IP (HTTP 429)',
+                'security_headers' => class_exists(\App\Http\Middleware\SecurityHeaders::class) ? 'Aktif (nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy)' : 'Tidak aktif',
                 'failsafe_hardware' => 'Aktif (ESP32 Deterministic GPIO)',
                 'last_backup' => count($backups) > 0 ? $backups[0]['created_at'] : 'Belum pernah',
                 'csrf_protection' => 'Aktif (Token Validasi Per-Request)',
@@ -1449,6 +1452,11 @@ class DashboardController extends Controller
             }
         }
 
+        // Berkas dump database memuat hash kata sandi & rahasia 2FA: batasi izin baca hanya untuk pemilik proses
+        foreach ($createdFiles as $createdFile) {
+            @chmod($backupDir . '/' . $createdFile, 0600);
+        }
+
         // 2. Snapshot JSON komprehensif data aplikasi (portable)
         $jsonBackupName = "banyuwening_snapshot_{$timestamp}.json";
         $dataDump = [
@@ -1465,6 +1473,7 @@ class DashboardController extends Controller
             'landing_contents' => LandingContent::all(),
         ];
         file_put_contents($backupDir . '/' . $jsonBackupName, json_encode($dataDump, JSON_PRETTY_PRINT));
+        @chmod($backupDir . '/' . $jsonBackupName, 0600);
         $createdFiles[] = $jsonBackupName;
 
         return back()->with('success', 'Pencadangan database berhasil dibuat: ' . implode(', ', $createdFiles));

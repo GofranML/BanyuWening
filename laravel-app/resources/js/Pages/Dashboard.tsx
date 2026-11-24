@@ -444,12 +444,14 @@ export default function Dashboard({
     ...(user.permissions || {}),
   };
   const hasPerm = (key: PermissionKey): boolean => Boolean(resolvedPerms[key]);
+  // Backup & keamanan basis data hanya untuk peran ADMIN (server menolak 403 untuk peran lain)
+  const canSeeBackups = role === "ADMIN" && hasPerm("manage_backups");
   const hasAnyAdminMenu =
     hasPerm("view_docs_api") ||
     hasPerm("manage_users") ||
     hasPerm("manage_landing") ||
     hasPerm("manage_notifications") ||
-    hasPerm("manage_backups");
+    canSeeBackups;
   const overall = getOverallStatus(currentReading, prediction);
   const paramStatus = getParameterStatus(currentReading);
 
@@ -878,7 +880,7 @@ export default function Dashboard({
                   </button>
                 )}
 
-                {hasPerm("manage_backups") && (
+                {canSeeBackups && (
                   <button
                     onClick={() => setActiveTab("keamanan-backup")}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -1289,7 +1291,7 @@ export default function Dashboard({
                         <span>Konfigurasi Bot &amp; Notifikasi</span>
                       </button>
                     )}
-                    {hasPerm("manage_backups") && (
+                    {canSeeBackups && (
                       <button
                         onClick={() => selectMobileTab("keamanan-backup")}
                         className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
@@ -1537,7 +1539,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {hasPerm("manage_backups") && (
+          {canSeeBackups && (
             <button
               onClick={() => setActiveTab("keamanan-backup")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
@@ -1818,7 +1820,7 @@ export default function Dashboard({
           )}
 
           {/* TAB: KEAMANAN & BACKUP BASIS DATA */}
-          {activeTab === "keamanan-backup" && hasPerm("manage_backups") && (
+          {activeTab === "keamanan-backup" && canSeeBackups && (
             <SuperAdminSecurityBackup
               securityStats={securityStats}
               backups={backups}

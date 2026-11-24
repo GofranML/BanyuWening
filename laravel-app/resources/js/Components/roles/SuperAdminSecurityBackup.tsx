@@ -112,7 +112,11 @@ export function SuperAdminSecurityBackup({
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-line text-[12px] text-muted flex items-center justify-between">
-            <span>RFC 6238 TOTP</span>
+            <span>
+              {securityStats?.admins_without_2fa
+                ? `${securityStats.admins_without_2fa} admin belum 2FA`
+                : "RFC 6238 TOTP + anti-replay"}
+            </span>
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab("profil")}
@@ -132,15 +136,15 @@ export function SuperAdminSecurityBackup({
                 Protokol Sensor
               </span>
               <div className="text-[16px] font-bold text-ink mt-1">
-                MQTT TLS 1.3
+                Broker MQTT
               </div>
             </div>
             <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-[6px]">
               <Lock className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-line text-[12px] text-muted">
-            Port 8883 (HiveMQ Cloud SSL)
+          <div className="mt-3 pt-3 border-t border-line text-[12px] text-muted break-words">
+            {securityStats?.mqtt_tls || "Konfigurasi broker belum terbaca"}
           </div>
         </div>
 
@@ -180,7 +184,7 @@ export function SuperAdminSecurityBackup({
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-line text-[12px] text-muted">
-            Driver: {securityStats?.db_driver || "SQLITE"}
+            Driver: {securityStats?.db_driver || "-"}
           </div>
         </div>
       </div>
@@ -194,29 +198,60 @@ export function SuperAdminSecurityBackup({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[13px]">
           <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
             <span className="font-semibold text-ink block mb-1">
-              Proteksi Sesi & CSRF
+              Sesi, CSRF & Logout
             </span>
             <p className="text-muted text-[12px] leading-relaxed">
-              Setiap formulir dan permintaan mutasi data diverifikasi menggunakan
-              XSRF-Token unik dengan enkripsi cookie HttpOnly SameSite.
+              Permintaan mutasi memakai token CSRF. Logout hanya lewat POST,
+              sesi diregenerasi saat login dan sebelum verifikasi 2FA.
             </p>
           </div>
           <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
             <span className="font-semibold text-ink block mb-1">
-              Pemisahan Hak Akses (RBAC)
+              Anti Brute-Force & 2FA
             </span>
             <p className="text-muted text-[12px] leading-relaxed">
-              Otorisasi ketat membatasi hak akses berdasar 4 peran: Super Admin
-              (Penuh), Operator (Alat), Analis (Riset & Data), Pemilik (Laporan).
+              {securityStats?.login_throttle ||
+                "Login dan 2FA dibatasi 5 percobaan per menit"}
+              . Kode TOTP yang sudah dipakai ditolak (anti-replay).
             </p>
           </div>
           <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
             <span className="font-semibold text-ink block mb-1">
-              Enkripsi Kunci & Rahasia
+              RBAC Ketat Berbasis Peran
             </span>
             <p className="text-muted text-[12px] leading-relaxed">
-              Kata sandi dienkripsi menggunakan Bcrypt (Argon2 kompatibel). Kunci
-              rahasia 2FA disimpan menggunakan kolom terisolasi di database.
+              Backup, manajemen akun/tenant, notifikasi, dan MLOps hanya untuk
+              peran Super Admin. Izin kustom tidak dapat menggantikan peran.
+            </p>
+          </div>
+          <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
+            <span className="font-semibold text-ink block mb-1">
+              Isolasi Tenant & Realtime
+            </span>
+            <p className="text-muted text-[12px] leading-relaxed">
+              Data perangkat tenant privat tidak terbaca anonim, dan tiket
+              WebSocket hanya mengalirkan perangkat milik tenant pemegangnya.
+            </p>
+          </div>
+          <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
+            <span className="font-semibold text-ink block mb-1">
+              Unggahan & URL Eksternal
+            </span>
+            <p className="text-muted text-[12px] leading-relaxed">
+              Media landing divalidasi ekstensi dan isi berkas (SVG/skrip
+              ditolak). URL agen AI dan webhook diperiksa agar tidak menembus
+              jaringan internal (SSRF).
+            </p>
+          </div>
+          <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
+            <span className="font-semibold text-ink block mb-1">
+              Header Keamanan & Rahasia
+            </span>
+            <p className="text-muted text-[12px] leading-relaxed">
+              {securityStats?.security_headers ||
+                "Header keamanan HTTP aktif"}
+              . Kata sandi di-hash Bcrypt; rahasia 2FA dan token perangkat
+              disimpan terenkripsi/hash.
             </p>
           </div>
         </div>
@@ -233,6 +268,15 @@ export function SuperAdminSecurityBackup({
             <p className="text-[12px] text-muted mt-0.5">
               Berkas snapshot tersimpan di direktori privat server:{" "}
               <code className="text-brand">storage/app/backups/</code>
+            </p>
+            <p className="text-[12px] text-muted mt-1 flex items-start gap-1.5 max-w-2xl">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                Berkas <code>.sql</code> adalah dump penuh database dan memuat
+                hash kata sandi serta rahasia 2FA. Simpan di tempat aman dan
+                hapus setelah diunduh. Snapshot <code>.json</code> tidak memuat
+                kredensial.
+              </span>
             </p>
           </div>
 
@@ -276,7 +320,7 @@ export function SuperAdminSecurityBackup({
                 {backups.map((b) => (
                   <tr key={b.filename} className="hover:bg-surface-2/50 transition-colors">
                     <td className="px-4 py-3 font-mono text-[12px] text-ink font-semibold flex items-center gap-2">
-                      {b.type === "sqlite" ? (
+                      {b.type === "sqlite" || b.type === "sql" ? (
                         <Database className="w-4 h-4 text-blue-500 shrink-0" />
                       ) : (
                         <FileJson className="w-4 h-4 text-amber-500 shrink-0" />
@@ -286,7 +330,7 @@ export function SuperAdminSecurityBackup({
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-[4px] text-[11px] font-mono font-semibold uppercase ${
-                          b.type === "sqlite"
+                          b.type === "sqlite" || b.type === "sql"
                             ? "bg-blue-500/10 text-blue-600"
                             : "bg-amber-500/10 text-amber-600"
                         }`}
