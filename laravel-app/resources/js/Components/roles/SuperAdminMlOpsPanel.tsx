@@ -1699,27 +1699,27 @@ export function SuperAdminMlOpsPanel({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => runMlApiTest("/api/ml/predict", "POST", true)}
-              className="h-8 px-3 bg-brand text-brand-ink rounded-[4px] text-xs font-semibold cursor-pointer"
-            >
-              Uji POST /api/ml/predict
-            </button>
-            <button
-              type="button"
-              onClick={() => runMlApiTest("/api/ml/status", "GET", false)}
-              className="h-8 px-3 bg-surface border border-line text-ink rounded-[4px] text-xs font-semibold cursor-pointer"
-            >
-              Uji GET /api/ml/status
-            </button>
-            <button
-              type="button"
-              onClick={() => runMlApiTest("/api/ml/performance?hours=24", "GET", false)}
-              className="h-8 px-3 bg-surface border border-line text-ink rounded-[4px] text-xs font-semibold cursor-pointer"
-            >
-              Uji GET /api/ml/performance
-            </button>
+            {[
+              { label: "Uji POST /api/ml/predict", endpoint: "/api/ml/predict", method: "POST" as const, withToken: true },
+              { label: "Uji GET /api/ml/status", endpoint: "/api/ml/status", method: "GET" as const, withToken: false },
+              { label: "Uji GET /api/ml/performance", endpoint: "/api/ml/performance?hours=24", method: "GET" as const, withToken: false },
+            ].map((btn) => {
+              const isSelected = apiTestResult?.endpoint === `${btn.method} ${btn.endpoint}`;
+              return (
+                <button
+                  key={btn.endpoint}
+                  type="button"
+                  onClick={() => runMlApiTest(btn.endpoint, btn.method, btn.withToken)}
+                  className={`h-8 px-3 rounded-[4px] border text-xs font-semibold cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-brand text-brand-ink border-brand"
+                      : "bg-surface hover:bg-brand/10 border-line text-ink"
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
           </div>
 
           {apiTestResult && (
