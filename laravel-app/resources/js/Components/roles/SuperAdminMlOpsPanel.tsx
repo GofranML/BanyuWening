@@ -739,23 +739,27 @@ export function SuperAdminMlOpsPanel({
 
       {/* Panel Auto-Evaluasi & Auto-Training Agent AI Self-Learning */}
       <div className="bg-surface border border-line rounded-[6px] p-5 space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-line pb-4">
-          <div>
-            <div className="flex items-center gap-2 text-brand font-semibold text-xs uppercase tracking-wider mb-1">
-              <Bot className="w-4 h-4" />
-              <span>AI Self-Learning Agent (Auto-Evaluate · TimeSeriesSplit · Safety Gate)</span>
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-line pb-4">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 text-brand font-semibold text-[11px] uppercase tracking-wider mb-1">
+              <Bot className="w-3.5 h-3.5 shrink-0" />
+              <span>AI Self-Learning Agent · Auto-Evaluate · Safety Gate</span>
             </div>
-            <h3 className="text-[16px] font-semibold text-ink">
-              Orkestrasi Otomatis Evaluasi, Deteksi Drift &amp; Pelatihan Ulang Model
+            <h3 className="text-[15.5px] sm:text-[16px] font-semibold text-ink leading-snug">
+              Orkestrasi Evaluasi, Deteksi Drift &amp; Pelatihan Ulang Model
             </h3>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex items-center gap-1.5 text-xs text-ink mr-1 cursor-pointer">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <label
+              className="h-9 px-2.5 rounded-[6px] bg-surface-2/70 border border-line inline-flex items-center gap-1.5 text-xs font-medium text-ink whitespace-nowrap cursor-pointer select-none"
+              title="Paksa pelatihan ulang meskipun ambang drift/F1 masih sehat"
+            >
               <input
                 type="checkbox"
                 checked={forceRetrain}
                 onChange={(e) => setForceRetrain(e.target.checked)}
+                className="accent-brand"
               />
               <span>Force Retrain</span>
             </label>
@@ -763,22 +767,20 @@ export function SuperAdminMlOpsPanel({
               type="button"
               disabled={busyAction !== null}
               onClick={() => handleRunAgent("evaluate")}
-              className="h-9 px-3.5 bg-surface-2 hover:bg-brand/10 border border-line text-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="h-9 px-3 bg-surface-2 hover:bg-brand/10 border border-line text-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50 transition-colors"
             >
-              <Play className="w-3.5 h-3.5 text-brand" />
-              <span>{busyAction === "evaluate" ? "Mengevaluasi..." : "Jalankan Auto-Evaluasi"}</span>
+              <Play className="w-3.5 h-3.5 text-brand shrink-0" />
+              <span>{busyAction === "evaluate" ? "Mengevaluasi..." : "Auto-Evaluasi"}</span>
             </button>
             <button
               type="button"
               disabled={busyAction !== null}
-              onClick={() => handleRunAgent("self_learn", true)}
-              className="h-9 px-3.5 bg-brand text-brand-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              onClick={() => handleRunAgent("self_learn", forceRetrain)}
+              className="h-9 px-3.5 bg-brand hover:opacity-95 text-brand-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50 transition-opacity"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>
-                {busyAction === "self_learn"
-                  ? "Agent Melatih Model RF..."
-                  : "Generate Ulang Model RF (Data Terbaru)"}
+                {busyAction === "self_learn" ? "Melatih RF..." : "Generate Ulang RF"}
               </span>
             </button>
           </div>
