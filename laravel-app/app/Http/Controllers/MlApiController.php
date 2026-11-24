@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Device;
 use App\Models\MlAgentConfig;
 use App\Models\MlAgentRun;
+use App\Models\MlFieldValidation;
 use App\Models\MlModelVersion;
 use App\Models\Prediction;
 use App\Services\MachineLearningService;
@@ -12,6 +13,7 @@ use App\Services\MlSelfLearningAgentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class MlApiController extends Controller
 {
@@ -202,11 +204,16 @@ class MlApiController extends Controller
     /**
      * Super Admin: Jalankan siklus Auto-Evaluasi model aktif saat ini.
      */
-    public function triggerEvaluate(): JsonResponse
+    public function triggerEvaluate(Request $request): JsonResponse
     {
         $this->authorizeAdmin();
 
-        $run = $this->agentService->runCycle('evaluate', false, 'MANUAL');
+        $agentModelId = $request->input('agent_model_id');
+        if ($agentModelId !== null && !in_array($agentModelId, MlSelfLearningAgentService::validAgentModelIds(), true)) {
+            $agentModelId = null;
+        }
+
+        $run = $this->agentService->runCycle('evaluate', false, 'MANUAL', $agentModelId);
 
         return response()->json([
             'success' => true,
@@ -223,8 +230,19 @@ class MlApiController extends Controller
     {
         $this->authorizeAdmin();
 
-        $force = $request->boolean('force_retrain', false);
-        $run = $this->agentService->runCycle('self_learn', $force, 'MANUAL');
+        $validated = $request->validate([
+            'force_retrain' => ['nullable', 'boolean'],
+            'agent_model_id' => ['nullable', 'string', Rule::in(MlSelfLearningAgentService::validAgentModelIds())],
+        ]);
+
+        $force = (bool) ($validated['force_retrain'] ?? false);
+        $agentModelId = $validated['agent_model_id'] ?? null;
+
+        if ($agentModelId) {
+            MlAgentConfig::current()->update(['agent_model_id' => $agentModelId]);
+        }
+
+        $run = $this->agentService->runCycle('self_learn', $force, 'MANUAL', $agentModelId);
 
         return response()->json([
             'success' => true,
@@ -235,7 +253,7 @@ class MlApiController extends Controller
     }
 
     /**
-     * Super Admin: Perbarui kebijakan jadwal, ambang F1/Drift, dan mode promosi AI Agent.
+     * Super Admin: Perbarui kebijakan jadwal, ambang F1/Drift, model AI Agent, dan mode promosi.
      */
     public function updateAgentConfig(Request $request): JsonResponse
     {
@@ -249,10 +267,14 @@ class MlApiController extends Controller
             'min_new_samples' => ['required', 'integer', 'min:1', 'max:5000'],
             'schedule_interval_hours' => ['required', 'integer', 'min:1', 'max:168'],
             'llm_advisor_enabled' => ['nullable', 'boolean'],
+            'agent_model_id' => ['nullable', 'string', Rule::in(MlSelfLearningAgentService::validAgentModelIds())],
+            'agent_api_url' => ['nullable', 'url', 'max:255'],
+            'agent_api_key' => ['nullable', 'string', 'max:500'],
+            'clear_api_key' => ['nullable', 'boolean'],
         ]);
 
         $config = MlAgentConfig::current();
-        $config->update([
+        $updatePayload = [
             'auto_learning_enabled' => (bool) $validated['auto_learning_enabled'],
             'promotion_mode' => $validated['promotion_mode'],
             'min_f1_threshold' => (float) $validated['min_f1_threshold'],
@@ -260,11 +282,95 @@ class MlApiController extends Controller
             'min_new_samples' => (int) $validated['min_new_samples'],
             'schedule_interval_hours' => (int) $validated['schedule_interval_hours'],
             'llm_advisor_enabled' => (bool) ($validated['llm_advisor_enabled'] ?? false),
+            'agent_model_id' => $validated['agent_model_id'] ?? $config->agent_model_id ?? 'rf-autonomous-local',
+            'agent_api_url' => $validated['agent_api_url'] ?? null,
+        ];
+
+        if (!empty($validated['clear_api_key'])) {
+            $updatePayload['agent_api_key'] = null;
+        } elseif (!empty($validated['agent_api_key'])) {
+            $updatePayload['agent_api_key'] = trim((string) $validated['agent_api_key']);
+        }
+
+        $config->update($updatePayload);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Konfigurasi kebijakan & model AI Self-Learning Agent berhasil disimpan.',
+            'overview' => $this->agentService->getPerformanceMetrics(24),
+        ]);
+    }
+
+    /**
+     * Super Admin / Petugas: Catat validasi lapangan (Prediksi RF vs Kondisi Aktual Kolam).
+     */
+    public function storeFieldValidation(Request $request): JsonResponse
+    {
+        $user = $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'prediction_id' => ['nullable', 'integer', 'exists:predictions,id'],
+            'device_id' => ['nullable', 'integer', 'exists:devices,id'],
+            'device_code' => ['nullable', 'string', 'max:64'],
+            'pond_name' => ['nullable', 'string', 'max:120'],
+            'ph' => ['required', 'numeric', 'between:0,14'],
+            'temperature_c' => ['required', 'numeric', 'between:0,50'],
+            'tds_ppm' => ['nullable', 'numeric', 'between:0,10000'],
+            'turbidity_ntu' => ['nullable', 'numeric', 'between:0,1000'],
+            'water_level' => ['nullable', 'in:NORMAL,LOW'],
+            'predicted_risk' => ['required', 'in:AMAN,WASPADA,BAHAYA'],
+            'actual_risk' => ['required', 'in:AMAN,WASPADA,BAHAYA'],
+            'field_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $device = !empty($validated['device_id'])
+            ? Device::find($validated['device_id'])
+            : (!empty($validated['device_code']) ? Device::where('device_code', $validated['device_code'])->first() : null);
+
+        $activeModel = $this->agentService->ensureBaselineVersion();
+        $isMatch = strtoupper($validated['predicted_risk']) === strtoupper($validated['actual_risk']);
+
+        $record = MlFieldValidation::create([
+            'device_id' => $device?->id,
+            'prediction_id' => $validated['prediction_id'] ?? null,
+            'tenant_code' => $device?->tenant_code ?? $user->tenant_code,
+            'device_code' => $device?->device_code ?? ($validated['device_code'] ?? 'MANUAL'),
+            'pond_name' => $device?->pond_name ?? ($validated['pond_name'] ?? 'Kolam Lapangan'),
+            'ph' => (float) $validated['ph'],
+            'temperature_c' => (float) $validated['temperature_c'],
+            'tds_ppm' => isset($validated['tds_ppm']) ? (float) $validated['tds_ppm'] : null,
+            'turbidity_ntu' => isset($validated['turbidity_ntu']) ? (float) $validated['turbidity_ntu'] : null,
+            'water_level' => $validated['water_level'] ?? 'NORMAL',
+            'predicted_risk' => strtoupper($validated['predicted_risk']),
+            'actual_risk' => strtoupper($validated['actual_risk']),
+            'is_match' => $isMatch,
+            'model_version' => $activeModel->version,
+            'field_notes' => $validated['field_notes'] ?? null,
+            'validated_by' => $user->name . ' (' . $user->role . ')',
+            'validated_at' => now(),
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Konfigurasi kebijakan AI Self-Learning Agent berhasil disimpan.',
+            'message' => $isMatch
+                ? 'Validasi lapangan tersimpan: Prediksi RF SESUAI kondisi aktual di kolam.'
+                : 'Koreksi lapangan tersimpan: Prediksi RF tidak sesuai — data siap dipakai AI Agent untuk generate ulang model.',
+            'validation' => $record,
+            'overview' => $this->agentService->getPerformanceMetrics(24),
+        ]);
+    }
+
+    /**
+     * Super Admin: Hapus catatan validasi lapangan.
+     */
+    public function destroyFieldValidation(MlFieldValidation $validation): JsonResponse
+    {
+        $this->authorizeAdmin();
+        $validation->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catatan validasi lapangan berhasil dihapus.',
             'overview' => $this->agentService->getPerformanceMetrics(24),
         ]);
     }

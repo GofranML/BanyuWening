@@ -27,6 +27,7 @@ import {
   Building2,
   RefreshCw,
   ChevronDown,
+  Scale,
 } from "lucide-react";
 
 import { StatusCard } from "@/Components/StatusCard";
@@ -37,6 +38,7 @@ import { AeratorControlDialog } from "@/Components/AeratorControlDialog";
 import { ChartsSection } from "@/Components/ChartsSection";
 import { AlertsSection } from "@/Components/AlertsSection";
 import { ExportSection } from "@/Components/ExportSection";
+import { HarvestEvaluationPanel } from "@/Components/HarvestEvaluationPanel";
 
 // Role-specific views
 import { SuperAdminDocs } from "@/Components/roles/SuperAdminDocs";
@@ -67,6 +69,7 @@ import {
   type Tenant,
   type MlPerformanceOverview,
   type OtaOverview,
+  type PondHarvestCycleItem,
   type PermissionKey,
   type RealtimeConfig,
   type RealtimeTransportMode,
@@ -99,7 +102,8 @@ type TabId =
   | "tutorial"
   | "analisis-lengkap"
   | "laporan-pemilik"
-  | "ota-mandiri";
+  | "ota-mandiri"
+  | "evaluasi-panen";
 
 interface DashboardProps {
   user: User;
@@ -117,6 +121,7 @@ interface DashboardProps {
   devices?: ManagedDevice[];
   otaOverview?: OtaOverview | null;
   mlOverview?: MlPerformanceOverview | null;
+  harvestCycles?: PondHarvestCycleItem[];
   realtimeConfig?: RealtimeConfig;
   notificationConfig?: any;
   dispatchLogs?: any[];
@@ -141,6 +146,7 @@ export default function Dashboard({
   devices: initialDevices = [],
   otaOverview: initialOtaOverview,
   mlOverview: initialMlOverview,
+  harvestCycles: initialHarvestCycles = [],
   realtimeConfig: initialRealtimeConfig,
   landingContent: initialLandingContent,
   backups: initialBackups = [],
@@ -158,6 +164,8 @@ export default function Dashboard({
     initialTenants.length > 0 ? initialTenants : pageProps.tenants || [];
   const otaOverview: OtaOverview | null =
     initialOtaOverview !== undefined ? initialOtaOverview : pageProps.otaOverview || null;
+  const harvestCycles: PondHarvestCycleItem[] =
+    initialHarvestCycles.length > 0 ? initialHarvestCycles : pageProps.harvestCycles || [];
   const mlOverview: MlPerformanceOverview | null =
     initialMlOverview !== undefined ? initialMlOverview : pageProps.mlOverview || null;
   const realtimeConfig: RealtimeConfig | undefined =
@@ -678,6 +686,35 @@ export default function Dashboard({
               </button>
             )}
 
+            {/* Bibit Masuk & Evaluasi Panen AI */}
+            {hasPerm("view_summary") && (
+              <button
+                onClick={() => setActiveTab("evaluasi-panen")}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
+                  activeTab === "evaluasi-panen"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "text-ink hover:bg-surface-2"
+                }`}
+                title="Input Bibit Masuk, Hasil Panen (KG & Ukuran Lele) & Evaluasi Mortalitas AI"
+              >
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <Scale className="w-4 h-4 shrink-0" />
+                  <span className="truncate whitespace-nowrap">Bibit &amp; Evaluasi Panen</span>
+                </span>
+                {harvestCycles.length > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                      activeTab === "evaluasi-panen"
+                        ? "bg-brand-ink/15 text-brand-ink"
+                        : "bg-brand/10 text-brand"
+                    }`}
+                  >
+                    {harvestCycles.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Kelola Alat IoT & Firmware OTA (Khusus Non-Admin yang Punya Izin Update Firmware) */}
             {hasPerm("update_device_firmware") && !hasPerm("manage_users") && (
               <button
@@ -1130,6 +1167,17 @@ export default function Dashboard({
                     >
                       <Fish className="w-4 h-4 shrink-0" />
                       <span className="truncate">Laporan Kolam</span>
+                    </button>
+                  )}
+                  {hasPerm("view_summary") && (
+                    <button
+                      onClick={() => selectMobileTab("evaluasi-panen")}
+                      className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
+                        activeTab === "evaluasi-panen" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
+                      }`}
+                    >
+                      <Scale className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Bibit &amp; Panen</span>
                     </button>
                   )}
                   {hasPerm("update_device_firmware") && !hasPerm("manage_users") && (
@@ -1694,6 +1742,17 @@ export default function Dashboard({
               prediction={prediction}
               aeratorState={aeratorState}
               scopeLabel={scopeLabel}
+            />
+          )}
+
+          {/* TAB: BIBIT MASUK & EVALUASI PANEN AI */}
+          {activeTab === "evaluasi-panen" && hasPerm("view_summary") && (
+            <HarvestEvaluationPanel
+              initialCycles={harvestCycles}
+              devices={tenantDevices}
+              activeTenantCode={activeTenantCode}
+              activeDeviceCode={activeDeviceCode}
+              defaultPondName={device?.pond_name || user.pond_name || "Kolam Utama"}
             />
           )}
 

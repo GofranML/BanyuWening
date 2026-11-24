@@ -10,7 +10,9 @@ use App\Models\Tenant;
 use App\Models\Device;
 use App\Models\SensorReading;
 use App\Models\Prediction;
+use App\Http\Controllers\HarvestCycleController;
 use App\Models\Alert;
+use App\Models\PondHarvestCycle;
 use App\Models\RelayLog;
 use App\Models\DispatchLog;
 use App\Models\LandingContent;
@@ -387,6 +389,17 @@ class DashboardController extends Controller
             $mlOverview = app(MlSelfLearningAgentService::class)->getPerformanceMetrics(24);
         }
 
+        $harvestQuery = PondHarvestCycle::query()->latest('stocking_date')->latest('id');
+        if (!$user->isAdmin() && $user->tenant_code) {
+            $harvestQuery->where('tenant_code', strtoupper((string) $user->tenant_code));
+        } elseif ($activeTenantCode !== 'ALL') {
+            $harvestQuery->where('tenant_code', $activeTenantCode);
+        }
+        if ($activeDeviceCode !== 'ALL') {
+            $harvestQuery->where('device_code', $activeDeviceCode);
+        }
+        $harvestCycles = $harvestQuery->take(100)->get()->map(fn (PondHarvestCycle $c) => HarvestCycleController::serialize($c))->values()->all();
+
         $deviceSummaryPayload = $selectedDevice
             ? [
                 'device_code' => $selectedDevice->device_code,
@@ -494,6 +507,7 @@ class DashboardController extends Controller
             'devices' => $devices,
             'otaOverview' => $otaOverview,
             'mlOverview' => $mlOverview,
+            'harvestCycles' => $harvestCycles,
             'realtimeConfig' => $broadcaster->getRealtimeConfig($user, $request->getSchemeAndHttpHost()),
             'notificationConfig' => $notificationConfig,
             'dispatchLogs' => $dispatchLogs,

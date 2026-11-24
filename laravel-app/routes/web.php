@@ -5,6 +5,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\HarvestCycleController;
 use App\Http\Controllers\MlApiController;
 use App\Http\Controllers\OtaController;
 use App\Http\Controllers\SwaggerController;
@@ -84,6 +85,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/ml/agent/run', [MlApiController::class, 'triggerSelfLearn'])->name('dashboard.ml.agent.run');
     Route::post('/dashboard/ml/agent/config', [MlApiController::class, 'updateAgentConfig'])->name('dashboard.ml.agent.config');
     Route::post('/dashboard/ml/models/{mlModelVersion}/promote', [MlApiController::class, 'promoteModel'])->name('dashboard.ml.models.promote');
+    Route::post('/dashboard/ml/field-validations', [MlApiController::class, 'storeFieldValidation'])->name('dashboard.ml.field-validations.store');
+    Route::delete('/dashboard/ml/field-validations/{validation}', [MlApiController::class, 'destroyFieldValidation'])->name('dashboard.ml.field-validations.destroy');
+
+    // Pencatatan Bibit Masuk, Hasil Panen & Evaluasi Mortalitas AI
+    Route::get('/dashboard/harvest-cycles', [HarvestCycleController::class, 'index'])->name('dashboard.harvest-cycles.index');
+    Route::post('/dashboard/harvest-cycles', [HarvestCycleController::class, 'store'])->name('dashboard.harvest-cycles.store');
+    Route::match(['post', 'put'], '/dashboard/harvest-cycles/{cycle}', [HarvestCycleController::class, 'update'])->name('dashboard.harvest-cycles.update');
+    Route::delete('/dashboard/harvest-cycles/{cycle}', [HarvestCycleController::class, 'destroy'])->name('dashboard.harvest-cycles.destroy');
 });
 
 // Standar Dokumentasi API (Swagger UI + AsyncAPI Studio) & Penemuan Protokol Realtime (Session-Aware)

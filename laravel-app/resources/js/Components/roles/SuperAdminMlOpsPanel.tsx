@@ -14,6 +14,8 @@ import {
 import {
   Activity,
   Bot,
+  CheckCircle2,
+  ClipboardCheck,
   Cpu,
   Gauge,
   GitBranch,
@@ -21,16 +23,22 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Scale,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Terminal,
+  Trash2,
+  XCircle,
 } from "lucide-react";
 import type {
   ManagedDevice,
   MlAgentConfigItem,
+  MlAgentModelOption,
   MlModelVersionItem,
   MlPerformanceOverview,
+  MlRecentPredictionForValidation,
+  RiskLevel,
 } from "@/Types";
 
 interface SuperAdminMlOpsPanelProps {
@@ -63,10 +71,28 @@ export function SuperAdminMlOpsPanel({
       min_new_samples: 10,
       schedule_interval_hours: 6,
       llm_advisor_enabled: false,
+      agent_model_id: "rf-autonomous-local",
+      agent_api_url: "",
+      has_agent_api_key: false,
       last_run_at: null,
     }
   );
-  const [forceRetrain, setForceRetrain] = useState(false);
+  const [selectedAgentModel, setSelectedAgentModel] = useState<string>(
+    initialOverview?.agent_config?.agent_model_id || "rf-autonomous-local"
+  );
+  const [agentApiKeyInput, setAgentApiKeyInput] = useState<string>("");
+  const [forceRetrain, setForceRetrain] = useState(true);
+
+  // Field Validation (Cek Kesesuaian Lapangan) state
+  const [fvDeviceId, setFvDeviceId] = useState<string>("");
+  const [fvPh, setFvPh] = useState<string>("7.10");
+  const [fvTemp, setFvTemp] = useState<string>("28.5");
+  const [fvTds, setFvTds] = useState<string>("350");
+  const [fvTurb, setFvTurb] = useState<string>("35");
+  const [fvWaterLevel, setFvWaterLevel] = useState<string>("NORMAL");
+  const [fvPredictedRisk, setFvPredictedRisk] = useState<RiskLevel>("AMAN");
+  const [fvActualRisk, setFvActualRisk] = useState<RiskLevel>("AMAN");
+  const [fvNotes, setFvNotes] = useState<string>("");
 
   // Live API Tester state
   const [testToken, setTestToken] = useState("");
@@ -92,6 +118,9 @@ export function SuperAdminMlOpsPanel({
         setOverview(json.overview);
         if (json.overview.agent_config) {
           setConfigForm(json.overview.agent_config);
+          if (json.overview.agent_config.agent_model_id) {
+            setSelectedAgentModel(json.overview.agent_config.agent_model_id);
+          }
         }
       }
     } catch {
@@ -112,10 +141,11 @@ export function SuperAdminMlOpsPanel({
     void fetchOverview(nextHours);
   };
 
-  const handleRunAgent = async (mode: "evaluate" | "self_learn") => {
+  const handleRunAgent = async (mode: "evaluate" | "self_learn", forceOverride?: boolean) => {
     setBusyAction(mode);
     setNotice(null);
     const endpoint = mode === "evaluate" ? "/dashboard/ml/evaluate" : "/dashboard/ml/agent/run";
+    const useForce = forceOverride !== undefined ? forceOverride : forceRetrain;
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -124,7 +154,11 @@ export function SuperAdminMlOpsPanel({
           Accept: "application/json",
           "X-CSRF-TOKEN": getCsrfToken(),
         },
-        body: JSON.stringify(mode === "self_learn" ? { force_retrain: forceRetrain } : {}),
+        body: JSON.stringify(
+          mode === "self_learn"
+            ? { force_retrain: useForce, agent_model_id: selectedAgentModel }
+            : { agent_model_id: selectedAgentModel }
+        ),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -133,6 +167,9 @@ export function SuperAdminMlOpsPanel({
         if (json.overview) {
           setOverview(json.overview);
           setConfigForm(json.overview.agent_config);
+          if (json.overview.agent_config?.agent_model_id) {
+            setSelectedAgentModel(json.overview.agent_config.agent_model_id);
+          }
         }
         setNotice({ type: "ok", text: json.message });
       }
@@ -148,6 +185,14 @@ export function SuperAdminMlOpsPanel({
     setBusyAction("config");
     setNotice(null);
     try {
+      const payload: Record<string, any> = {
+        ...configForm,
+        agent_model_id: selectedAgentModel,
+        agent_api_url: configForm.agent_api_url || null,
+      };
+      if (agentApiKeyInput.trim() !== "") {
+        payload.agent_api_key = agentApiKeyInput.trim();
+      }
       const res = await fetch("/dashboard/ml/agent/config", {
         method: "POST",
         headers: {
@@ -155,7 +200,7 @@ export function SuperAdminMlOpsPanel({
           Accept: "application/json",
           "X-CSRF-TOKEN": getCsrfToken(),
         },
-        body: JSON.stringify(configForm),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -165,10 +210,120 @@ export function SuperAdminMlOpsPanel({
           setOverview(json.overview);
           setConfigForm(json.overview.agent_config);
         }
+        setAgentApiKeyInput("");
         setNotice({ type: "ok", text: json.message });
       }
     } catch (err: any) {
       setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleQuickFieldValidate = async (
+    item: MlRecentPredictionForValidation,
+    actualRisk: RiskLevel
+  ) => {
+    setBusyAction(`fv-${item.prediction_id}`);
+    setNotice(null);
+    try {
+      const res = await fetch("/dashboard/ml/field-validations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify({
+          prediction_id: item.prediction_id,
+          device_id: item.device_id,
+          device_code: item.device_code,
+          pond_name: item.pond_name,
+          ph: item.ph,
+          temperature_c: item.temperature_c,
+          tds_ppm: item.tds_ppm,
+          turbidity_ntu: item.turbidity_ntu,
+          water_level: item.water_level || "NORMAL",
+          predicted_risk: item.predicted_risk,
+          actual_risk: actualRisk,
+          field_notes:
+            actualRisk === item.predicted_risk
+              ? "Terverifikasi sesuai kondisi kolam di lapangan."
+              : `Koreksi lapangan: prediksi ${item.predicted_risk}, aktual ${actualRisk}.`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotice({ type: "err", text: json?.message || "Gagal menyimpan validasi lapangan." });
+      } else {
+        if (json.overview) setOverview(json.overview);
+        setNotice({ type: "ok", text: json.message });
+      }
+    } catch (err: any) {
+      setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleManualFieldValidate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusyAction("fv-manual");
+    setNotice(null);
+    try {
+      const selectedDev = devices.find((d) => String(d.id) === fvDeviceId);
+      const res = await fetch("/dashboard/ml/field-validations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify({
+          device_id: selectedDev ? selectedDev.id : null,
+          device_code: selectedDev?.device_code || "MANUAL",
+          pond_name: selectedDev?.pond_name || "Kolam Lapangan",
+          ph: Number(fvPh),
+          temperature_c: Number(fvTemp),
+          tds_ppm: fvTds !== "" ? Number(fvTds) : null,
+          turbidity_ntu: fvTurb !== "" ? Number(fvTurb) : null,
+          water_level: fvWaterLevel,
+          predicted_risk: fvPredictedRisk,
+          actual_risk: fvActualRisk,
+          field_notes: fvNotes.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotice({ type: "err", text: json?.message || "Gagal menyimpan cek lapangan." });
+      } else {
+        if (json.overview) setOverview(json.overview);
+        setFvNotes("");
+        setNotice({ type: "ok", text: json.message });
+      }
+    } catch (err: any) {
+      setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleDeleteFieldValidation = async (id: number) => {
+    setBusyAction(`fv-del-${id}`);
+    setNotice(null);
+    try {
+      const res = await fetch(`/dashboard/ml/field-validations/${id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+      });
+      const json = await res.json();
+      if (res.ok && json.overview) {
+        setOverview(json.overview);
+        setNotice({ type: "ok", text: json.message });
+      }
     } finally {
       setBusyAction(null);
     }
@@ -245,6 +400,21 @@ export function SuperAdminMlOpsPanel({
   );
   const models = overview?.model_versions || [];
   const runs = overview?.agent_runs || [];
+  const agentModels: MlAgentModelOption[] = overview?.available_agent_models || [
+    {
+      id: "rf-autonomous-local",
+      name: "BanyuWening Autonomous RF Agent (Lokal)",
+      provider: "Local Python Engine",
+      badge: "Default · Offline Ready",
+      description: "Orkestrator deterministik lokal (TimeSeriesSplit 3-fold + Safety Gate SNI).",
+      requires_api_key: false,
+    },
+  ];
+  const activeAgentMeta = agentModels.find((m) => m.id === selectedAgentModel) || agentModels[0];
+  const fieldValidations = overview?.field_validations || [];
+  const fieldStats = overview?.field_validation_stats;
+  const recentPredsForValidation = overview?.recent_predictions_for_validation || [];
+  const harvestSummary = overview?.harvest_evaluation_summary;
 
   const classLabels = ["AMAN", "WASPADA", "BAHAYA"];
   const mlEndpoints = [
@@ -601,17 +771,91 @@ export function SuperAdminMlOpsPanel({
             <button
               type="button"
               disabled={busyAction !== null}
-              onClick={() => handleRunAgent("self_learn")}
+              onClick={() => handleRunAgent("self_learn", true)}
               className="h-9 px-3.5 bg-brand text-brand-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>
                 {busyAction === "self_learn"
-                  ? "Agent Melatih..."
-                  : "Jalankan Agent AI Self-Learning"}
+                  ? "Agent Melatih Model RF..."
+                  : "Generate Ulang Model RF (Data Terbaru)"}
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Pemilih Model AI Agent untuk Generate Ulang Model RF */}
+        <div className="p-4 bg-surface-2/60 border border-line rounded-[6px] space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-semibold text-ink">
+                Pilih Model AI Agent untuk Generate Ulang Random Forest (Data Sensor + Validasi Lapangan + Panen)
+              </div>
+              <div className="text-[11px] text-muted">
+                Setiap model AI Agent mengatur profil pencarian hyperparameter TimeSeriesSplit &amp; ringkasan audit evaluasi.
+              </div>
+            </div>
+            {activeAgentMeta && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-brand/10 text-brand text-[11px] font-semibold shrink-0">
+                <Bot className="w-3.5 h-3.5" />
+                <span>{activeAgentMeta.provider} · {activeAgentMeta.badge}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label className="block text-[11px] font-semibold text-muted mb-1">Model AI Agent Aktif</label>
+              <select
+                value={selectedAgentModel}
+                onChange={(e) => {
+                  setSelectedAgentModel(e.target.value);
+                  setConfigForm({ ...configForm, agent_model_id: e.target.value });
+                }}
+                className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs font-semibold text-ink"
+              >
+                {agentModels.map((am) => (
+                  <option key={am.id} value={am.id}>
+                    {am.name} ({am.badge})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-muted mb-1">
+                Endpoint URL AI Agent (Opsional — Ollama / Gateway)
+              </label>
+              <input
+                type="url"
+                placeholder="https://... atau http://127.0.0.1:11434/api/generate"
+                value={configForm.agent_api_url || ""}
+                onChange={(e) => setConfigForm({ ...configForm, agent_api_url: e.target.value })}
+                className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-muted mb-1">
+                API Key AI Agent {configForm.has_agent_api_key ? "(Tersimpan ✓)" : "(Opsional)"}
+              </label>
+              <input
+                type="password"
+                placeholder={configForm.has_agent_api_key ? "•••••••• (kosongkan jika tidak ubah)" : "Isi API key jika pakai cloud LLM"}
+                value={agentApiKeyInput}
+                onChange={(e) => setAgentApiKeyInput(e.target.value)}
+                className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
+              />
+            </div>
+          </div>
+
+          {activeAgentMeta && (
+            <div className="text-[11px] text-muted flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-line/60">
+              <span>{activeAgentMeta.description}</span>
+              <span className="font-mono text-ink">
+                Data siap latih: {kpi?.total_predictions ?? 0} prediksi · {fieldStats?.total ?? 0} cek lapangan ·{" "}
+                {harvestSummary?.completed_cycles ?? 0} evaluasi panen
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Form Kebijakan Agen */}
@@ -841,8 +1085,15 @@ export function SuperAdminMlOpsPanel({
                     <span className="px-2 py-0.5 rounded-[4px] bg-surface border border-line font-mono text-[10px] font-semibold text-brand">
                       {run.decision || run.status}
                     </span>
+                    {run.agent_model_id && (
+                      <span className="px-2 py-0.5 rounded-[4px] bg-brand/10 font-mono text-[10px] font-semibold text-brand">
+                        {run.agent_model_id}
+                      </span>
+                    )}
                     <span className="text-[11px] text-muted">
-                      ({run.trigger_source} · {run.duration_ms ?? 0} ms)
+                      ({run.trigger_source} · {run.duration_ms ?? 0} ms
+                      {(run.field_validation_count ?? 0) > 0 ? ` · ${run.field_validation_count} cek lapangan` : ""}
+                      {(run.harvest_eval_count ?? 0) > 0 ? ` · ${run.harvest_eval_count} panen` : ""})
                     </span>
                   </div>
                   <div className="text-[11px] font-mono tnum text-muted">
@@ -872,6 +1123,287 @@ export function SuperAdminMlOpsPanel({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Panel Validasi Lapangan (Cek Kesesuaian Prediksi AI vs Kondisi Aktual Kolam) & Ringkasan Panen */}
+      <div className="bg-surface border border-line rounded-[6px] p-5 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-line pb-4">
+          <div>
+            <div className="flex items-center gap-2 text-brand font-semibold text-xs uppercase tracking-wider mb-1">
+              <ClipboardCheck className="w-4 h-4" />
+              <span>Cek Kesesuaian Lapangan (Ground-Truth) &amp; Umpan Balik Panen</span>
+            </div>
+            <h3 className="text-[16px] font-semibold text-ink">
+              Validasi Prediksi Random Forest di Lapangan (Sesuai vs Meleset)
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Verifikasi apakah hasil prediksi AI sesuai dengan kondisi nyata kolam &amp; ikan lele. Koreksi yang tidak
+              sesuai otomatis diberi bobot prioritas saat generate ulang model RF.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-mono tnum">
+            <div className="px-3 py-1.5 rounded-[6px] bg-surface-2 border border-line">
+              <span className="text-muted">Kesesuaian Lapangan: </span>
+              <strong className="text-ink">
+                {fieldStats?.match_rate_pct !== null && fieldStats?.match_rate_pct !== undefined
+                  ? `${fieldStats.match_rate_pct}%`
+                  : "-"}
+              </strong>{" "}
+              <span className="text-muted">({fieldStats?.matched ?? 0}/{fieldStats?.total ?? 0})</span>
+            </div>
+            <div className="px-3 py-1.5 rounded-[6px] bg-surface-2 border border-line inline-flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-brand" />
+              <span className="text-muted">Panen:</span>
+              <strong className="text-ink">{harvestSummary?.completed_cycles ?? 0} siklus</strong>
+              {harvestSummary?.avg_mortality_rate_pct !== null && harvestSummary?.avg_mortality_rate_pct !== undefined && (
+                <span className="text-muted">(Matī {harvestSummary.avg_mortality_rate_pct}%)</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Daftar Prediksi Terbaru untuk Validasi 1-Klik */}
+        {recentPredsForValidation.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-ink">
+              Prediksi Live Terbaru — Klik untuk Cek Kesesuaian di Lapangan
+            </div>
+            <div className="overflow-x-auto border border-line rounded-[6px]">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-2 text-muted uppercase text-[10px] font-semibold">
+                  <tr>
+                    <th className="px-3 py-2">Kolam / Alat</th>
+                    <th className="px-3 py-2">Parameter</th>
+                    <th className="px-3 py-2">Prediksi AI</th>
+                    <th className="px-3 py-2 text-right">Kondisi Aktual di Lapangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {recentPredsForValidation.slice(0, 6).map((item) => (
+                    <tr key={item.prediction_id} className="hover:bg-surface-2/30">
+                      <td className="px-3 py-2">
+                        <div className="font-semibold text-ink">{item.pond_name}</div>
+                        <div className="text-[10.5px] font-mono text-muted">{item.device_code}</div>
+                      </td>
+                      <td className="px-3 py-2 font-mono tnum text-[11px] text-ink">
+                        pH {item.ph} · {item.temperature_c}°C · TDS {item.tds_ppm ?? "-"} · Turb {item.turbidity_ntu ?? "-"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold ${
+                            item.predicted_risk === "AMAN"
+                              ? "bg-aman-bg text-aman-text"
+                              : item.predicted_risk === "WASPADA"
+                              ? "bg-waspada-bg text-waspada-text"
+                              : "bg-bahaya-bg text-bahaya-text"
+                          }`}
+                        >
+                          {item.predicted_risk}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {item.already_validated ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-aman-text font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Sudah Dicek
+                          </span>
+                        ) : (
+                          <div className="inline-flex flex-wrap justify-end gap-1">
+                            <button
+                              type="button"
+                              disabled={busyAction === `fv-${item.prediction_id}`}
+                              onClick={() => handleQuickFieldValidate(item, item.predicted_risk)}
+                              className="h-7 px-2 bg-aman-bg text-aman-text rounded-[4px] text-[10.5px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              Sesuai ({item.predicted_risk})
+                            </button>
+                            {(["AMAN", "WASPADA", "BAHAYA"] as RiskLevel[])
+                              .filter((r) => r !== item.predicted_risk)
+                              .map((alt) => (
+                                <button
+                                  key={alt}
+                                  type="button"
+                                  disabled={busyAction === `fv-${item.prediction_id}`}
+                                  onClick={() => handleQuickFieldValidate(item, alt)}
+                                  className="h-7 px-2 bg-surface-2 hover:bg-bahaya-bg hover:text-bahaya-text border border-line rounded-[4px] text-[10.5px] font-semibold cursor-pointer"
+                                >
+                                  Aktual: {alt}
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Form Input Cek Lapangan Manual */}
+        <form onSubmit={handleManualFieldValidate} className="p-4 bg-surface-2/60 border border-line rounded-[6px] space-y-3">
+          <div className="text-xs font-semibold text-ink">Input Validasi Lapangan Manual</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 items-end">
+            <div className="col-span-2">
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">Alat / Kolam</label>
+              <select
+                value={fvDeviceId}
+                onChange={(e) => setFvDeviceId(e.target.value)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs text-ink"
+              >
+                <option value="">Kolam Manual</option>
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.pond_name} ({d.device_code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">pH</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={fvPh}
+                onChange={(e) => setFvPh(e.target.value)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs tnum text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">Suhu (°C)</label>
+              <input
+                type="number"
+                step="0.1"
+                required
+                value={fvTemp}
+                onChange={(e) => setFvTemp(e.target.value)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs tnum text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">TDS</label>
+              <input
+                type="number"
+                value={fvTds}
+                onChange={(e) => setFvTds(e.target.value)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs tnum text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">Turbidity</label>
+              <input
+                type="number"
+                step="0.1"
+                value={fvTurb}
+                onChange={(e) => setFvTurb(e.target.value)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs tnum text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">Prediksi AI</label>
+              <select
+                value={fvPredictedRisk}
+                onChange={(e) => setFvPredictedRisk(e.target.value as RiskLevel)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs text-ink"
+              >
+                <option value="AMAN">AMAN</option>
+                <option value="WASPADA">WASPADA</option>
+                <option value="BAHAYA">BAHAYA</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase text-muted mb-1">Aktual Kolam</label>
+              <select
+                value={fvActualRisk}
+                onChange={(e) => setFvActualRisk(e.target.value as RiskLevel)}
+                className="w-full h-8 px-2 rounded-[4px] bg-surface border border-line text-xs font-semibold text-ink"
+              >
+                <option value="AMAN">AMAN</option>
+                <option value="WASPADA">WASPADA</option>
+                <option value="BAHAYA">BAHAYA</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              placeholder="Catatan kondisi lapangan (contoh: ikan aktif makan, air jernih / ikan megap-megap di permukaan)"
+              value={fvNotes}
+              onChange={(e) => setFvNotes(e.target.value)}
+              className="flex-1 h-8 px-2.5 rounded-[4px] bg-surface border border-line text-xs text-ink"
+            />
+            <button
+              type="submit"
+              disabled={busyAction === "fv-manual"}
+              className="h-8 px-3.5 bg-brand text-brand-ink rounded-[4px] text-xs font-semibold cursor-pointer disabled:opacity-50 shrink-0"
+            >
+              {busyAction === "fv-manual" ? "Menyimpan..." : "Simpan Cek Lapangan"}
+            </button>
+          </div>
+        </form>
+
+        {/* Riwayat Validasi Lapangan */}
+        {fieldValidations.length > 0 && (
+          <div className="overflow-x-auto border border-line rounded-[6px]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-2 text-muted uppercase text-[10px] font-semibold">
+                <tr>
+                  <th className="px-3 py-2">Kolam &amp; Parameter</th>
+                  <th className="px-3 py-2">Prediksi → Aktual</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Catatan</th>
+                  <th className="px-3 py-2 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {fieldValidations.slice(0, 10).map((fv) => (
+                  <tr key={fv.id} className="hover:bg-surface-2/30">
+                    <td className="px-3 py-2">
+                      <div className="font-semibold text-ink">{fv.pond_name || fv.device_code}</div>
+                      <div className="text-[10.5px] font-mono tnum text-muted">
+                        pH {fv.ph} · {fv.temperature_c}°C · {fv.validated_by}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px]">
+                      <span>{fv.predicted_risk}</span> → <strong className="text-ink">{fv.actual_risk}</strong>
+                    </td>
+                    <td className="px-3 py-2">
+                      {fv.is_match ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-aman-bg text-aman-text text-[10px] font-semibold">
+                          <CheckCircle2 className="w-3 h-3" />
+                          SESUAI
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bahaya-bg text-bahaya-text text-[10px] font-semibold">
+                          <XCircle className="w-3 h-3" />
+                          KOREKSI
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-muted max-w-xs truncate" title={fv.field_notes || ""}>
+                      {fv.field_notes || "-"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        disabled={busyAction === `fv-del-${fv.id}`}
+                        onClick={() => handleDeleteFieldValidation(fv.id)}
+                        className="h-6 px-2 bg-bahaya-bg text-bahaya-text rounded-[4px] inline-flex items-center cursor-pointer"
+                        title="Hapus validasi"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Dokumentasi & Live Tester Endpoint Random Forest */}

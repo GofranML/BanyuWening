@@ -42,7 +42,61 @@ from preprocessing import PHYSICAL_BOUNDS, clean_dataframe
 from train import TARGET_LABELS, generate_bootstrap_aquaculture_dataset
 
 RISK_MAP = {0: "AMAN", 1: "WASPADA", 2: "BAHAYA"}
+RISK_TO_INT = {"AMAN": 0, "WASPADA": 1, "BAHAYA": 2}
 CLASS_NAMES = ["AMAN", "WASPADA", "BAHAYA"]
+
+AGENT_SEARCH_PROFILES = {
+    "rf-autonomous-local": {
+        "label": "BanyuWening Autonomous RF Agent (Local)",
+        "grid": [
+            {"n_estimators": 100, "max_depth": 8, "min_samples_leaf": 2},
+            {"n_estimators": 100, "max_depth": 12, "min_samples_leaf": 1},
+            {"n_estimators": 150, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
+        ],
+    },
+    "gemini-2.5-flash": {
+        "label": "Gemini 2.5 Flash MLOps Agent",
+        "grid": [
+            {"n_estimators": 120, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 160, "max_depth": 12, "min_samples_leaf": 1},
+            {"n_estimators": 200, "max_depth": 10, "min_samples_leaf": 2},
+        ],
+    },
+    "gemini-2.5-pro": {
+        "label": "Gemini 2.5 Pro Deep Aquaculture Agent",
+        "grid": [
+            {"n_estimators": 120, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 160, "max_depth": 14, "min_samples_leaf": 1},
+            {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
+            {"n_estimators": 240, "max_depth": 16, "min_samples_leaf": 1},
+        ],
+    },
+    "gpt-4o-mini": {
+        "label": "OpenAI GPT-4o Mini MLOps Agent",
+        "grid": [
+            {"n_estimators": 100, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 150, "max_depth": 12, "min_samples_leaf": 1},
+            {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
+        ],
+    },
+    "claude-3-5-sonnet": {
+        "label": "Claude 3.5 Sonnet Safety-Gate Agent",
+        "grid": [
+            {"n_estimators": 120, "max_depth": 8, "min_samples_leaf": 2},
+            {"n_estimators": 180, "max_depth": 12, "min_samples_leaf": 2},
+            {"n_estimators": 220, "max_depth": 14, "min_samples_leaf": 1},
+        ],
+    },
+    "llama-3.3-70b-local": {
+        "label": "Llama 3.3 70B Local (Ollama DMZ Agent)",
+        "grid": [
+            {"n_estimators": 100, "max_depth": 8, "min_samples_leaf": 2},
+            {"n_estimators": 150, "max_depth": 12, "min_samples_leaf": 2},
+            {"n_estimators": 200, "max_depth": 14, "min_samples_leaf": 1},
+        ],
+    },
+}
 
 
 def compute_sni_label(ph: float, temp: float) -> int:
@@ -227,9 +281,17 @@ def run_agent(mode: str, payload: dict) -> dict:
     min_new_samples = int(config.get("min_new_samples", 10))
     promotion_mode = str(config.get("promotion_mode", "AUTO_PROMOTE")).upper()
     force_retrain = bool(config.get("force_retrain", False))
+    agent_model_id = str(config.get("agent_model_id") or "rf-autonomous-local")
+    agent_profile = AGENT_SEARCH_PROFILES.get(agent_model_id, AGENT_SEARCH_PROFILES["rf-autonomous-local"])
     current_version = str(payload.get("current_version") or "1.0.0-rf")
 
-    reasoning_steps = []
+    reasoning_steps = [
+        {
+            "step": "AI_AGENT_MODEL",
+            "status": "DONE",
+            "detail": f"Orkestrasi dijalankan oleh {agent_profile['label']} ({agent_model_id}) dengan {len(agent_profile['grid'])} kandidat grid Random Forest.",
+        }
+    ]
 
     # --- STEP 1: OBSERVE ---
     csv_path = datasets_dir / "sensor_readings_dummy.csv"
@@ -277,14 +339,85 @@ def run_agent(mode: str, payload: dict) -> dict:
         except (TypeError, ValueError):
             continue
 
+    # Validasi lapangan (Ground-Truth Check: Prediksi AI vs Kondisi Aktual Kolam)
+    raw_field_vals = payload.get("field_validations") or []
+    valid_field_rows = []
+    field_matched = 0
+    field_mismatched = 0
+    for fv in raw_field_vals:
+        if not isinstance(fv, dict):
+            continue
+        try:
+            ph = fv.get("ph")
+            temp = fv.get("temperature_c")
+            actual_risk = str(fv.get("actual_risk") or "").upper()
+            if ph is None or temp is None or actual_risk not in RISK_TO_INT:
+                continue
+            ph_f, temp_f = float(ph), float(temp)
+            if not (PHYSICAL_BOUNDS["ph"][0] <= ph_f <= PHYSICAL_BOUNDS["ph"][1]):
+                continue
+            if not (PHYSICAL_BOUNDS["temperature_c"][0] <= temp_f <= PHYSICAL_BOUNDS["temperature_c"][1]):
+                continue
+            is_match = bool(fv.get("is_match", str(fv.get("predicted_risk") or "").upper() == actual_risk))
+            if is_match:
+                field_matched += 1
+            else:
+                field_mismatched += 1
+            row_dict = {
+                "timestamp": fv.get("validated_at") or datetime.now(timezone.utc).isoformat(),
+                "ph": ph_f,
+                "temperature_c": temp_f,
+                "tds_ppm": float(fv["tds_ppm"]) if fv.get("tds_ppm") is not None else 350.0,
+                "turbidity_ntu": float(fv["turbidity_ntu"]) if fv.get("turbidity_ntu") is not None else 35.0,
+                "water_level": fv.get("water_level") or "NORMAL",
+                "risk_target": RISK_TO_INT[actual_risk],
+            }
+            # Beri bobot lebih (oversample 3x) untuk koreksi lapangan yang meleset agar RF beradaptasi ke kondisi nyata
+            repeat_n = 3 if not is_match else 2
+            for _ in range(repeat_n):
+                valid_field_rows.append(row_dict.copy())
+        except (TypeError, ValueError):
+            continue
+
+    field_total = field_matched + field_mismatched
+    field_match_rate = round(field_matched / field_total, 4) if field_total > 0 else 1.0
+
+    # Evaluasi Panen & Mortalitas Bibit (Biological Feedback Loop)
+    raw_harvests = payload.get("harvest_evaluations") or []
+    completed_harvests = [
+        h for h in raw_harvests
+        if isinstance(h, dict) and h.get("mortality_rate_pct") is not None
+    ]
+    high_mortality_cycles = [
+        h for h in completed_harvests
+        if float(h.get("mortality_rate_pct") or 0) > 25.0
+    ]
+    avg_survival_rate = (
+        round(float(np.mean([float(h.get("survival_rate_pct") or 0) for h in completed_harvests])), 2)
+        if completed_harvests
+        else None
+    )
+    avg_mortality_rate = (
+        round(float(np.mean([float(h.get("mortality_rate_pct") or 0) for h in completed_harvests])), 2)
+        if completed_harvests
+        else None
+    )
+
     df_live_clean = pd.DataFrame(valid_live_rows)
+    df_field_clean = pd.DataFrame(valid_field_rows)
+    frames = [df_base_clean]
     if len(df_live_clean) > 0:
         live_targets = df_live_clean["risk_target"].astype(int).reset_index(drop=True)
         df_live_clean = clean_dataframe(df_live_clean)
         df_live_clean["risk_target"] = live_targets
-        df_combined = pd.concat([df_base_clean, df_live_clean], ignore_index=True)
-    else:
-        df_combined = df_base_clean.copy()
+        frames.append(df_live_clean)
+    if len(df_field_clean) > 0:
+        field_targets = df_field_clean["risk_target"].astype(int).reset_index(drop=True)
+        df_field_clean = clean_dataframe(df_field_clean)
+        df_field_clean["risk_target"] = field_targets
+        frames.append(df_field_clean)
+
+    df_combined = pd.concat(frames, ignore_index=True)
 
     X_all = transform_dataframe(df_combined)
     y_all = df_combined["risk_target"].astype(int)
@@ -297,9 +430,37 @@ def run_agent(mode: str, payload: dict) -> dict:
         {
             "step": "OBSERVE",
             "status": "DONE",
-            "detail": f"Memuat {len(df_base_clean)} sampel dasar + {len(df_live_clean)} sampel telemetri live valid (split 80:20 kronologis: {len(X_train)} train / {len(X_test)} test).",
+            "detail": (
+                f"Memuat {len(df_base_clean)} sampel dasar + {len(df_live_clean)} telemetri live + "
+                f"{field_total} validasi lapangan ({len(df_field_clean)} baris terbobot) "
+                f"(split 80:20 kronologis: {len(X_train)} train / {len(X_test)} test)."
+            ),
         }
     )
+
+    if field_total > 0:
+        reasoning_steps.append(
+            {
+                "step": "FIELD_GROUND_TRUTH",
+                "status": "DONE" if field_match_rate >= 0.85 else "WARNING",
+                "detail": (
+                    f"Cek kesesuaian lapangan: {field_matched}/{field_total} cocok ({field_match_rate*100:.1f}%), "
+                    f"{field_mismatched} koreksi lapangan dimasukkan ke dataset latih."
+                ),
+            }
+        )
+
+    if len(completed_harvests) > 0:
+        reasoning_steps.append(
+            {
+                "step": "HARVEST_EVALUATION",
+                "status": "WARNING" if len(high_mortality_cycles) > 0 else "DONE",
+                "detail": (
+                    f"Evaluasi {len(completed_harvests)} siklus panen lele: rata-rata Survival Rate={avg_survival_rate:.1f}%, "
+                    f"Mortalitas={avg_mortality_rate:.1f}%, siklus mortalitas tinggi (>25%)={len(high_mortality_cycles)}."
+                ),
+            }
+        )
 
     # --- STEP 2: EVALUATE ---
     active_model_path = models_dir / "random_forest_water_quality.joblib"
@@ -396,6 +557,18 @@ def run_agent(mode: str, payload: dict) -> dict:
         reasons_to_retrain.append(
             f"Sampel telemetri live baru ({new_live_samples}) >= ambang ({min_new_samples})"
         )
+    if field_total > 0 and field_match_rate < 0.85:
+        reasons_to_retrain.append(
+            f"Kesesuaian prediksi di lapangan ({field_match_rate*100:.1f}%) < 85%"
+        )
+    if field_mismatched > 0:
+        reasons_to_retrain.append(
+            f"Terdapat {field_mismatched} koreksi validasi lapangan baru untuk kalibrasi ulang"
+        )
+    if len(high_mortality_cycles) > 0:
+        reasons_to_retrain.append(
+            f"Terdeteksi {len(high_mortality_cycles)} siklus panen dengan mortalitas bibit > 25%"
+        )
 
     if not reasons_to_retrain:
         reasoning_steps.append(
@@ -436,12 +609,7 @@ def run_agent(mode: str, payload: dict) -> dict:
     )
 
     # --- STEP 5: SELF-TRAIN ---
-    grid = [
-        {"n_estimators": 100, "max_depth": 8, "min_samples_leaf": 2},
-        {"n_estimators": 100, "max_depth": 12, "min_samples_leaf": 1},
-        {"n_estimators": 150, "max_depth": 10, "min_samples_leaf": 2},
-        {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
-    ]
+    grid = agent_profile["grid"]
 
     tscv = TimeSeriesSplit(n_splits=3)
     candidates_compared = []
@@ -570,6 +738,12 @@ def run_agent(mode: str, payload: dict) -> dict:
         "candidate_metrics": candidate_metrics,
         "drift_score": drift_score,
         "live_agreement_rate": live_agreement_rate,
+        "field_match_rate": field_match_rate,
+        "field_validation_count": field_total,
+        "harvest_eval_count": len(completed_harvests),
+        "avg_survival_rate_pct": avg_survival_rate,
+        "avg_mortality_rate_pct": avg_mortality_rate,
+        "agent_model_id": agent_model_id,
         "new_live_samples": new_live_samples,
         "train_samples": int(len(X_train)),
         "test_samples": int(len(X_test)),

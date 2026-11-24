@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\MlAgentConfig;
 use App\Models\MlAgentRun;
+use App\Models\MlFieldValidation;
 use App\Models\MlModelVersion;
+use App\Models\PondHarvestCycle;
 use App\Models\Prediction;
 use App\Models\SensorReading;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +16,62 @@ use Symfony\Component\Process\Process;
 
 class MlSelfLearningAgentService
 {
+    public const AVAILABLE_AGENT_MODELS = [
+        [
+            'id' => 'rf-autonomous-local',
+            'name' => 'BanyuWening Autonomous RF Agent (Lokal)',
+            'provider' => 'Local Python Engine',
+            'badge' => 'Default · Offline Ready',
+            'description' => 'Orkestrator deterministik lokal (TimeSeriesSplit 3-fold + Safety Gate SNI) tanpa ketergantungan API eksternal.',
+            'requires_api_key' => false,
+        ],
+        [
+            'id' => 'gemini-2.5-flash',
+            'name' => 'Google Gemini 2.5 Flash',
+            'provider' => 'Google AI',
+            'badge' => 'Cepat & Hemat',
+            'description' => 'Retraining RF cepat + ringkasan analisis drift, validasi lapangan, dan korelasi mortalitas panen.',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'gemini-2.5-pro',
+            'name' => 'Google Gemini 2.5 Pro',
+            'provider' => 'Google AI',
+            'badge' => 'Deep Grid Search',
+            'description' => 'Pencarian hyperparameter RF lebih mendalam (hingga 240 trees) + evaluasi teknis budidaya mendalam.',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'gpt-4o-mini',
+            'name' => 'OpenAI GPT-4o Mini',
+            'provider' => 'OpenAI',
+            'badge' => 'Balanced MLOps',
+            'description' => 'Profil retraining seimbang untuk pembaruan model berkala dengan evaluasi lapangan & panen.',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'claude-3-5-sonnet',
+            'name' => 'Anthropic Claude 3.5 Sonnet',
+            'provider' => 'Anthropic',
+            'badge' => 'Safety-Gate Strict',
+            'description' => 'Fokus konservatif pada recall kelas BAHAYA dan audit stabilitas distribusi sensor.',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'llama-3.3-70b-local',
+            'name' => 'Llama 3.3 70B (Ollama / DMZ Local)',
+            'provider' => 'Ollama Local',
+            'badge' => 'Private DMZ',
+            'description' => 'Integrasi agent LLM lokal di jaringan privat/DMZ tanpa mengirim data tambak ke cloud publik.',
+            'requires_api_key' => false,
+        ],
+    ];
+
+    public static function validAgentModelIds(): array
+    {
+        return array_column(self::AVAILABLE_AGENT_MODELS, 'id');
+    }
+
     public function __construct(
         private readonly MachineLearningService $mlService,
         private readonly RealtimeBroadcaster $broadcaster
@@ -87,19 +145,37 @@ class MlSelfLearningAgentService
     public function runCycle(
         string $mode = 'self_learn',
         bool $forceRetrain = false,
-        string $triggerSource = 'MANUAL'
+        string $triggerSource = 'MANUAL',
+        ?string $agentModelId = null
     ): MlAgentRun {
         $activeModel = $this->ensureBaselineVersion();
         $config = MlAgentConfig::current();
+        $selectedAgentModel = $agentModelId && in_array($agentModelId, self::validAgentModelIds(), true)
+            ? $agentModelId
+            : ($config->agent_model_id ?: 'rf-autonomous-local');
         $started = microtime(true);
+
+        $fieldValidations = MlFieldValidation::latest('validated_at')
+            ->latest('id')
+            ->take(300)
+            ->get();
+
+        $harvestCycles = PondHarvestCycle::whereNotNull('mortality_rate_pct')
+            ->latest('harvest_date')
+            ->latest('id')
+            ->take(100)
+            ->get();
 
         $run = MlAgentRun::create([
             'run_type' => $mode === 'evaluate' ? 'AUTO_EVALUATE' : 'SELF_LEARNING',
             'trigger_source' => strtoupper($triggerSource),
+            'agent_model_id' => $selectedAgentModel,
             'status' => 'RUNNING',
             'active_model_version' => $activeModel->version,
             'accuracy_before' => $activeModel->accuracy,
             'macro_f1_before' => $activeModel->macro_f1,
+            'field_validation_count' => $fieldValidations->count(),
+            'harvest_eval_count' => $harvestCycles->count(),
             'started_at' => now(),
         ]);
 
@@ -143,12 +219,36 @@ class MlSelfLearningAgentService
         $inputPayload = [
             'live_readings' => $liveReadings,
             'live_predictions' => $livePredictions,
+            'field_validations' => $fieldValidations->map(fn (MlFieldValidation $fv) => [
+                'ph' => $fv->ph,
+                'temperature_c' => $fv->temperature_c,
+                'tds_ppm' => $fv->tds_ppm,
+                'turbidity_ntu' => $fv->turbidity_ntu,
+                'water_level' => $fv->water_level,
+                'predicted_risk' => $fv->predicted_risk,
+                'actual_risk' => $fv->actual_risk,
+                'is_match' => (bool) $fv->is_match,
+                'validated_at' => $fv->validated_at?->toIso8601String(),
+            ])->values()->all(),
+            'harvest_evaluations' => $harvestCycles->map(fn (PondHarvestCycle $hc) => [
+                'cycle_name' => $hc->cycle_name,
+                'pond_name' => $hc->pond_name,
+                'seed_count' => (int) $hc->seed_count,
+                'harvest_weight_kg' => $hc->harvest_weight_kg,
+                'fish_per_kg' => $hc->fish_per_kg,
+                'survival_rate_pct' => $hc->survival_rate_pct,
+                'mortality_rate_pct' => $hc->mortality_rate_pct,
+                'mortality_status' => $hc->mortality_status,
+                'ai_danger_events' => (int) $hc->ai_danger_events,
+                'ai_warning_events' => (int) $hc->ai_warning_events,
+            ])->values()->all(),
             'config' => [
                 'min_f1_threshold' => (float) $config->min_f1_threshold,
                 'max_drift_threshold' => (float) $config->max_drift_threshold,
                 'min_new_samples' => (int) $config->min_new_samples,
                 'promotion_mode' => $config->promotion_mode,
                 'force_retrain' => $forceRetrain,
+                'agent_model_id' => $selectedAgentModel,
             ],
             'current_version' => $activeModel->version,
             'models_dir' => base_path('../ml/models'),
@@ -205,7 +305,8 @@ class MlSelfLearningAgentService
                     $promoted,
                     $decoded,
                     $activeModel,
-                    $triggerSource
+                    $triggerSource,
+                    $selectedAgentModel
                 ) {
                     if ($promoted) {
                         MlModelVersion::where('is_active', true)->update([
@@ -234,7 +335,7 @@ class MlSelfLearningAgentService
                         'confusion_matrix' => $candidateMetrics['confusion_matrix'] ?? null,
                         'feature_importances' => $candidateMetrics['feature_importances'] ?? null,
                         'per_class_metrics' => $candidateMetrics['per_class_metrics'] ?? null,
-                        'trained_by' => 'AI_AGENT_' . strtoupper($triggerSource),
+                        'trained_by' => 'AI_AGENT:' . $selectedAgentModel,
                         'notes' => (string) ($decoded['summary'] ?? "Dilatih oleh AI Agent dari {$activeModel->version}"),
                         'trained_at' => now(),
                         'promoted_at' => $promoted ? now() : null,
@@ -243,8 +344,10 @@ class MlSelfLearningAgentService
             }
 
             $summary = (string) ($decoded['summary'] ?? 'Siklus Agent AI selesai.');
-            if ($config->llm_advisor_enabled && config('services.ai_agent.llm_api_key')) {
-                $summary = $this->enrichSummaryWithLlm($summary, $decoded);
+            $effectiveApiKey = (string) ($config->agent_api_key ?: config('services.ai_agent.llm_api_key'));
+            $effectiveApiUrl = (string) ($config->agent_api_url ?: config('services.ai_agent.llm_api_url'));
+            if (($config->llm_advisor_enabled || $selectedAgentModel !== 'rf-autonomous-local') && $effectiveApiUrl !== '') {
+                $summary = $this->enrichSummaryWithLlm($summary, $decoded, $selectedAgentModel, $effectiveApiUrl, $effectiveApiKey);
             }
 
             $run->update([
@@ -537,6 +640,7 @@ class MlSelfLearningAgentService
                 'id' => $r->id,
                 'run_type' => $r->run_type,
                 'trigger_source' => $r->trigger_source,
+                'agent_model_id' => $r->agent_model_id ?: 'rf-autonomous-local',
                 'status' => $r->status,
                 'decision' => $r->decision,
                 'active_model_version' => $r->active_model_version,
@@ -548,6 +652,8 @@ class MlSelfLearningAgentService
                 'drift_score' => $r->drift_score,
                 'live_agreement_rate' => $r->live_agreement_rate,
                 'new_live_samples' => (int) $r->new_live_samples,
+                'field_validation_count' => (int) ($r->field_validation_count ?? 0),
+                'harvest_eval_count' => (int) ($r->harvest_eval_count ?? 0),
                 'duration_ms' => $r->duration_ms,
                 'reasoning_steps' => $r->reasoning_steps ?? [],
                 'summary' => $r->summary,
@@ -563,8 +669,16 @@ class MlSelfLearningAgentService
                 'min_new_samples' => (int) $config->min_new_samples,
                 'schedule_interval_hours' => (int) $config->schedule_interval_hours,
                 'llm_advisor_enabled' => (bool) $config->llm_advisor_enabled,
+                'agent_model_id' => $config->agent_model_id ?: 'rf-autonomous-local',
+                'agent_api_url' => $config->agent_api_url,
+                'has_agent_api_key' => !empty($config->agent_api_key) || !empty(config('services.ai_agent.llm_api_key')),
                 'last_run_at' => $config->last_run_at?->toIso8601String(),
             ],
+            'available_agent_models' => self::AVAILABLE_AGENT_MODELS,
+            'field_validations' => $this->getFieldValidationPayload(),
+            'field_validation_stats' => $this->getFieldValidationStats(),
+            'recent_predictions_for_validation' => $this->getRecentPredictionsForValidation(),
+            'harvest_evaluation_summary' => $this->getHarvestEvaluationSummary(),
             'active_model' => [
                 'id' => $activeModel->id,
                 'version' => $activeModel->version,
@@ -659,33 +773,141 @@ class MlSelfLearningAgentService
         return $run->fresh();
     }
 
-    private function enrichSummaryWithLlm(string $defaultSummary, array $agentResult): string
+    private function getFieldValidationPayload(): array
     {
-        $url = (string) config('services.ai_agent.llm_api_url');
-        $key = (string) config('services.ai_agent.llm_api_key');
-        if ($url === '' || $key === '') {
+        return MlFieldValidation::latest('validated_at')
+            ->latest('id')
+            ->take(30)
+            ->get()
+            ->map(fn (MlFieldValidation $fv) => [
+                'id' => $fv->id,
+                'device_id' => $fv->device_id,
+                'prediction_id' => $fv->prediction_id,
+                'tenant_code' => $fv->tenant_code,
+                'device_code' => $fv->device_code,
+                'pond_name' => $fv->pond_name,
+                'ph' => (float) $fv->ph,
+                'temperature_c' => (float) $fv->temperature_c,
+                'tds_ppm' => $fv->tds_ppm !== null ? (float) $fv->tds_ppm : null,
+                'turbidity_ntu' => $fv->turbidity_ntu !== null ? (float) $fv->turbidity_ntu : null,
+                'water_level' => $fv->water_level,
+                'predicted_risk' => $fv->predicted_risk,
+                'actual_risk' => $fv->actual_risk,
+                'is_match' => (bool) $fv->is_match,
+                'model_version' => $fv->model_version,
+                'field_notes' => $fv->field_notes,
+                'validated_by' => $fv->validated_by,
+                'validated_at' => $fv->validated_at?->toIso8601String() ?? $fv->created_at?->toIso8601String(),
+            ])->values()->all();
+    }
+
+    private function getFieldValidationStats(): array
+    {
+        $total = MlFieldValidation::count();
+        $matched = MlFieldValidation::where('is_match', true)->count();
+        $mismatched = max(0, $total - $matched);
+
+        return [
+            'total' => $total,
+            'matched' => $matched,
+            'mismatched' => $mismatched,
+            'match_rate_pct' => $total > 0 ? round(($matched / $total) * 100, 1) : null,
+        ];
+    }
+
+    private function getRecentPredictionsForValidation(): array
+    {
+        $validatedPredIds = MlFieldValidation::whereNotNull('prediction_id')
+            ->pluck('prediction_id')
+            ->all();
+
+        return Prediction::with('sensorReading.device:id,device_code,name,pond_name,tenant_code')
+            ->latest('predicted_at')
+            ->take(15)
+            ->get()
+            ->map(function (Prediction $p) use ($validatedPredIds) {
+                $r = $p->sensorReading;
+                $d = $r?->device;
+                return [
+                    'prediction_id' => $p->id,
+                    'device_id' => $d?->id,
+                    'device_code' => $d?->device_code ?? 'MANUAL',
+                    'pond_name' => $d?->pond_name ?? 'Kolam Utama',
+                    'tenant_code' => $d?->tenant_code,
+                    'ph' => $r?->ph !== null ? (float) $r->ph : null,
+                    'temperature_c' => $r?->temperature_c !== null ? (float) $r->temperature_c : null,
+                    'tds_ppm' => $r?->tds_ppm !== null ? (float) $r->tds_ppm : null,
+                    'turbidity_ntu' => $r?->turbidity_ntu !== null ? (float) $r->turbidity_ntu : null,
+                    'water_level' => $r?->water_level ?? 'NORMAL',
+                    'predicted_risk' => $p->risk,
+                    'model_version' => $p->model_version,
+                    'predicted_at' => $p->predicted_at?->toIso8601String() ?? $p->created_at?->toIso8601String(),
+                    'already_validated' => in_array($p->id, $validatedPredIds, true),
+                ];
+            })
+            ->filter(fn ($item) => $item['ph'] !== null && $item['temperature_c'] !== null)
+            ->values()
+            ->all();
+    }
+
+    private function getHarvestEvaluationSummary(): array
+    {
+        $all = PondHarvestCycle::all();
+        $completed = $all->filter(fn (PondHarvestCycle $c) => $c->mortality_rate_pct !== null);
+        $highMortality = $completed->filter(fn (PondHarvestCycle $c) => (float) $c->mortality_rate_pct > 25.0);
+
+        return [
+            'total_cycles' => $all->count(),
+            'completed_cycles' => $completed->count(),
+            'total_seeds' => (int) $all->sum('seed_count'),
+            'total_harvest_kg' => round((float) $completed->sum('harvest_weight_kg'), 2),
+            'avg_survival_rate_pct' => $completed->isNotEmpty()
+                ? round((float) $completed->avg('survival_rate_pct'), 1)
+                : null,
+            'avg_mortality_rate_pct' => $completed->isNotEmpty()
+                ? round((float) $completed->avg('mortality_rate_pct'), 1)
+                : null,
+            'high_mortality_cycles' => $highMortality->count(),
+        ];
+    }
+
+    private function enrichSummaryWithLlm(
+        string $defaultSummary,
+        array $agentResult,
+        string $agentModelId = 'gemini-2.5-flash',
+        string $apiUrl = '',
+        string $apiKey = ''
+    ): string {
+        $url = $apiUrl !== '' ? $apiUrl : (string) config('services.ai_agent.llm_api_url');
+        $key = $apiKey !== '' ? $apiKey : (string) config('services.ai_agent.llm_api_key');
+        if ($url === '') {
             return $defaultSummary;
         }
 
         try {
-            $prompt = "Ringkas hasil siklus MLOps Random Forest BanyuWening berikut dalam 2 kalimat Bahasa Indonesia teknis yang objektif:\n"
+            $prompt = "Ringkas hasil siklus MLOps Random Forest BanyuWening berikut dalam 2 kalimat Bahasa Indonesia teknis yang objektif, termasuk evaluasi lapangan dan mortalitas panen jika ada:\n"
                 . json_encode([
+                    'agent_model' => $agentModelId,
                     'decision' => $agentResult['decision'] ?? null,
                     'current_version' => $agentResult['current_version'] ?? null,
                     'candidate_version' => $agentResult['candidate_version'] ?? null,
                     'drift_score' => $agentResult['drift_score'] ?? null,
+                    'field_match_rate' => $agentResult['field_match_rate'] ?? null,
+                    'avg_mortality_rate_pct' => $agentResult['avg_mortality_rate_pct'] ?? null,
                     'summary' => $defaultSummary,
                 ]);
 
-            $resp = Http::timeout(8)
-                ->withToken($key)
-                ->post($url, [
-                    'model' => config('services.ai_agent.llm_model', 'gemini-2.0-flash'),
-                    'prompt' => $prompt,
-                ]);
+            $req = Http::timeout(8);
+            if ($key !== '') {
+                $req = $req->withToken($key);
+            }
+            $resp = $req->post($url, [
+                'model' => $agentModelId,
+                'prompt' => $prompt,
+            ]);
 
             if ($resp->successful()) {
-                $text = trim((string) ($resp->json('summary') ?? $resp->json('text') ?? ''));
+                $text = trim((string) ($resp->json('summary') ?? $resp->json('text') ?? $resp->json('response') ?? ''));
                 if ($text !== '') {
                     return $text;
                 }

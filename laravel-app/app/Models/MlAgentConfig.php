@@ -18,7 +18,14 @@ class MlAgentConfig extends Model
         'min_new_samples',
         'schedule_interval_hours',
         'llm_advisor_enabled',
+        'agent_model_id',
+        'agent_api_url',
+        'agent_api_key',
         'last_run_at',
+    ];
+
+    protected $hidden = [
+        'agent_api_key',
     ];
 
     protected function casts(): array
@@ -46,6 +53,7 @@ class MlAgentConfig extends Model
                 'min_new_samples' => 10,
                 'schedule_interval_hours' => 6,
                 'llm_advisor_enabled' => false,
+                'agent_model_id' => 'rf-autonomous-local',
             ]
         );
     }

@@ -605,10 +605,104 @@ export interface MlAgentReasoningStep {
   detail: string;
 }
 
+export interface MlAgentModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  badge: string;
+  description: string;
+  requires_api_key: boolean;
+}
+
+export interface MlFieldValidationItem {
+  id: number;
+  device_id: number | null;
+  prediction_id: number | null;
+  tenant_code: string | null;
+  device_code: string | null;
+  pond_name: string | null;
+  ph: number;
+  temperature_c: number;
+  tds_ppm: number | null;
+  turbidity_ntu: number | null;
+  water_level: string;
+  predicted_risk: RiskLevel;
+  actual_risk: RiskLevel;
+  is_match: boolean;
+  model_version: string | null;
+  field_notes: string | null;
+  validated_by: string | null;
+  validated_at: string | null;
+}
+
+export interface MlFieldValidationStats {
+  total: number;
+  matched: number;
+  mismatched: number;
+  match_rate_pct: number | null;
+}
+
+export interface MlRecentPredictionForValidation {
+  prediction_id: number;
+  device_id: number | null;
+  device_code: string;
+  pond_name: string;
+  tenant_code: string | null;
+  ph: number;
+  temperature_c: number;
+  tds_ppm: number | null;
+  turbidity_ntu: number | null;
+  water_level: string;
+  predicted_risk: RiskLevel;
+  model_version: string | null;
+  predicted_at: string | null;
+  already_validated: boolean;
+}
+
+export interface MlHarvestEvaluationSummary {
+  total_cycles: number;
+  completed_cycles: number;
+  total_seeds: number;
+  total_harvest_kg: number;
+  avg_survival_rate_pct: number | null;
+  avg_mortality_rate_pct: number | null;
+  high_mortality_cycles: number;
+}
+
+export interface PondHarvestCycleItem {
+  id: number;
+  device_id: number | null;
+  tenant_code: string | null;
+  device_code: string | null;
+  pond_name: string | null;
+  cycle_name: string;
+  stocking_date: string;
+  harvest_date: string | null;
+  seed_count: number;
+  seed_size_cm: string | null;
+  harvest_weight_kg: number | null;
+  fish_per_kg: number | null;
+  avg_fish_weight_g: number | null;
+  estimated_harvest_count: number | null;
+  estimated_mortality_count: number | null;
+  survival_rate_pct: number | null;
+  mortality_rate_pct: number | null;
+  mortality_status: "BERJALAN" | "BAIK" | "PERLU_EVALUASI" | "TINGGI" | string;
+  ai_danger_events: number;
+  ai_warning_events: number;
+  avg_ph_cycle: number | null;
+  avg_temp_cycle: number | null;
+  ai_evaluation_note: string | null;
+  notes: string | null;
+  recorded_by: string | null;
+  created_at: string | null;
+}
+
 export interface MlAgentRunItem {
   id: number;
   run_type: string;
   trigger_source: string;
+  agent_model_id?: string | null;
   status: string;
   decision: string | null;
   active_model_version: string | null;
@@ -620,6 +714,8 @@ export interface MlAgentRunItem {
   drift_score: number | null;
   live_agreement_rate: number | null;
   new_live_samples: number;
+  field_validation_count?: number;
+  harvest_eval_count?: number;
   duration_ms: number | null;
   reasoning_steps: MlAgentReasoningStep[];
   summary: string | null;
@@ -636,6 +732,9 @@ export interface MlAgentConfigItem {
   min_new_samples: number;
   schedule_interval_hours: number;
   llm_advisor_enabled: boolean;
+  agent_model_id?: string;
+  agent_api_url?: string | null;
+  has_agent_api_key?: boolean;
   last_run_at: string | null;
 }
 
@@ -694,6 +793,11 @@ export interface MlPerformanceOverview {
   model_versions: MlModelVersionItem[];
   agent_runs: MlAgentRunItem[];
   agent_config: MlAgentConfigItem;
+  available_agent_models?: MlAgentModelOption[];
+  field_validations?: MlFieldValidationItem[];
+  field_validation_stats?: MlFieldValidationStats;
+  recent_predictions_for_validation?: MlRecentPredictionForValidation[];
+  harvest_evaluation_summary?: MlHarvestEvaluationSummary;
   active_model: {
     id: number;
     version: string;
