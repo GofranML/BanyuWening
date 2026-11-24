@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import {
   Building2,
@@ -9,25 +9,35 @@ import {
   Cpu,
   MapPin,
   Phone,
-  Mail,
   ShieldCheck,
-  ShieldAlert,
-  Clock,
   Search,
   Filter,
   CheckCircle2,
   X,
-  UserPlus,
   AlertTriangle,
-  ArrowRight,
   ExternalLink,
+  Activity,
+  ChevronDown,
+  Rocket,
 } from "lucide-react";
-import type { ManagedDevice, Tenant, User } from "@/Types";
+import { TenantDeviceCrudPanel } from "@/Components/roles/TenantDeviceCrudPanel";
+import { SuperAdminOtaProtocolPanel } from "@/Components/roles/SuperAdminOtaProtocolPanel";
+import type { ManagedDevice, OtaOverview, RealtimeConfig, Tenant, User } from "@/Types";
 
 interface SuperAdminTenantManagementProps {
   tenants: Tenant[];
   users: User[];
   devices?: ManagedDevice[];
+  activeTenantCode?: string;
+  activeDeviceCode?: string;
+  otaOverview?: OtaOverview | null;
+  realtimeConfig?: RealtimeConfig;
+  canManageOta?: boolean;
+  isTenantOtaMode?: boolean;
+  initialSubTab?: "tenants" | "devices";
+  initialDeviceSection?: "crud" | "ota";
+  onSubTabChange?: (sub: "tenants" | "devices") => void;
+  onSelectTenantScope?: (tenantCode: string, deviceCode?: string, navigateToMonitoring?: boolean) => void;
   onOpenCreateUserWithTenant?: (tenantCode: string) => void;
   onFilterUsersByTenant?: (tenantCode: string) => void;
 }
@@ -36,12 +46,51 @@ export function SuperAdminTenantManagement({
   tenants = [],
   users = [],
   devices = [],
+  activeTenantCode = "ALL",
+  activeDeviceCode = "ALL",
+  otaOverview = null,
+  realtimeConfig,
+  canManageOta = true,
+  isTenantOtaMode = false,
+  initialSubTab = "tenants",
+  initialDeviceSection = "crud",
+  onSubTabChange,
+  onSelectTenantScope,
   onOpenCreateUserWithTenant,
   onFilterUsersByTenant,
 }: SuperAdminTenantManagementProps) {
+  const [subTab, setSubTab] = useState<"tenants" | "devices">(initialSubTab);
+  const [deviceSection, setDeviceSection] = useState<"crud" | "ota">(initialDeviceSection);
+  const [otaTargetDeviceCode, setOtaTargetDeviceCode] = useState<string | undefined>(undefined);
+  const [selectedTenantCode, setSelectedTenantCode] = useState<string>(activeTenantCode || "ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  useEffect(() => {
+    setSubTab(initialSubTab);
+  }, [initialSubTab]);
+
+  useEffect(() => {
+    setDeviceSection(initialDeviceSection);
+  }, [initialDeviceSection]);
+
+  useEffect(() => {
+    if (activeTenantCode) {
+      setSelectedTenantCode(activeTenantCode);
+    }
+  }, [activeTenantCode]);
+
+  const switchSubTab = (next: "tenants" | "devices") => {
+    setSubTab(next);
+    onSubTabChange?.(next);
+  };
+
+  const handleScopeChange = (nextCode: string) => {
+    setSelectedTenantCode(nextCode);
+    setOtaTargetDeviceCode(undefined);
+    onSelectTenantScope?.(nextCode, "ALL", false);
+  };
 
   // Create Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -240,6 +289,9 @@ export function SuperAdminTenantManagement({
 
   // Filtered tenants
   const filteredTenants = tenants.filter((t) => {
+    if (selectedTenantCode !== "ALL" && t.code.toUpperCase() !== selectedTenantCode.toUpperCase()) {
+      return false;
+    }
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
@@ -253,6 +305,13 @@ export function SuperAdminTenantManagement({
 
     return matchesSearch && matchesStatus;
   });
+
+  const scopedDeviceCount =
+    selectedTenantCode === "ALL"
+      ? devices.length
+      : devices.filter(
+          (d) => (d.tenant_code || "TENANT-UTAMA").toUpperCase() === selectedTenantCode.toUpperCase()
+        ).length;
 
   const totalTenants = tenants.length;
   const activeTenants = tenants.filter((t) => t.status === "ACTIVE").length;
@@ -272,26 +331,153 @@ export function SuperAdminTenantManagement({
       {/* Header & Quick Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300 text-[12px] font-semibold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-brand border border-brand/25 text-[12px] font-semibold mb-2">
             <Building2 className="w-3.5 h-3.5" />
-            <span>Arsitektur Multi-Tenancy Tambak</span>
+            <span>Arsitektur Multi-Tenancy &amp; Alokasi Alat IoT</span>
           </div>
-          <h2 className="text-[22px] md:text-[26px] font-display text-ink leading-tight">
-            Manajemen Mitra & Tenant Budidaya
+          <h2 className="text-[20px] sm:text-[22px] md:text-[26px] font-display text-ink leading-tight">
+            Mitra Multi-Tenant &amp; Pengaturan Alat IoT
           </h2>
           <p className="text-[13px] text-muted mt-1">
-            Kelola sentra tambak mitra, isolasi data telemetri multi-tenant, tetapkan akun pemilik, dan alokasikan node IoT ESP32.
+            Pilih tenant untuk mengatur daftar kolam mitra, penetapan akun pemilik, dan manajemen node ESP32 + Token API per tenant.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="h-10 px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer self-start shadow-xs"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Tenant Baru</span>
-        </button>
+        {subTab === "tenants" && (
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="min-h-[44px] px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-2 cursor-pointer self-start shrink-0 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Tenant Baru</span>
+          </button>
+        )}
       </div>
+
+      {/* Sub-Menu Navigation + Global Tenant Scope Filter */}
+      <div className="p-3 bg-surface border border-line rounded-[6px] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="grid grid-cols-2 sm:inline-flex gap-2 bg-surface-2 p-1 rounded-[6px]">
+          <button
+            type="button"
+            onClick={() => switchSubTab("tenants")}
+            className={`min-h-[44px] px-3.5 rounded-[5px] text-[12.5px] sm:text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              subTab === "tenants"
+                ? "bg-brand text-brand-ink shadow-2xs"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            <Building2 className="w-4 h-4 shrink-0" />
+            <span className="sm:hidden">Mitra ({tenants.length})</span>
+            <span className="hidden sm:inline truncate">Daftar Mitra Tenant ({tenants.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => switchSubTab("devices")}
+            className={`min-h-[44px] px-3 sm:px-3.5 rounded-[5px] text-[12px] sm:text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-colors cursor-pointer ${
+              subTab === "devices"
+                ? "bg-brand text-brand-ink shadow-2xs"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            <Cpu className="w-4 h-4 shrink-0" />
+            <span className="sm:hidden">Alat IoT ({scopedDeviceCount})</span>
+            <span className="hidden sm:inline truncate">Kelola Alat IoT ({scopedDeviceCount})</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+          <label
+            htmlFor="tenant-management-scope-select"
+            className="text-[11.5px] font-semibold text-muted whitespace-nowrap"
+          >
+            Filter Lingkup Tenant:
+          </label>
+          <div className="relative w-full sm:w-[260px] max-w-full">
+            <select
+              id="tenant-management-scope-select"
+              value={selectedTenantCode}
+              onChange={(e) => handleScopeChange(e.target.value)}
+              className="w-full min-h-[44px] sm:min-h-[38px] appearance-none pl-3 pr-8 bg-surface-2 border border-line rounded-[6px] text-[12.5px] font-medium text-ink truncate focus:outline-hidden focus:border-brand cursor-pointer"
+            >
+              <option value="ALL">
+                Semua Tenant ({tenants.length} Mitra · {devices.length} Alat)
+              </option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.code}>
+                  {t.name} ({t.code})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-muted pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+          </div>
+        </div>
+      </div>
+
+      {subTab === "devices" ? (
+        <div className="space-y-4">
+          {canManageOta && (
+            <div className="p-2.5 bg-surface border border-line rounded-[6px] grid grid-cols-2 sm:inline-flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeviceSection("crud")}
+                className={`min-h-[44px] sm:min-h-[38px] px-3 rounded-[5px] text-[12px] sm:text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  deviceSection === "crud"
+                    ? "bg-brand text-brand-ink shadow-2xs"
+                    : "bg-surface-2 text-muted hover:text-ink"
+                }`}
+              >
+                <Cpu className="w-4 h-4 shrink-0" />
+                <span className="sm:hidden">Daftar Alat ({scopedDeviceCount})</span>
+                <span className="hidden sm:inline">Daftar &amp; Konfigurasi Alat ({scopedDeviceCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceSection("ota")}
+                className={`min-h-[44px] sm:min-h-[38px] px-3 rounded-[5px] text-[12px] sm:text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  deviceSection === "ota"
+                    ? "bg-brand text-brand-ink shadow-2xs"
+                    : "bg-surface-2 text-muted hover:text-ink"
+                }`}
+              >
+                <Rocket className="w-4 h-4 shrink-0" />
+                <span className="sm:hidden">Update Firmware</span>
+                <span className="hidden sm:inline">Update Firmware Per Alat (OTA)</span>
+              </button>
+            </div>
+          )}
+
+          {deviceSection === "ota" && canManageOta ? (
+            <SuperAdminOtaProtocolPanel
+              initialOverview={otaOverview}
+              realtimeConfig={realtimeConfig}
+              users={users}
+              activeTenantCode={selectedTenantCode}
+              activeDeviceCode={otaTargetDeviceCode || activeDeviceCode}
+              isTenantMode={Boolean(isTenantOtaMode)}
+            />
+          ) : (
+            <TenantDeviceCrudPanel
+              tenants={tenants}
+              devices={devices}
+              users={users}
+              selectedTenantCode={selectedTenantCode}
+              onChangeTenantCode={handleScopeChange}
+              onSelectDeviceToMonitor={(tCode, dCode) => onSelectTenantScope?.(tCode, dCode, true)}
+              onOpenOtaForDevice={
+                canManageOta
+                  ? (dCode) => {
+                      setOtaTargetDeviceCode(dCode);
+                      setDeviceSection("ota");
+                    }
+                  : undefined
+              }
+              onNotify={showToast}
+            />
+          )}
+        </div>
+      ) : (
+        <>
 
       {/* Metric Cards Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -345,22 +531,25 @@ export function SuperAdminTenantManagement({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nama tenant, kode (TENANT-...), nama PIC, atau kolam..."
-            className="w-full h-9.5 pl-9 pr-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
+            className="w-full min-h-[44px] sm:min-h-[38px] pl-9 pr-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
           />
         </div>
 
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted shrink-0" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9.5 px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand cursor-pointer"
-          >
-            <option value="ALL">Semua Status Operasional</option>
-            <option value="ACTIVE">Hanya Aktif (Active)</option>
-            <option value="TRIAL">Masa Uji Coba (Trial)</option>
-            <option value="SUSPENDED">Ditangguhkan (Suspended)</option>
-          </select>
+          <div className="relative w-full sm:w-auto min-w-[200px]">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full min-h-[44px] sm:min-h-[38px] appearance-none pl-3 pr-8 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink truncate focus:outline-hidden focus:border-brand cursor-pointer"
+            >
+              <option value="ALL">Semua Status Operasional</option>
+              <option value="ACTIVE">Hanya Aktif (Active)</option>
+              <option value="TRIAL">Masa Uji Coba (Trial)</option>
+              <option value="SUSPENDED">Ditangguhkan (Suspended)</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-muted pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+          </div>
         </div>
       </div>
 
@@ -390,10 +579,13 @@ export function SuperAdminTenantManagement({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredTenants.map((t) => {
             const isUtama = t.code === "TENANT-UTAMA";
+            const tenantDeviceList = devices.filter(
+              (d) => (d.tenant_code || "TENANT-UTAMA").toUpperCase() === t.code.toUpperCase()
+            );
             return (
               <div
                 key={t.id}
-                className="bg-surface border border-line hover:border-brand/40 rounded-[6px] p-5 flex flex-col justify-between gap-4 transition-all duration-200 shadow-2xs hover:shadow-xs"
+                className="bg-surface border border-line hover:border-brand/40 rounded-[6px] p-4 sm:p-5 flex flex-col justify-between gap-4 transition-all duration-200 shadow-2xs hover:shadow-xs"
               >
                 <div className="space-y-3">
                   {/* Top Bar Card */}
@@ -441,7 +633,7 @@ export function SuperAdminTenantManagement({
                     </div>
 
                     {(t.pic_name || t.phone) && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-brand shrink-0" />
                         <span>
                           PIC: <strong>{t.pic_name || "Petambak"}</strong>
@@ -461,9 +653,9 @@ export function SuperAdminTenantManagement({
                     )}
 
                     {t.owner && (
-                      <div className="flex items-center gap-2 pt-0.5">
+                      <div className="flex items-center gap-2 pt-0.5 min-w-0">
                         <Users className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                        <span>
+                        <span className="truncate">
                           Pemilik: <strong>{t.owner.name}</strong> ({t.owner.email})
                         </span>
                       </div>
@@ -471,7 +663,7 @@ export function SuperAdminTenantManagement({
                   </div>
 
                   {/* Summary Badges: Users & Devices */}
-                  <div className="pt-2 flex items-center gap-3 border-t border-line/60">
+                  <div className="pt-2 flex flex-wrap items-center gap-3 border-t border-line/60">
                     <div className="flex items-center gap-1.5 text-[12px] text-ink font-medium">
                       <Users className="w-3.5 h-3.5 text-purple-400" />
                       <span>{t.users_count || 0} Akun Terdaftar</span>
@@ -479,8 +671,37 @@ export function SuperAdminTenantManagement({
 
                     <div className="flex items-center gap-1.5 text-[12px] text-ink font-medium">
                       <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{t.devices_count || 0} Node IoT Aktif</span>
+                      <span>{tenantDeviceList.length || t.devices_count || 0} Node IoT Aktif</span>
                     </div>
+                  </div>
+
+                  {/* Assigned Device Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {tenantDeviceList.length > 0 ? (
+                      tenantDeviceList.map((dev) => (
+                        <button
+                          key={dev.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTenantCode(t.code);
+                            switchSubTab("devices");
+                          }}
+                          className="px-2 py-1 rounded-[4px] bg-surface-2 hover:bg-brand/10 border border-line hover:border-brand/40 font-mono text-[10.5px] text-ink inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                          title={`Kelola ${dev.device_code} (${dev.pond_name})`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              (dev.status || "").toUpperCase() === "ONLINE" ? "bg-aman" : "bg-muted"
+                            }`}
+                          />
+                          <span>{dev.device_code}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-muted italic">
+                        Belum ada node ESP32 dialokasikan
+                      </span>
+                    )}
                   </div>
 
                   {t.notes && (
@@ -491,23 +712,48 @@ export function SuperAdminTenantManagement({
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-line">
-                  {onFilterUsersByTenant && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-line">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => onFilterUsersByTenant(t.code)}
-                      className="text-[12px] text-brand hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        handleScopeChange(t.code);
+                        switchSubTab("devices");
+                      }}
+                      className="min-h-[44px] sm:min-h-[36px] px-3 rounded-[6px] bg-brand/10 border border-brand/30 text-[12px] text-brand hover:bg-brand/20 font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                     >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Lihat Akun Petambak →</span>
+                      <Cpu className="w-3.5 h-3.5 shrink-0" />
+                      <span>Kelola Alat ({tenantDeviceList.length}) →</span>
                     </button>
-                  )}
 
-                  <div className="flex items-center gap-2 ml-auto">
+                    {onSelectTenantScope && (
+                      <button
+                        type="button"
+                        onClick={() => onSelectTenantScope(t.code, "ALL", true)}
+                        className="min-h-[44px] sm:min-h-[36px] px-3 rounded-[6px] border border-line bg-surface-2 text-[12px] text-ink hover:border-brand font-medium inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Activity className="w-3.5 h-3.5 text-brand shrink-0" />
+                        <span>Pantau</span>
+                      </button>
+                    )}
+
+                    {onFilterUsersByTenant && (
+                      <button
+                        type="button"
+                        onClick={() => onFilterUsersByTenant(t.code)}
+                        className="min-h-[44px] sm:min-h-[36px] px-2.5 text-[12px] text-muted hover:text-brand font-medium inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Akun</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:ml-auto">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(t)}
-                      className="h-8 px-3 border border-line rounded-[6px] text-[12px] text-ink hover:border-brand inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      className="min-h-[44px] sm:min-h-[36px] px-3 border border-line rounded-[6px] text-[12px] text-ink hover:border-brand inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors flex-1 sm:flex-initial"
                       title="Edit Data Tenant"
                     >
                       <Pencil className="w-3.5 h-3.5 text-brand" />
@@ -518,7 +764,7 @@ export function SuperAdminTenantManagement({
                       <button
                         type="button"
                         onClick={() => setDeletingTenant(t)}
-                        className="h-8 px-3 border border-line rounded-[6px] text-[12px] text-bahaya hover:border-bahaya inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="min-h-[44px] sm:min-h-[36px] px-3 border border-line rounded-[6px] text-[12px] text-bahaya hover:border-bahaya inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors flex-1 sm:flex-initial"
                         title="Hapus Tenant"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -532,11 +778,13 @@ export function SuperAdminTenantManagement({
           })}
         </div>
       )}
+        </>
+      )}
 
       {/* MODAL: TAMBAH TENANT BARU */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-surface border border-line rounded-[8px] shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-2xl bg-surface border border-line rounded-t-[14px] sm:rounded-[8px] shadow-2xl p-5 sm:p-6 space-y-5 max-h-[88dvh] overflow-y-auto safe-bottom">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-brand/15 text-brand flex items-center justify-center shrink-0">
@@ -552,7 +800,8 @@ export function SuperAdminTenantManagement({
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 text-muted hover:text-ink rounded-full hover:bg-surface-2 cursor-pointer"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-muted hover:text-ink rounded-full hover:bg-surface-2 cursor-pointer"
+                aria-label="Tutup modal tambah tenant"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -804,18 +1053,18 @@ export function SuperAdminTenantManagement({
               </div>
 
               {/* Footer Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <div className="grid grid-cols-2 sm:flex items-center justify-end gap-3 pt-3 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="h-10 px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink transition-colors cursor-pointer"
+                  className="min-h-[44px] px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-10 px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                  className="min-h-[44px] px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>{isSubmitting ? "Menyimpan..." : "Daftarkan Tenant Baru"}</span>
@@ -828,8 +1077,8 @@ export function SuperAdminTenantManagement({
 
       {/* MODAL: EDIT TENANT */}
       {editingTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-xl bg-surface border border-line rounded-[8px] shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-xl bg-surface border border-line rounded-t-[14px] sm:rounded-[8px] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[88dvh] overflow-y-auto safe-bottom">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2">
                 <Pencil className="w-4 h-4 text-brand" />
@@ -838,7 +1087,8 @@ export function SuperAdminTenantManagement({
               <button
                 type="button"
                 onClick={() => setEditingTenant(null)}
-                className="p-1.5 text-muted hover:text-ink rounded-full hover:bg-surface-2 cursor-pointer"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-muted hover:text-ink rounded-full hover:bg-surface-2 cursor-pointer"
+                aria-label="Tutup modal edit tenant"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -941,18 +1191,18 @@ export function SuperAdminTenantManagement({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <div className="grid grid-cols-2 sm:flex items-center justify-end gap-3 pt-3 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setEditingTenant(null)}
-                  className="h-9 px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink transition-colors cursor-pointer"
+                  className="min-h-[44px] px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isEditing}
-                  className="h-9 px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                  className="min-h-[44px] px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   <span>{isEditing ? "Menyimpan..." : "Simpan Perubahan"}</span>
@@ -965,8 +1215,8 @@ export function SuperAdminTenantManagement({
 
       {/* MODAL: KONFIRMASI HAPUS TENANT */}
       {deletingTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-surface border border-line rounded-[8px] shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-surface border border-line rounded-t-[14px] sm:rounded-[8px] shadow-2xl p-5 sm:p-6 space-y-4 safe-bottom">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-bahaya/15 text-bahaya flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -990,11 +1240,11 @@ export function SuperAdminTenantManagement({
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="grid grid-cols-2 sm:flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setDeletingTenant(null)}
-                className="h-9 px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink cursor-pointer"
+                className="min-h-[44px] px-4 border border-line rounded-[6px] text-[13px] font-medium text-muted hover:text-ink cursor-pointer"
               >
                 Batal
               </button>
@@ -1002,7 +1252,7 @@ export function SuperAdminTenantManagement({
                 type="button"
                 disabled={isDeleting}
                 onClick={handleDeleteTenant}
-                className="h-9 px-5 bg-bahaya text-white rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="min-h-[44px] px-5 bg-bahaya text-white rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeleting ? "Menghapus..." : "Ya, Hapus Tenant"}</span>

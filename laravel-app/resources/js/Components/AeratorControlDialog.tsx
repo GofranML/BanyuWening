@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Loader2, AlertCircle, CheckCircle2, Power } from "lucide-react";
+import type { FleetDeviceSummary } from "@/Types";
 
 interface AeratorControlDialogProps {
   isOpen: boolean;
@@ -11,6 +12,10 @@ interface AeratorControlDialogProps {
   };
   isWaterCritical: boolean;
   criticalReason?: string;
+  targetDeviceLabel?: string;
+  scopedDevices?: FleetDeviceSummary[];
+  selectedTargetCode?: string;
+  onChangeTargetCode?: (code: string) => void;
   onApplyControl: (action: "ON" | "OFF" | "AUTO", durationMin: number) => Promise<boolean>;
 }
 
@@ -20,6 +25,10 @@ export function AeratorControlDialog({
   currentState,
   isWaterCritical,
   criticalReason = "pH di luar batas aman",
+  targetDeviceLabel,
+  scopedDevices = [],
+  selectedTargetCode,
+  onChangeTargetCode,
   onApplyControl,
 }: AeratorControlDialogProps) {
   const [selectedAction, setSelectedAction] = useState<"ON" | "OFF" | "AUTO">("ON");
@@ -130,7 +139,7 @@ export function AeratorControlDialog({
                 Kontrol Aerator Kolam
               </h3>
               <p className="text-[12px] text-muted">
-                Status saat ini: {currentState.isOn ? "Menyala" : "Mati"} (
+                {targetDeviceLabel ? `${targetDeviceLabel} · ` : ""}Status saat ini: {currentState.isOn ? "Menyala" : "Mati"} (
                 {currentState.mode === "AUTO"
                   ? "Otomatis"
                   : currentState.mode === "MANUAL"
@@ -153,6 +162,26 @@ export function AeratorControlDialog({
 
         {/* Action Selection */}
         <div className="space-y-4">
+          {scopedDevices.length > 1 && onChangeTargetCode && (
+            <div className="space-y-1.5">
+              <label htmlFor="aerator-target-device" className="text-[12.5px] font-medium text-muted block">
+                Node Target Kendali ESP32
+              </label>
+              <select
+                id="aerator-target-device"
+                value={selectedTargetCode || scopedDevices[0]?.device_code || ""}
+                onChange={(e) => onChangeTargetCode(e.target.value)}
+                disabled={loading}
+                className="w-full min-h-[44px] px-3 bg-surface-2 border border-line rounded-[6px] text-[13px] font-mono text-ink focus:outline-hidden focus:border-brand cursor-pointer"
+              >
+                {scopedDevices.map((sd) => (
+                  <option key={sd.id} value={sd.device_code}>
+                    {sd.device_code} · {sd.pond_name} ({sd.tenant_code || "TENANT-UTAMA"})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <span id="control-action-label" className="text-[13px] font-medium text-muted block mb-2">
               Pilih Aksi Kendali

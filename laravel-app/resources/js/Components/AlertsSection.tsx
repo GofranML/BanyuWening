@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { router } from "@inertiajs/react";
 import {
   TriangleAlert,
   OctagonX,
@@ -27,6 +28,10 @@ export function AlertsSection({
   const [alerts, setAlerts] = useState<AlertItem[]>(initialAlerts);
   const [filter, setFilter] = useState<FilterChip>("ALL");
 
+  useEffect(() => {
+    setAlerts(initialAlerts);
+  }, [initialAlerts]);
+
   const handleAcknowledge = (id: number) => {
     setAlerts((prev) =>
       prev.map((a) => {
@@ -40,6 +45,7 @@ export function AlertsSection({
         return a;
       })
     );
+    router.post(`/dashboard/alerts/${id}/ack`, {}, { preserveScroll: true });
   };
 
   const filteredAlerts = alerts.filter((a) => {
@@ -141,6 +147,11 @@ export function AlertsSection({
                             {item.param}
                           </span>
                         </span>
+                        {(item.device_code || item.pond_name) && (
+                          <span className="px-2 py-0.5 rounded bg-surface-2 border border-line font-mono text-[11px] text-ink">
+                            {item.device_code || item.pond_name}
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-[14px] font-medium text-ink leading-[20px] mb-2">

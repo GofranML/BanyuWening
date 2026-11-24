@@ -156,6 +156,17 @@ class RealtimeBroadcaster
         $wsBase = rtrim((string) config('services.realtime.ws_public_url', 'ws://127.0.0.1:8081'), '/');
         $httpBase = rtrim($httpOrigin ?: (string) config('app.url', 'http://127.0.0.1:8000'), '/');
 
+        if ($httpOrigin) {
+            $httpHost = parse_url($httpOrigin, PHP_URL_HOST);
+            $wsHost = parse_url($wsBase, PHP_URL_HOST);
+            $isLocalHttp = in_array($httpHost, ['127.0.0.1', 'localhost'], true);
+            if (!$isLocalHttp && $httpHost && $wsHost && str_contains((string) $wsHost, '.ciptasol.cloud') && strcasecmp((string) $httpHost, (string) $wsHost) !== 0) {
+                $scheme = parse_url($httpOrigin, PHP_URL_SCHEME) === 'https' ? 'wss' : 'ws';
+                $port = parse_url($httpOrigin, PHP_URL_PORT);
+                $wsBase = $scheme . '://' . $httpHost . ($port ? ':' . $port : '');
+            }
+        }
+
         $protocols = [];
         foreach (self::PROTOCOLS as $key => $meta) {
             $protocols[$key] = [

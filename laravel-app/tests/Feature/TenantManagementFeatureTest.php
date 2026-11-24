@@ -174,4 +174,85 @@ class TenantManagementFeatureTest extends TestCase
         $petambak->refresh();
         $this->assertEquals('TENANT-UTAMA', $petambak->tenant_code);
     }
+
+    public function test_super_admin_dashboard_uses_two_tier_tenant_device_scope(): void
+    {
+        $admin = User::where('email', 'admin@banyuwening.id')->firstOrFail();
+
+        $tenantBeta = Tenant::create([
+            'code' => 'TENANT-BETA',
+            'name' => 'Tambak Beta Nusantara',
+            'pond_name' => 'Kolam Beta 01',
+            'status' => 'ACTIVE',
+        ]);
+
+        Device::create([
+            'device_code' => 'ESP32-BETA-01',
+            'name' => 'Node Beta 01',
+            'pond_name' => 'Kolam Beta 01',
+            'tenant_code' => $tenantBeta->code,
+            'firmware_version' => 'v2.1.0',
+            'hardware_profile' => 'ESP32-WROOM-CoreHub-v2',
+            'status' => 'ONLINE',
+            'auth_token_hash' => hash('sha256', 'secret-beta-token'),
+        ]);
+
+        // Default Super Admin landing: ALL tenants & ALL devices
+        $resAll = $this->actingAs($admin)->get('/dashboard');
+        $resAll->assertStatus(200);
+        $resAll->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->where('activeTenantCode', 'ALL')
+            ->where('activeDeviceCode', 'ALL')
+        );
+
+        // Tenant-specific scope without device_code stays at ALL devices inside that tenant
+        $resTenant = $this->actingAs($admin)->get('/dashboard?tenant_code=TENANT-BETA');
+        $resTenant->assertStatus(200);
+        $resTenant->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->where('activeTenantCode', 'TENANT-BETA')
+            ->where('activeDeviceCode', 'ALL')
+        );
+
+        // Selecting specific device inside tenant scope
+        $resDevice = $this->actingAs($admin)->get('/dashboard?tenant_code=TENANT-BETA&device_code=ESP32-BETA-01');
+        $resDevice->assertStatus(200);
+        $resDevice->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->where('activeTenantCode', 'TENANT-BETA')
+            ->where('activeDeviceCode', 'ESP32-BETA-01')
+            ->where('device.device_code', 'ESP32-BETA-01')
+        );
+    }
+
+    public function test_super_admin_can_update_device_via_tenant_device_crud(): void
+    {
+        $admin = User::where('email', 'admin@banyuwening.id')->firstOrFail();
+
+        Tenant::create([
+            'code' => 'TENANT-DELTA',
+            'name' => 'Tambak Delta',
+            'pond_name' => 'Kolam Delta',
+            'status' => 'ACTIVE',
+        ]);
+
+        $device = Device::firstOrFail();
+
+        $response = $this->actingAs($admin)->put("/dashboard/devices/{$device->id}", [
+            'name' => 'Node Delta Diperbarui',
+            'pond_name' => 'Kolam Bioflok Delta',
+            'tenant_code' => 'TENANT-DELTA',
+            'hardware_profile' => 'ESP32-S3-Pro',
+            'firmware_version' => 'v2.4.0',
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $device->refresh();
+        $this->assertEquals('Node Delta Diperbarui', $device->name);
+        $this->assertEquals('Kolam Bioflok Delta', $device->pond_name);
+        $this->assertEquals('TENANT-DELTA', $device->tenant_code);
+        $this->assertEquals('ESP32-S3-Pro', $device->hardware_profile);
+    }
 }

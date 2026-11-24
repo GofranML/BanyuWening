@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import {
   Users,
@@ -33,6 +33,7 @@ interface SuperAdminUserManagementProps {
   users: User[];
   tenants?: Tenant[];
   devices?: ManagedDevice[];
+  activeTenantCode?: string;
 }
 
 function getEffectivePermissions(u: { role: UserRole; permissions?: UserPermissions }): UserPermissions {
@@ -46,9 +47,25 @@ export function SuperAdminUserManagement({
   users,
   tenants = [],
   devices = [],
+  activeTenantCode,
 }: SuperAdminUserManagementProps) {
   const [activeSubView, setActiveSubView] = useState<"users" | "tenants">("users");
-  const [tenantFilter, setTenantFilter] = useState<string>("ALL");
+  const [tenantFilter, setTenantFilter] = useState<string>(activeTenantCode || "ALL");
+
+  useEffect(() => {
+    if (activeTenantCode) {
+      setTenantFilter(activeTenantCode);
+    }
+  }, [activeTenantCode]);
+
+  const displayedUsers =
+    tenantFilter === "ALL"
+      ? users
+      : users.filter(
+          (u) =>
+            (u.tenant_code || "TENANT-UTAMA").toUpperCase() ===
+            tenantFilter.toUpperCase()
+        );
   const [customTenantMode, setCustomTenantMode] = useState(false);
   const [editCustomTenantMode, setEditCustomTenantMode] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);

@@ -6,7 +6,7 @@ import { createInertiaApp } from '@inertiajs/react';
 createInertiaApp({
     title: (title) => title ? `${title} : BanyuWening` : 'BanyuWening : Smart Aquaculture IoT Multi-Kolam & AI Decision Support',
     resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.tsx', { eager: true });
+        const pages = import.meta.glob<any>('./Pages/**/*.tsx', { eager: true });
         const page = pages[`./Pages/${name}.tsx`];
         if (!page) {
             throw new Error(`Page ./Pages/${name}.tsx not found.`);

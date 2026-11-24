@@ -305,9 +305,32 @@ export interface AlertItem {
   email_sent?: boolean;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
-  pond_name?: string;
+  pond_name?: string | null;
+  device_code?: string | null;
+  tenant_code?: string | null;
   channel_primary?: "WHATSAPP" | "TELEGRAM" | "EMAIL" | "LOCAL";
   watchdog_flag?: string | null;
+}
+
+export interface FleetDeviceSummary {
+  id: number;
+  device_code: string;
+  name: string;
+  pond_name: string;
+  tenant_code?: string | null;
+  tenant_name?: string | null;
+  firmware_version: string;
+  hardware_profile: string;
+  status: string;
+  transport_protocol?: string;
+  mode?: DeviceMode;
+  aerator_on?: boolean;
+  last_heartbeat_at?: string | null;
+  latest_reading?: SensorReading | null;
+  latest_prediction?: Pick<
+    PredictionResult,
+    "risk" | "p_aman" | "p_waspada" | "p_bahaya" | "timeframe" | "recommended_action"
+  > | null;
 }
 
 export interface DeviceInfo {
@@ -339,10 +362,16 @@ export interface ManagedDevice extends DeviceInfo {
   api_token_prefix: string | null;
   has_token: boolean;
   token_active: boolean;
+  plain_token?: string | null;
   token_rotated_at: string | null;
   token_last_used_at: string | null;
   last_heartbeat_at: string | null;
   ws_connected_at: string | null;
+  latest_reading?: SensorReading | null;
+  latest_prediction?: Pick<
+    PredictionResult,
+    "risk" | "p_aman" | "p_waspada" | "p_bahaya" | "timeframe" | "recommended_action"
+  > | null;
 }
 
 export type RealtimeTransportMode = "CONNECTING" | "WEBSOCKET" | "HTTP_FALLBACK";
@@ -382,16 +411,16 @@ export interface AeratorState {
   dailyDuration: string;
 }
 
-export interface LandingCapability {
+export type LandingCapability = {
   title: string;
   desc: string;
   tag: string;
-}
+};
 
-export interface LandingFaq {
+export type LandingFaq = {
   q: string;
   a: string;
-}
+};
 
 export interface LandingContentSettings {
   hero_tag: string;

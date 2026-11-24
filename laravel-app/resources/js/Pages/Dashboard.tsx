@@ -25,6 +25,8 @@ import {
   X,
   Rocket,
   Building2,
+  RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 
 import { StatusCard } from "@/Components/StatusCard";
@@ -61,6 +63,7 @@ import {
   type BackupItem,
   type SecurityStats,
   type ManagedDevice,
+  type FleetDeviceSummary,
   type Tenant,
   type MlPerformanceOverview,
   type OtaOverview,
@@ -98,17 +101,6 @@ type TabId =
   | "laporan-pemilik"
   | "ota-mandiri";
 
-interface TenantDeviceSummary {
-  id: number;
-  device_code: string;
-  name: string;
-  pond_name: string;
-  tenant_code?: string | null;
-  firmware_version: string;
-  hardware_profile: string;
-  status: string;
-}
-
 interface DashboardProps {
   user: User;
   currentReading: SensorReading;
@@ -116,7 +108,8 @@ interface DashboardProps {
   allReadings: SensorReading[];
   alerts: AlertItem[];
   device: DeviceInfo;
-  tenantDevices?: TenantDeviceSummary[];
+  tenantDevices?: FleetDeviceSummary[];
+  activeTenantCode?: string | null;
   activeDeviceCode?: string | null;
   aeratorState: AeratorState;
   users: User[];
@@ -140,6 +133,7 @@ export default function Dashboard({
   alerts: initialAlerts = [],
   device: propDevice,
   tenantDevices: initialTenantDevices = [],
+  activeTenantCode: propActiveTenantCode,
   activeDeviceCode: propActiveDeviceCode,
   aeratorState: initialAeratorState,
   users = [],
@@ -156,10 +150,8 @@ export default function Dashboard({
   const landingContent = initialLandingContent || pageProps.landingContent;
   const backups = initialBackups.length > 0 ? initialBackups : pageProps.backups || [];
   const securityStats = initialSecurityStats || pageProps.securityStats;
-  const tenantDevices: TenantDeviceSummary[] =
+  const tenantDevices: FleetDeviceSummary[] =
     initialTenantDevices.length > 0 ? initialTenantDevices : pageProps.tenantDevices || [];
-  const activeDeviceCode: string | null =
-    propActiveDeviceCode !== undefined ? propActiveDeviceCode : pageProps.activeDeviceCode || null;
   const managedDevices: ManagedDevice[] =
     initialDevices.length > 0 ? initialDevices : pageProps.devices || [];
   const tenants: Tenant[] =
@@ -212,6 +204,87 @@ export default function Dashboard({
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isControlModalOpen, setIsControlModalOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [tenantSubTab, setTenantSubTab] = useState<"tenants" | "devices">("tenants");
+  const [tenantDeviceSection, setTenantDeviceSection] = useState<"crud" | "ota">("crud");
+
+  const activeTenantCode: string =
+    propActiveTenantCode !== undefined && propActiveTenantCode !== null
+      ? propActiveTenantCode
+      : pageProps.activeTenantCode ||
+        (user.role === "ADMIN" ? "ALL" : user.tenant_code || "TENANT-UTAMA");
+
+  const activeDeviceCode: string =
+    propActiveDeviceCode !== undefined && propActiveDeviceCode !== null
+      ? propActiveDeviceCode
+      : pageProps.activeDeviceCode || "ALL";
+
+  const scopedTenantDevices: FleetDeviceSummary[] =
+    activeTenantCode !== "ALL"
+      ? tenantDevices.filter(
+          (td) =>
+            (td.tenant_code || "TENANT-UTAMA").toUpperCase() ===
+            activeTenantCode.toUpperCase()
+        )
+      : tenantDevices;
+
+  const activeTenantObj = tenants.find(
+    (t) => t.code.toUpperCase() === activeTenantCode.toUpperCase()
+  );
+
+  const scopeLabel =
+    activeTenantCode === "ALL"
+      ? "Semua Tenant (Agregasi Armada)"
+      : activeDeviceCode === "ALL"
+      ? `${activeTenantObj?.name || activeTenantCode} · Semua Alat (${scopedTenantDevices.length})`
+      : `${device.device_code} · ${device.pond_name}`;
+
+  const [aeratorTargetCode, setAeratorTargetCode] = useState<string>(
+    activeDeviceCode !== "ALL"
+      ? activeDeviceCode
+      : scopedTenantDevices[0]?.device_code || ""
+  );
+
+  useEffect(() => {
+    if (activeDeviceCode !== "ALL") {
+      setAeratorTargetCode(activeDeviceCode);
+    } else if (
+      scopedTenantDevices.length > 0 &&
+      !scopedTenantDevices.some((d) => d.device_code === aeratorTargetCode)
+    ) {
+      setAeratorTargetCode(scopedTenantDevices[0].device_code);
+    }
+  }, [activeDeviceCode, activeTenantCode, tenantDevices.length]);
+
+  const handleSelectScope = (
+    nextTenantCode: string,
+    nextDeviceCode: string = "ALL",
+    nextTab?: TabId,
+    nextSubTab?: "tenants" | "devices"
+  ) => {
+    if (nextTab) setActiveTab(nextTab);
+    if (nextSubTab) setTenantSubTab(nextSubTab);
+
+    const targetTab = nextTab || activeTab;
+    const query: Record<string, string> = {
+      tenant_code: nextTenantCode,
+      device_code:
+        nextTenantCode !== "ALL" && nextDeviceCode ? nextDeviceCode : "ALL",
+    };
+    if (targetTab) {
+      query.tab = targetTab;
+    }
+    if (
+      (nextTab === "manajemen-tenant" || targetTab === "manajemen-tenant") &&
+      (nextSubTab || tenantSubTab)
+    ) {
+      query.subtab = nextSubTab || tenantSubTab;
+    }
+
+    router.get("/dashboard", query, {
+      preserveScroll: true,
+      preserveState: true,
+    });
+  };
 
   const selectMobileTab = (tab: TabId) => {
     setActiveTab(tab);
@@ -232,10 +305,39 @@ export default function Dashboard({
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab");
+      const subTabParam = urlParams.get("subtab");
+      if (subTabParam === "ota") {
+        setTenantSubTab("devices");
+        setTenantDeviceSection("ota");
+      } else if (subTabParam === "devices") {
+        setTenantSubTab("devices");
+        setTenantDeviceSection("crud");
+      } else if (subTabParam === "tenants") {
+        setTenantSubTab("tenants");
+      }
       if (tabParam === "tenant" || tabParam === "manajemen-tenant" || tabParam === "tenants") {
         setActiveTab("manajemen-tenant");
+      } else if (tabParam === "ota-mandiri") {
+        if (hasPerm("manage_users")) {
+          setActiveTab("manajemen-tenant");
+          setTenantSubTab("devices");
+          setTenantDeviceSection("ota");
+        } else {
+          setActiveTab("ota-mandiri");
+        }
       } else if (tabParam === "users" || tabParam === "akun" || tabParam === "manajemen-akun") {
         setActiveTab("manajemen-akun");
+      } else if (
+        tabParam === "ringkasan" ||
+        tabParam === "grafik" ||
+        tabParam === "peringatan" ||
+        tabParam === "aerator" ||
+        tabParam === "prediksi" ||
+        tabParam === "ekspor" ||
+        tabParam === "dokumentasi" ||
+        tabParam === "laporan-pemilik"
+      ) {
+        setActiveTab(tabParam as TabId);
       }
     }
   }, []);
@@ -362,25 +464,29 @@ export default function Dashboard({
     action: "ON" | "OFF" | "AUTO",
     durationMin: number
   ): Promise<boolean> => {
+    const resolvedTargetDevice =
+      activeDeviceCode !== "ALL" && activeDeviceCode !== "BELUM-TERHUBUNG"
+        ? activeDeviceCode
+        : aeratorTargetCode ||
+          scopedTenantDevices[0]?.device_code ||
+          (device.device_code !== "BELUM-TERHUBUNG" && device.device_code !== "SEMUA-TENANT"
+            ? device.device_code
+            : undefined);
+
     return new Promise((resolve) => {
       router.post(
         "/dashboard/aerator",
         {
           action,
           duration_minutes: durationMin,
-          device_code:
-            activeDeviceCode && activeDeviceCode !== "BELUM-TERHUBUNG"
-              ? activeDeviceCode
-              : device.device_code !== "BELUM-TERHUBUNG"
-              ? device.device_code
-              : undefined,
+          device_code: resolvedTargetDevice,
         },
         {
           preserveScroll: true,
           onSuccess: () => {
             setAeratorState({
               isOn: action === "ON" ? true : action === "OFF" ? false : aeratorState.isOn,
-              mode: action,
+              mode: action === "AUTO" ? "AUTO" : "MANUAL",
               dailyDuration: aeratorState.dailyDuration,
             });
             resolve(true);
@@ -572,8 +678,8 @@ export default function Dashboard({
               </button>
             )}
 
-            {/* Update Firmware Per Alat Mandiri (Peternak Self-OTA) */}
-            {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+            {/* Kelola Alat IoT & Firmware OTA (Khusus Non-Admin yang Punya Izin Update Firmware) */}
+            {hasPerm("update_device_firmware") && !hasPerm("manage_users") && (
               <button
                 onClick={() => setActiveTab("ota-mandiri")}
                 className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
@@ -581,11 +687,11 @@ export default function Dashboard({
                     ? "bg-brand text-brand-ink font-semibold"
                     : "text-ink hover:bg-surface-2"
                 }`}
-                title="Update Firmware Per Alat IoT Saya"
+                title="Kelola Alat IoT & Update Firmware Per Alat"
               >
                 <span className="flex items-center gap-2.5 min-w-0">
-                  <Rocket className="w-4 h-4 shrink-0" />
-                  <span className="truncate whitespace-nowrap">Update Firmware Per Alat</span>
+                  <Cpu className="w-4 h-4 shrink-0" />
+                  <span className="truncate whitespace-nowrap">Kelola Alat IoT</span>
                 </span>
                 {tenantDevices.length > 0 && (
                   <span
@@ -608,32 +714,6 @@ export default function Dashboard({
                   Menu Super Admin
                 </div>
 
-                {(hasPerm("view_docs_api") || hasPerm("update_device_firmware")) && (
-                  <button
-                    onClick={() => setActiveTab("ota-mandiri")}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                      activeTab === "ota-mandiri"
-                        ? "bg-brand text-brand-ink font-semibold"
-                        : "text-ink hover:bg-surface-2"
-                    }`}
-                    title="Update Firmware ESP32 Per Alat IoT, Token Unik & Simulator OTA"
-                  >
-                    <span className="flex items-center gap-2.5 min-w-0">
-                      <Rocket className="w-4 h-4 shrink-0" />
-                      <span className="truncate whitespace-nowrap">Update Firmware Per Alat</span>
-                    </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
-                        activeTab === "ota-mandiri"
-                          ? "bg-brand-ink/15 text-brand-ink"
-                          : "bg-brand/10 text-brand"
-                      }`}
-                    >
-                      {managedDevices.length || tenantDevices.length || 1} Alat
-                    </span>
-                  </button>
-                )}
-
                 {hasPerm("view_docs_api") && (
                   <button
                     onClick={() => setActiveTab("dokumentasi")}
@@ -650,29 +730,70 @@ export default function Dashboard({
                 )}
 
                 {hasPerm("manage_users") && (
-                  <button
-                    onClick={() => setActiveTab("manajemen-tenant")}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
-                      activeTab === "manajemen-tenant"
-                        ? "bg-brand text-brand-ink font-semibold"
-                        : "text-ink hover:bg-surface-2"
-                    }`}
-                    title="Kelola Mitra Multi-Tenant Tambak & Alokasi Node IoT"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Building2 className="w-4 h-4 shrink-0" />
-                      <span className="truncate whitespace-nowrap">Mitra Multi-Tenant</span>
-                    </div>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => {
+                        setTenantSubTab("tenants");
+                        setTenantDeviceSection("crud");
+                        setActiveTab("manajemen-tenant");
+                      }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-left text-[13px] font-medium transition-colors cursor-pointer group ${
                         activeTab === "manajemen-tenant"
-                          ? "bg-brand-ink/20 text-brand-ink"
-                          : "bg-brand/10 text-brand"
+                          ? "bg-brand text-brand-ink font-semibold"
+                          : "text-ink hover:bg-surface-2"
                       }`}
+                      title="Kelola Mitra Multi-Tenant Tambak & Alokasi Node IoT"
                     >
-                      {tenants.length} Tenant
-                    </span>
-                  </button>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Building2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate whitespace-nowrap">Mitra Multi-Tenant</span>
+                      </div>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
+                          activeTab === "manajemen-tenant"
+                            ? "bg-brand-ink/20 text-brand-ink"
+                            : "bg-brand/10 text-brand"
+                        }`}
+                      >
+                        {tenants.length} Tenant
+                      </span>
+                    </button>
+
+                    <div className="pl-5 ml-3 border-l border-line space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTenantSubTab("tenants");
+                          setTenantDeviceSection("crud");
+                          setActiveTab("manajemen-tenant");
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-left text-[12px] transition-colors cursor-pointer ${
+                          activeTab === "manajemen-tenant" && tenantSubTab === "tenants"
+                            ? "bg-brand/15 text-brand font-semibold"
+                            : "text-muted hover:text-ink hover:bg-surface-2"
+                        }`}
+                      >
+                        <span className="truncate">Daftar Mitra Tenant</span>
+                        <span className="text-[10px] font-mono">{tenants.length}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTenantSubTab("devices");
+                          setTenantDeviceSection("crud");
+                          setActiveTab("manajemen-tenant");
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[5px] text-left text-[12px] transition-colors cursor-pointer ${
+                          activeTab === "manajemen-tenant" && tenantSubTab === "devices"
+                            ? "bg-brand/15 text-brand font-semibold"
+                            : "text-muted hover:text-ink hover:bg-surface-2"
+                        }`}
+                      >
+                        <span className="truncate">Kelola Alat IoT</span>
+                        <span className="text-[10px] font-mono">{scopedTenantDevices.length}</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {hasPerm("manage_users") && (
@@ -827,7 +948,7 @@ export default function Dashboard({
         {/* Mobile Header (56px) */}
         <header className="md:hidden h-14 border-b border-line bg-surface px-3 sm:px-4 flex items-center justify-between gap-2 sticky top-0 z-40">
           <div className="flex items-center gap-2 min-w-0">
-            <Link href="/" aria-label="BanyuWening" className="shrink-0">
+            <Link href="/" aria-label="BanyuWening" className="shrink-0 min-h-[44px] inline-flex items-center">
               <img
                 src={isDarkMode ? "/brand/logogram-gelap.svg" : "/brand/logogram.svg"}
                 alt=""
@@ -838,7 +959,7 @@ export default function Dashboard({
             <button
               type="button"
               onClick={() => selectMobileTab("profil")}
-              className="text-left min-w-0 cursor-pointer"
+              className="text-left min-w-0 min-h-[44px] flex flex-col justify-center cursor-pointer"
               title="Buka Pengaturan Profil & 2FA"
             >
               <div className="text-[13px] font-semibold text-ink leading-tight truncate max-w-[140px]">
@@ -855,7 +976,7 @@ export default function Dashboard({
               <button
                 type="button"
                 onClick={() => setIsControlModalOpen(true)}
-                className="min-h-[40px] px-2.5 rounded-[6px] border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                className="min-h-[44px] px-2.5 rounded-[6px] border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
                 title="Kendali Cepat Aerator"
               >
                 <Power className="w-3.5 h-3.5" />
@@ -866,7 +987,7 @@ export default function Dashboard({
             <button
               type="button"
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="min-h-[40px] min-w-[40px] rounded-[6px] border border-line text-muted hover:text-ink inline-flex items-center justify-center cursor-pointer"
+              className="min-h-[44px] min-w-[44px] rounded-[6px] border border-line text-muted hover:text-ink inline-flex items-center justify-center cursor-pointer"
               aria-label="Toggle tema gelap/terang"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-[#F2C46B]" /> : <Moon className="w-4 h-4" />}
@@ -877,7 +998,7 @@ export default function Dashboard({
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-expanded={isMobileMenuOpen}
               aria-controls="dashboard-mobile-drawer"
-              className={`min-h-[40px] px-2.5 rounded-[6px] border text-[12px] font-semibold inline-flex items-center gap-1 cursor-pointer ${
+              className={`min-h-[44px] px-2.5 rounded-[6px] border text-[12px] font-semibold inline-flex items-center gap-1 cursor-pointer ${
                 isMobileMenuOpen
                   ? "bg-brand text-brand-ink border-brand"
                   : "bg-surface-2 text-ink border-line"
@@ -1011,15 +1132,15 @@ export default function Dashboard({
                       <span className="truncate">Laporan Kolam</span>
                     </button>
                   )}
-                  {hasPerm("update_device_firmware") && !hasPerm("view_docs_api") && (
+                  {hasPerm("update_device_firmware") && !hasPerm("manage_users") && (
                     <button
                       onClick={() => selectMobileTab("ota-mandiri")}
                       className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
                         activeTab === "ota-mandiri" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
                       }`}
                     >
-                      <Rocket className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Update Firmware Per Alat</span>
+                      <Cpu className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Kelola Alat IoT</span>
                     </button>
                   )}
                 </div>
@@ -1032,17 +1153,6 @@ export default function Dashboard({
                     Menu Super Admin
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(hasPerm("view_docs_api") || hasPerm("update_device_firmware")) && (
-                      <button
-                        onClick={() => selectMobileTab("ota-mandiri")}
-                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center gap-2 border text-left ${
-                          activeTab === "ota-mandiri" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
-                        }`}
-                      >
-                        <Rocket className="w-4 h-4 shrink-0" />
-                        <span>Update Firmware Per Alat (OTA)</span>
-                      </button>
-                    )}
                     {hasPerm("view_docs_api") && (
                       <button
                         onClick={() => selectMobileTab("dokumentasi")}
@@ -1055,20 +1165,48 @@ export default function Dashboard({
                       </button>
                     )}
                     {hasPerm("manage_users") && (
-                      <button
-                        onClick={() => selectMobileTab("manajemen-tenant")}
-                        className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center justify-between gap-2 border text-left ${
-                          activeTab === "manajemen-tenant" ? "bg-brand text-brand-ink border-brand font-semibold" : "bg-surface-2 text-ink border-line"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Building2 className="w-4 h-4 shrink-0" />
-                          <span className="truncate">Mitra Multi-Tenant</span>
-                        </div>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-ink/15 font-mono font-bold">
-                          {tenants.length}
-                        </span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setTenantSubTab("tenants");
+                            setTenantDeviceSection("crud");
+                            selectMobileTab("manajemen-tenant");
+                          }}
+                          className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center justify-between gap-2 border text-left ${
+                            activeTab === "manajemen-tenant" && tenantSubTab === "tenants"
+                              ? "bg-brand text-brand-ink border-brand font-semibold"
+                              : "bg-surface-2 text-ink border-line"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Building2 className="w-4 h-4 shrink-0" />
+                            <span className="truncate">Mitra Multi-Tenant (Daftar)</span>
+                          </div>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-ink/15 font-mono font-bold">
+                            {tenants.length}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTenantSubTab("devices");
+                            setTenantDeviceSection("crud");
+                            selectMobileTab("manajemen-tenant");
+                          }}
+                          className={`min-h-[44px] px-3 rounded-[6px] text-[12.5px] font-medium flex items-center justify-between gap-2 border text-left ${
+                            activeTab === "manajemen-tenant" && tenantSubTab === "devices"
+                              ? "bg-brand text-brand-ink border-brand font-semibold"
+                              : "bg-surface-2 text-ink border-line"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Cpu className="w-4 h-4 shrink-0" />
+                            <span className="truncate">Kelola Alat IoT (Per Tenant)</span>
+                          </div>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-ink/15 font-mono font-bold">
+                            {scopedTenantDevices.length}
+                          </span>
+                        </button>
+                      </>
                     )}
                     {hasPerm("manage_users") && (
                       <button
@@ -1150,7 +1288,7 @@ export default function Dashboard({
         )}
 
         {/* Mobile Navigation Sub-Bar (Horizontal Scrollable) */}
-        <div className="md:hidden flex overflow-x-auto no-scrollbar border-b border-line bg-surface px-3 py-2 gap-1.5 sticky top-14 z-20 text-[12px] font-medium">
+        <div className="md:hidden flex items-center overflow-x-auto no-scrollbar border-b border-line bg-surface px-3 py-1.5 gap-1.5 text-[12px] font-medium [&_button]:min-h-[44px] [&_button]:inline-flex [&_button]:items-center">
           <button
             onClick={() => setActiveTab("profil")}
             className={`min-h-[38px] px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
@@ -1253,7 +1391,7 @@ export default function Dashboard({
             </button>
           )}
 
-          {(hasPerm("update_device_firmware") || hasPerm("view_docs_api")) && (
+          {hasPerm("update_device_firmware") && !hasPerm("manage_users") && (
             <button
               onClick={() => setActiveTab("ota-mandiri")}
               className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
@@ -1262,7 +1400,7 @@ export default function Dashboard({
                   : "bg-surface-2 text-ink"
               }`}
             >
-              Update Firmware Per Alat
+              Kelola Alat IoT
             </button>
           )}
 
@@ -1280,16 +1418,36 @@ export default function Dashboard({
           )}
 
           {hasPerm("manage_users") && (
-            <button
-              onClick={() => setActiveTab("manajemen-tenant")}
-              className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer ${
-                activeTab === "manajemen-tenant"
-                  ? "bg-brand text-brand-ink font-semibold"
-                  : "bg-surface-2 text-ink"
-              }`}
-            >
-              Mitra Tenant ({tenants.length})
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setTenantSubTab("tenants");
+                  setTenantDeviceSection("crud");
+                  setActiveTab("manajemen-tenant");
+                }}
+                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                  activeTab === "manajemen-tenant" && tenantSubTab === "tenants"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "bg-surface-2 text-ink"
+                }`}
+              >
+                Mitra Tenant ({tenants.length})
+              </button>
+              <button
+                onClick={() => {
+                  setTenantSubTab("devices");
+                  setTenantDeviceSection("crud");
+                  setActiveTab("manajemen-tenant");
+                }}
+                className={`px-3 py-1.5 rounded-[6px] whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                  activeTab === "manajemen-tenant" && tenantSubTab === "devices"
+                    ? "bg-brand text-brand-ink font-semibold"
+                    : "bg-surface-2 text-ink"
+                }`}
+              >
+                Alat IoT ({scopedTenantDevices.length})
+              </button>
+            </>
           )}
 
           {hasPerm("manage_users") && (
@@ -1373,25 +1531,29 @@ export default function Dashboard({
 
         {/* Content Body */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1280px] w-full mx-auto">
-          {/* Status Bar Operasional Kolam */}
-          <div className="mb-5 sm:mb-6 p-3 sm:p-3.5 bg-surface border border-line rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11.5px] sm:text-[12px] shadow-2xs">
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Status Bar Operasional Kolam (2-Tier Scope: Tenant -> Alat IoT) */}
+          <div className="mb-5 sm:mb-6 p-3 sm:px-4 sm:py-3 bg-surface border border-line rounded-[6px] flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12px] shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2 shrink-0 min-w-0">
               <span className="relative flex h-2.5 w-2.5 shrink-0">
                 {device.status === "ONLINE" && (
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aman opacity-75" />
                 )}
                 <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${device.status === "ONLINE" ? "bg-aman" : "bg-muted"}`} />
               </span>
-              <span className="font-semibold text-ink">
-                {device.status === "ONLINE" ? "ESP32 Terhubung:" : "Status ESP32:"}
+              <span className="font-semibold text-ink whitespace-nowrap">
+                {device.status === "ONLINE"
+                  ? activeDeviceCode === "ALL"
+                    ? "Armada Terhubung:"
+                    : "ESP32 Terhubung:"
+                  : "Status ESP32:"}
               </span>
-              <span className="text-muted">
+              <span className="text-muted whitespace-nowrap">
                 {device.status === "ONLINE"
                   ? `${device.transport_protocol || "HTTP"} · Realtime`
-                  : "Standby (Menunggu Telemetri)"}
+                  : "Standby"}
               </span>
               <span
-                className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold ${
+                className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold whitespace-nowrap ${
                   realtimeMode === "WEBSOCKET"
                     ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                     : realtimeMode === "HTTP_FALLBACK"
@@ -1407,55 +1569,105 @@ export default function Dashboard({
                   : "Menghubungkan WS..."}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-muted min-w-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (hasPerm("manage_users")) {
-                    setActiveTab("manajemen-tenant");
-                  }
-                }}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-brand/10 border border-brand/25 font-mono text-[11px] text-brand font-semibold shadow-2xs ${
-                  hasPerm("manage_users") ? "cursor-pointer hover:bg-brand/20 transition-colors" : ""
-                }`}
-                title={hasPerm("manage_users") ? "Buka Manajemen Mitra Multi-Tenant" : undefined}
-              >
-                <Building2 className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {user.role === "ADMIN"
-                    ? `Super Admin · ${tenants.length} Tenant Terdaftar`
-                    : user.tenant_code || "TENANT-UTAMA"}
-                </span>
-              </button>
 
-              {tenantDevices.length > 0 ? (
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] text-muted hidden sm:inline font-medium">Alat Aktif:</span>
+            <div
+              className={`grid grid-cols-1 ${
+                activeTenantCode !== "ALL"
+                  ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                  : "sm:grid-cols-[minmax(0,1fr)_auto]"
+              } xl:flex xl:items-center gap-2 w-full xl:w-auto min-w-0 text-muted`}
+            >
+              {user.role === "ADMIN" || tenants.length > 1 || hasPerm("manage_users") ? (
+                <div className="flex items-center min-h-[44px] sm:min-h-[38px] bg-surface-2 border border-line hover:border-brand/50 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 rounded-[6px] pl-2.5 pr-2 transition-colors min-w-0 w-full xl:w-[250px] 2xl:w-[275px]">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted shrink-0 min-w-[52px] sm:min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-brand shrink-0" />
+                    <span>Tenant:</span>
+                  </span>
                   <select
-                    value={activeDeviceCode || device.device_code}
-                    onChange={(e) =>
-                      router.get(
-                        "/dashboard",
-                        { device_code: e.target.value },
-                        { preserveScroll: true }
-                      )
-                    }
-                    className="h-8.5 px-2.5 bg-surface-2 border border-line hover:border-brand/50 rounded-[6px] font-mono text-[11.5px] font-semibold text-ink cursor-pointer max-w-[240px] transition-colors focus:ring-2 focus:ring-brand/20"
-                    aria-label="Pilih Alat IoT Aktif"
+                    value={activeTenantCode}
+                    onChange={(e) => handleSelectScope(e.target.value, "ALL")}
+                    className="appearance-none bg-transparent border-0 py-1 pl-1.5 pr-6 w-full min-w-0 truncate font-mono text-[11.5px] font-semibold text-ink cursor-pointer focus:outline-hidden"
+                    aria-label="Pilih Tenant Aktif"
                   >
-                    {tenantDevices.map((td) => (
-                      <option key={td.id} value={td.device_code}>
-                        {td.device_code} · {td.pond_name}
-                        {user.role === "ADMIN" && td.tenant_code ? ` (${td.tenant_code})` : ""}
+                    <option value="ALL" className="bg-surface text-ink">
+                      Semua Tenant ({tenants.length} Mitra · {tenantDevices.length} Alat)
+                    </option>
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.code} className="bg-surface text-ink">
+                        {t.code} · {t.name} ({t.devices_count ?? 0} alat)
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0 pointer-events-none -ml-4" />
                 </div>
               ) : (
-                <div className="text-muted truncate">
-                  Unit: <strong className="text-ink">{user.pond_name || device.pond_name}</strong>
+                <div className="inline-flex items-center gap-1.5 px-2.5 min-h-[44px] sm:min-h-[38px] rounded-[6px] bg-brand/10 border border-brand/25 font-mono text-[11px] text-brand font-semibold">
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{user.tenant_code || "TENANT-UTAMA"}</span>
                 </div>
               )}
+
+              {activeTenantCode !== "ALL" && (
+                scopedTenantDevices.length > 0 ? (
+                  <div className="flex items-center min-h-[44px] sm:min-h-[38px] bg-surface-2 border border-line hover:border-brand/50 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 rounded-[6px] pl-2.5 pr-2 transition-colors min-w-0 w-full xl:w-[220px] 2xl:w-[245px]">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted shrink-0 min-w-[52px] sm:min-w-0">
+                      <Cpu className="w-3.5 h-3.5 text-brand shrink-0" />
+                      <span>Alat:</span>
+                    </span>
+                    <select
+                      value={activeDeviceCode}
+                      onChange={(e) => handleSelectScope(activeTenantCode, e.target.value)}
+                      className="appearance-none bg-transparent border-0 py-1 pl-1.5 pr-6 w-full min-w-0 truncate font-mono text-[11.5px] font-semibold text-ink cursor-pointer focus:outline-hidden"
+                      aria-label="Pilih Alat IoT Tenant Ini"
+                    >
+                      <option value="ALL" className="bg-surface text-ink">
+                        Semua Alat Tenant ({scopedTenantDevices.length})
+                      </option>
+                      {scopedTenantDevices.map((td) => (
+                        <option key={td.id} value={td.device_code} className="bg-surface text-ink">
+                          {td.device_code} · {td.pond_name} [{td.status}]
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0 pointer-events-none -ml-4" />
+                  </div>
+                ) : (
+                  hasPerm("manage_users") && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSelectScope(activeTenantCode, "ALL", "manajemen-tenant", "devices")
+                      }
+                      className="min-h-[44px] sm:min-h-[38px] px-3 rounded-[6px] border border-dashed border-brand/40 bg-brand/5 hover:bg-brand/10 text-brand text-[11.5px] font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap shrink-0"
+                    >
+                      + Alokasikan Alat ke Tenant Ini
+                    </button>
+                  )
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.reload({
+                    only: [
+                      "currentReading",
+                      "prediction",
+                      "allReadings",
+                      "alerts",
+                      "device",
+                      "tenantDevices",
+                      "devices",
+                      "tenants",
+                    ],
+                  })
+                }
+                className="min-h-[44px] sm:min-h-[38px] px-3 rounded-[6px] border border-line bg-surface-2 hover:border-brand/50 text-ink text-[11.5px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+                title="Muat ulang data telemetry terkini"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Segarkan</span>
+              </button>
             </div>
           </div>
 
@@ -1469,12 +1681,21 @@ export default function Dashboard({
                 initialOverview={otaOverview}
                 realtimeConfig={realtimeConfig}
                 users={users}
+                activeTenantCode={activeTenantCode}
+                activeDeviceCode={activeDeviceCode}
                 isTenantMode={user.role !== "ADMIN" && !hasPerm("view_docs_api")}
               />
             )}
 
           {/* TAB: LAPORAN PEMILIK */}
-          {activeTab === "laporan-pemilik" && hasPerm("view_owner_report") && <PemilikProcessedData />}
+          {activeTab === "laporan-pemilik" && hasPerm("view_owner_report") && (
+            <PemilikProcessedData
+              currentReading={currentReading}
+              prediction={prediction}
+              aeratorState={aeratorState}
+              scopeLabel={scopeLabel}
+            />
+          )}
 
           {/* TAB: DOKUMENTASI LENGKAP (Termasuk RBAC Granular, OTA ESP32, RF MLOps, Swagger/AsyncAPI & Token Alat) */}
           {activeTab === "dokumentasi" && hasPerm("view_docs_api") && (
@@ -1489,13 +1710,31 @@ export default function Dashboard({
             />
           )}
 
-          {/* TAB: MANAJEMEN TENANT (Multi-Tenant Tambak & Alokasi Node IoT) */}
+          {/* TAB: MANAJEMEN TENANT (Multi-Tenant Tambak, Kelola Alat IoT & OTA Firmware) */}
           {activeTab === "manajemen-tenant" && hasPerm("manage_users") && (
             <SuperAdminTenantManagement
               tenants={tenants}
               users={users}
               devices={managedDevices}
-              onFilterUsersByTenant={() => setActiveTab("manajemen-akun")}
+              activeTenantCode={activeTenantCode}
+              activeDeviceCode={activeDeviceCode}
+              otaOverview={otaOverview}
+              realtimeConfig={realtimeConfig}
+              canManageOta={hasPerm("update_device_firmware") || hasPerm("view_docs_api")}
+              isTenantOtaMode={user.role !== "ADMIN" && !hasPerm("view_docs_api")}
+              initialSubTab={tenantSubTab}
+              initialDeviceSection={tenantDeviceSection}
+              onSubTabChange={setTenantSubTab}
+              onSelectTenantScope={(tenantCode, deviceCode, navigateToMonitoring) =>
+                handleSelectScope(
+                  tenantCode,
+                  deviceCode || "ALL",
+                  navigateToMonitoring ? "ringkasan" : "manajemen-tenant"
+                )
+              }
+              onFilterUsersByTenant={(tenantCode) =>
+                handleSelectScope(tenantCode, "ALL", "manajemen-akun")
+              }
             />
           )}
 
@@ -1505,6 +1744,7 @@ export default function Dashboard({
               users={users}
               tenants={tenants}
               devices={managedDevices}
+              activeTenantCode={activeTenantCode}
             />
           )}
 
@@ -1598,13 +1838,15 @@ export default function Dashboard({
 
               {/* Grid 4 Kartu Parameter + Level Air + Ringkasan Prediksi */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-[14px] font-semibold text-muted uppercase tracking-wider">
-                    Parameter Fisik Kolam
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h2 className="text-[13px] sm:text-[14px] font-semibold text-muted uppercase tracking-wider">
+                    {activeDeviceCode === "ALL"
+                      ? "Parameter Fisik Kolam (Rata-rata)"
+                      : "Parameter Fisik Kolam"}
                   </h2>
                   <button
                     onClick={() => setActiveTab("grafik")}
-                    className="text-[13px] text-brand hover:underline font-medium cursor-pointer"
+                    className="min-h-[44px] sm:min-h-[36px] inline-flex items-center text-[13px] text-brand hover:underline font-medium cursor-pointer"
                   >
                     Buka grafik lengkap →
                   </button>
@@ -1612,7 +1854,7 @@ export default function Dashboard({
 
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <ParameterCard
-                    label="pH"
+                    label={activeDeviceCode === "ALL" ? "pH (Rata-rata)" : "pH"}
                     value={currentReading ? currentReading.ph : "-"}
                     unit=""
                     status={paramStatus.ph}
@@ -1621,7 +1863,7 @@ export default function Dashboard({
                   />
 
                   <ParameterCard
-                    label="Suhu"
+                    label={activeDeviceCode === "ALL" ? "Suhu (Rata-rata)" : "Suhu"}
                     value={currentReading ? currentReading.temperature_c : "-"}
                     unit="°C"
                     status={paramStatus.temperature_c}
@@ -1630,7 +1872,7 @@ export default function Dashboard({
                   />
 
                   <ParameterCard
-                    label="TDS (Zat Terlarut)"
+                    label={activeDeviceCode === "ALL" ? "TDS (Rata-rata)" : "TDS (Zat Terlarut)"}
                     value={currentReading ? currentReading.tds_ppm : "-"}
                     unit="ppm"
                     status={paramStatus.tds_ppm}
@@ -1639,7 +1881,7 @@ export default function Dashboard({
                   />
 
                   <ParameterCard
-                    label="Kekeruhan"
+                    label={activeDeviceCode === "ALL" ? "Kekeruhan (Rata-rata)" : "Kekeruhan"}
                     value={currentReading ? currentReading.turbidity_ntu : "-"}
                     unit="NTU"
                     status={paramStatus.turbidity_ntu}
@@ -1648,13 +1890,13 @@ export default function Dashboard({
                   />
 
                   {/* Level Air */}
-                  <div className="bg-surface border border-line rounded-[6px] p-4 flex flex-col justify-between h-full transition-shadow hover:shadow-xs">
+                  <div className="bg-surface border border-line rounded-[6px] p-3.5 sm:p-4 flex flex-col justify-between h-full transition-shadow hover:shadow-xs min-w-0">
                     <div>
-                      <div className="text-[13px] leading-[18px] font-medium text-muted mb-1">
+                      <div className="text-[12px] sm:text-[13px] leading-[18px] font-medium text-muted mb-1 truncate">
                         Level Air Kolam
                       </div>
                       <div className="flex items-baseline gap-1.5 mb-2">
-                        <span className="text-[34px] md:text-[40px] leading-[1.1] font-semibold tnum text-ink">
+                        <span className="text-[22px] sm:text-[32px] md:text-[38px] leading-[1.1] font-semibold tnum text-ink">
                           {currentReading
                             ? currentReading.water_level === "NORMAL"
                               ? "Aman"
@@ -1680,22 +1922,22 @@ export default function Dashboard({
                         </StatusBadge>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-2.5 border-t border-line/50 text-[11px] text-muted">
-                      <span>Sensor Float Switch</span>
+                    <div className="flex flex-wrap items-center justify-between gap-1 pt-2.5 border-t border-line/50 text-[11px] text-muted">
+                      <span>Float Switch</span>
                       <span className="font-semibold text-ink">GPIO 18</span>
                     </div>
                   </div>
 
                   {/* Card Quick Prediction Summary */}
-                  <div className="bg-surface border border-line rounded-[6px] p-4 flex flex-col justify-between h-full transition-shadow hover:shadow-xs">
+                  <div className="bg-surface border border-line rounded-[6px] p-3.5 sm:p-4 flex flex-col justify-between h-full transition-shadow hover:shadow-xs min-w-0">
                     <div>
-                      <div className="text-[13px] leading-[18px] font-medium text-muted mb-1">
+                      <div className="text-[12px] sm:text-[13px] leading-[18px] font-medium text-muted mb-1 truncate">
                         Prediksi Risiko (1–3 Jam)
                       </div>
                       {prediction ? (
                         <>
                           <div className="flex items-baseline gap-1.5 mb-2">
-                            <span className="text-[34px] md:text-[40px] leading-[1.1] font-semibold text-aman">
+                            <span className="text-[22px] sm:text-[32px] md:text-[38px] leading-[1.1] font-semibold text-aman">
                               {prediction.risk === "AMAN" ? "Aman" : prediction.risk === "WASPADA" ? "Waspada" : "Bahaya"}
                             </span>
                           </div>
@@ -1708,7 +1950,7 @@ export default function Dashboard({
                       ) : (
                         <>
                           <div className="flex items-baseline gap-1.5 mb-2">
-                            <span className="text-[34px] md:text-[40px] leading-[1.1] font-semibold text-muted">
+                            <span className="text-[22px] sm:text-[32px] md:text-[38px] leading-[1.1] font-semibold text-muted">
                               Standby
                             </span>
                           </div>
@@ -1720,17 +1962,17 @@ export default function Dashboard({
                         </>
                       )}
                     </div>
-                    <div className="flex items-center justify-between pt-2.5 border-t border-line/50 text-[11px] text-muted">
-                      <span>Model Random Forest</span>
+                    <div className="flex flex-wrap items-center justify-between gap-1 pt-2.5 border-t border-line/50 text-[11px] text-muted">
+                      <span>Random Forest</span>
                       {hasPerm("view_predictions") ? (
                         <button
                           onClick={() => setActiveTab("prediksi")}
-                          className="font-medium text-brand hover:underline cursor-pointer"
+                          className="min-h-[44px] sm:min-h-[36px] inline-flex items-center font-medium text-brand hover:underline cursor-pointer"
                         >
-                          Lihat rincian →
+                          Rincian →
                         </button>
                       ) : (
-                        <span className="text-muted">Inferensi Aktif</span>
+                        <span className="text-muted">Aktif</span>
                       )}
                     </div>
                   </div>
@@ -1738,8 +1980,8 @@ export default function Dashboard({
               </div>
 
               {/* Baris Status Aerator & Perangkat */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <div className="md:col-span-2 bg-surface border border-line rounded-[6px] p-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
+                <div className="md:col-span-2 bg-surface border border-line rounded-[6px] p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[15px] font-semibold text-ink">Aerator Kolam</h3>
                     <div className="flex items-center gap-2">
@@ -1777,7 +2019,7 @@ export default function Dashboard({
                     ) : (
                       <button
                         onClick={() => setIsControlModalOpen(true)}
-                        className="h-10 px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 cursor-pointer"
+                        className="min-h-[44px] px-4 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Power className="w-3.5 h-3.5" />
                         <span>Atur Aerator</span>
@@ -1787,23 +2029,207 @@ export default function Dashboard({
                 </div>
 
                 {/* Kartu Perangkat */}
-                <div className="bg-surface border border-line rounded-[6px] p-5">
+                <div className="bg-surface border border-line rounded-[6px] p-4 sm:p-5">
                   <h3 className="text-[15px] font-semibold text-ink mb-3">
-                    Status Node ESP32
+                    {activeDeviceCode === "ALL" ? "Ringkasan Armada Scope" : "Status Node ESP32"}
                   </h3>
                   <div className="mb-2">
                     <StatusBadge level={device.status === "ONLINE" ? "aman" : "netral"}>
-                      {device.status === "ONLINE" ? "Online · WiFi Kolam" : "Standby · Siap Menerima Data"}
+                      {device.status === "ONLINE" ? "Online · Terhubung" : "Standby · Siap Menerima Data"}
                     </StatusBadge>
                   </div>
                   <p className="text-[12px] text-muted leading-[18px]">
                     Firmware: <strong>{device.firmware_version || "v1.4.2-failsafe"}</strong>
                     <br />
-                    ID: <strong>{device.device_code || "BANYUWENING-01"}</strong>
+                    Scope: <strong>{device.device_code || "BANYUWENING-01"}</strong>
                     <br />
-                    Protokol: <strong>MQTT TLS (Port 8883)</strong>
+                    Protokol: <strong>{device.transport_protocol || "MQTT / HTTP"}</strong>
                   </p>
                 </div>
+              </div>
+
+              {/* Log Telemetri Armada Node IoT dalam Scope */}
+              <div className="bg-surface border border-line rounded-[6px] overflow-hidden">
+                <div className="px-4 py-3 border-b border-line flex flex-wrap items-center justify-between gap-2 bg-surface-2/60">
+                  <div>
+                    <h3 className="text-[14px] font-semibold text-ink">
+                      Log Telemetri Armada Node ({scopedTenantDevices.length} Alat)
+                    </h3>
+                    <p className="text-[11.5px] text-muted">
+                      Scope aktif:{" "}
+                      <strong className="text-ink">
+                        {activeTenantCode === "ALL" ? "Semua Tenant" : activeTenantCode}
+                      </strong>
+                    </p>
+                  </div>
+                  {hasPerm("manage_users") && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSelectScope(
+                          activeTenantCode,
+                          "ALL",
+                          "manajemen-tenant",
+                          "devices"
+                        )
+                      }
+                      className="min-h-[44px] sm:min-h-[38px] px-3 rounded-[6px] border border-brand/30 bg-brand/10 hover:bg-brand/15 text-brand text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span>Kelola Alat →</span>
+                    </button>
+                  )}
+                </div>
+
+                {scopedTenantDevices.length === 0 ? (
+                  <div className="p-6 text-center text-[13px] text-muted">
+                    Belum ada node sensor ESP32 yang dialokasikan pada scope ini.
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop Table (>= lg) */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-[12.5px]">
+                        <thead>
+                          <tr className="border-b border-line bg-surface-2/40 text-muted text-[11px] uppercase tracking-wider">
+                            <th className="py-2.5 px-4 font-semibold">Node / Kolam</th>
+                            <th className="py-2.5 px-3 font-semibold">Tenant</th>
+                            <th className="py-2.5 px-3 font-semibold">Status</th>
+                            <th className="py-2.5 px-3 font-semibold">pH</th>
+                            <th className="py-2.5 px-3 font-semibold">Suhu</th>
+                            <th className="py-2.5 px-3 font-semibold">TDS</th>
+                            <th className="py-2.5 px-3 font-semibold">Kekeruhan</th>
+                            <th className="py-2.5 px-3 font-semibold">Aerator</th>
+                            <th className="py-2.5 px-4 font-semibold text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-line">
+                          {scopedTenantDevices.map((td) => {
+                            const lr = td.latest_reading;
+                            const isSelected = activeDeviceCode === td.device_code;
+                            return (
+                              <tr
+                                key={td.id}
+                                className={`hover:bg-surface-2/50 transition-colors ${
+                                  isSelected ? "bg-brand/5" : ""
+                                }`}
+                              >
+                                <td className="py-2.5 px-4">
+                                  <div className="font-mono font-semibold text-ink">{td.device_code}</div>
+                                  <div className="text-[11px] text-muted">{td.pond_name}</div>
+                                </td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-muted">
+                                  {td.tenant_code || "TENANT-UTAMA"}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <StatusBadge level={td.status === "ONLINE" ? "aman" : "netral"}>
+                                    {td.status}
+                                  </StatusBadge>
+                                </td>
+                                <td className="py-2.5 px-3 font-mono tnum">
+                                  {lr ? lr.ph ?? "-" : "-"}
+                                </td>
+                                <td className="py-2.5 px-3 font-mono tnum">
+                                  {lr ? (lr.temperature_c != null ? `${lr.temperature_c}°C` : "-") : "-"}
+                                </td>
+                                <td className="py-2.5 px-3 font-mono tnum">
+                                  {lr ? (lr.tds_ppm != null ? `${lr.tds_ppm} ppm` : "-") : "-"}
+                                </td>
+                                <td className="py-2.5 px-3 font-mono tnum">
+                                  {lr ? (lr.turbidity_ntu != null ? `${lr.turbidity_ntu} NTU` : "-") : "-"}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                      td.aerator_on
+                                        ? "bg-brand/15 text-brand"
+                                        : "bg-surface-2 text-muted"
+                                    }`}
+                                  >
+                                    {td.aerator_on ? "ON" : "OFF"} · {td.mode || "AUTO"}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSelectScope(
+                                        td.tenant_code || activeTenantCode,
+                                        td.device_code,
+                                        "ringkasan"
+                                      )
+                                    }
+                                    className="px-2.5 py-1 rounded-[5px] border border-brand/30 text-brand hover:bg-brand/10 text-[11.5px] font-semibold cursor-pointer"
+                                  >
+                                    {isSelected ? "Aktif ✓" : "Pantau →"}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile & Tablet Cards (< lg) */}
+                    <div className="lg:hidden divide-y divide-line">
+                      {scopedTenantDevices.map((td) => {
+                        const lr = td.latest_reading;
+                        const isSelected = activeDeviceCode === td.device_code;
+                        return (
+                          <div key={td.id} className="p-3.5 space-y-2.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-mono text-[13px] font-bold text-ink truncate">
+                                  {td.device_code}
+                                </div>
+                                <div className="text-[12px] text-muted truncate">
+                                  {td.pond_name} · {td.tenant_code || "TENANT-UTAMA"}
+                                </div>
+                              </div>
+                              <StatusBadge level={td.status === "ONLINE" ? "aman" : "netral"}>
+                                {td.status}
+                              </StatusBadge>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1.5 text-center bg-surface-2 rounded-[5px] p-2 text-[11px]">
+                              <div>
+                                <div className="text-muted text-[10px]">pH</div>
+                                <div className="font-mono font-semibold tnum">{lr?.ph ?? "-"}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted text-[10px]">Suhu</div>
+                                <div className="font-mono font-semibold tnum">
+                                  {lr?.temperature_c != null ? `${lr.temperature_c}°` : "-"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-muted text-[10px]">TDS</div>
+                                <div className="font-mono font-semibold tnum">{lr?.tds_ppm ?? "-"}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted text-[10px]">NTU</div>
+                                <div className="font-mono font-semibold tnum">{lr?.turbidity_ntu ?? "-"}</div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSelectScope(
+                                  td.tenant_code || activeTenantCode,
+                                  td.device_code,
+                                  "ringkasan"
+                                )
+                              }
+                              className="w-full min-h-[44px] rounded-[6px] border border-brand/30 bg-brand/10 text-brand text-[12.5px] font-semibold flex items-center justify-center cursor-pointer"
+                            >
+                              {isSelected ? "Sedang Dipantau ✓" : "Pantau Node Ini →"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -1892,9 +2318,28 @@ export default function Dashboard({
                     .
                   </p>
 
+                  {activeDeviceCode === "ALL" && scopedTenantDevices.length > 0 && (
+                    <div className="mb-4 space-y-1.5">
+                      <label className="block text-[11.5px] font-semibold text-muted uppercase tracking-wider">
+                        Target Node Kendali Aerator
+                      </label>
+                      <select
+                        value={aeratorTargetCode}
+                        onChange={(e) => setAeratorTargetCode(e.target.value)}
+                        className="w-full min-h-[44px] px-3 rounded-[6px] border border-line bg-surface-2 text-[12.5px] font-mono font-semibold text-ink"
+                      >
+                        {scopedTenantDevices.map((td) => (
+                          <option key={td.id} value={td.device_code}>
+                            {td.device_code} · {td.pond_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => setIsControlModalOpen(true)}
-                    className="h-11 px-6 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer"
+                    className="min-h-[44px] px-6 bg-brand text-brand-ink rounded-[6px] text-[14px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer"
                   >
                     <Power className="w-4 h-4" />
                     <span>Buka Dialog Kendali Aerator</span>
@@ -2034,7 +2479,9 @@ export default function Dashboard({
           type="button"
           onClick={() =>
             selectMobileTab(
-              hasPerm("control_aerator")
+              hasPerm("manage_users")
+                ? "manajemen-tenant"
+                : hasPerm("control_aerator")
                 ? "aerator"
                 : hasPerm("view_predictions")
                 ? "prediksi"
@@ -2042,18 +2489,22 @@ export default function Dashboard({
             )
           }
           className={`min-h-[48px] rounded-[6px] flex flex-col items-center justify-center text-[10.5px] font-medium cursor-pointer ${
-            activeTab === "aerator" || activeTab === "prediksi"
+            activeTab === "manajemen-tenant" || activeTab === "aerator" || activeTab === "prediksi"
               ? "bg-brand text-brand-ink font-semibold"
               : "text-muted hover:text-ink"
           }`}
         >
-          {hasPerm("control_aerator") ? (
+          {hasPerm("manage_users") ? (
+            <Building2 className="w-4 h-4 mb-0.5" />
+          ) : hasPerm("control_aerator") ? (
             <Power className="w-4 h-4 mb-0.5" />
           ) : (
             <Cpu className="w-4 h-4 mb-0.5" />
           )}
           <span>
-            {hasPerm("control_aerator")
+            {hasPerm("manage_users")
+              ? "Tenant"
+              : hasPerm("control_aerator")
               ? "Aerator"
               : hasPerm("view_predictions")
               ? "Prediksi"
@@ -2090,6 +2541,19 @@ export default function Dashboard({
             ? "pH kolam berada di bawah ambang batas aman 6,0"
             : undefined
         }
+        targetDeviceLabel={
+          activeDeviceCode !== "ALL"
+            ? `${activeDeviceCode} (${device.pond_name})`
+            : aeratorTargetCode
+            ? `${aeratorTargetCode} (${
+                scopedTenantDevices.find((d) => d.device_code === aeratorTargetCode)?.pond_name ||
+                ""
+              })`
+            : undefined
+        }
+        scopedDevices={scopedTenantDevices}
+        selectedTargetCode={activeDeviceCode !== "ALL" ? activeDeviceCode : aeratorTargetCode}
+        onChangeTargetCode={setAeratorTargetCode}
         onApplyControl={handleApplyControl}
       />
     </div>

@@ -651,7 +651,7 @@ export default function Demo({
               <StatusCard
                 level={
                   simState === "PLN_PADAM"
-                    ? "bahaya"
+                    ? "BAHAYA"
                     : simState === "OFFLINE"
                     ? "offline"
                     : simState === "BASI"

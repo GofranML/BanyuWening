@@ -42,6 +42,8 @@ interface SuperAdminOtaProtocolPanelProps {
   realtimeConfig?: RealtimeConfig;
   users?: User[];
   isTenantMode?: boolean;
+  activeTenantCode?: string;
+  activeDeviceCode?: string;
 }
 
 const HARDWARE_PROFILES = [
@@ -114,6 +116,8 @@ export function SuperAdminOtaProtocolPanel({
   realtimeConfig,
   users = [],
   isTenantMode = false,
+  activeTenantCode,
+  activeDeviceCode,
 }: SuperAdminOtaProtocolPanelProps) {
   const [overview, setOverview] = useState<OtaOverview | null>(initialOverview ?? null);
   const [loading, setLoading] = useState(!initialOverview);
@@ -582,8 +586,26 @@ export function SuperAdminOtaProtocolPanel({
 
   const releases = overview?.releases || [];
   const rollouts = overview?.rollouts || [];
-  const devices = overview?.devices || [];
+  const allOtaDevices = overview?.devices || [];
+  const devices =
+    activeTenantCode && activeTenantCode !== "ALL"
+      ? allOtaDevices.filter(
+          (d) => (d.tenant_code || "TENANT-UTAMA").toUpperCase() === activeTenantCode.toUpperCase()
+        )
+      : allOtaDevices;
   const stats = overview?.stats;
+
+  useEffect(() => {
+    if (activeDeviceCode && activeDeviceCode !== "ALL") {
+      const matched = devices.find((d) => d.device_code === activeDeviceCode);
+      if (matched) {
+        setSelectedDeviceFilter(matched.id);
+        return;
+      }
+    }
+    setSelectedDeviceFilter("ALL");
+  }, [activeTenantCode, activeDeviceCode, overview?.devices?.length]);
+
   const visibleDevices =
     selectedDeviceFilter === "ALL"
       ? devices

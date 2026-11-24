@@ -22,7 +22,7 @@ export function StatusBadge({ level, children }: StatusBadgeProps) {
   
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 h-6 rounded-full text-[13px] leading-[18px] font-semibold
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 min-h-6 rounded-[12px] text-[12px] sm:text-[12.5px] leading-[16px] font-semibold text-left max-w-full
         ${level === "aman" ? "bg-aman-bg text-aman-text" : ""}
         ${level === "waspada" ? "bg-waspada-bg text-waspada-text" : ""}
         ${level === "bahaya" ? "bg-bahaya-bg text-bahaya-text" : ""}
@@ -30,8 +30,8 @@ export function StatusBadge({ level, children }: StatusBadgeProps) {
         ${level === "basi" ? "bg-surface-2 text-muted" : ""}
         ${level === "netral" ? "bg-surface-2 text-muted border border-line" : ""}`}
     >
-      <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
-      {children}
+      <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+      <span>{children}</span>
     </span>
   );
 }

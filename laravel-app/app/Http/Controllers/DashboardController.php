@@ -38,26 +38,172 @@ class DashboardController extends Controller
         $accessibleDevices = Device::accessibleBy($user);
         $accessibleDeviceIds = $accessibleDevices->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
 
-        $requestedDeviceCode = trim((string) $request->query('device_code', ''));
-        $device = ($requestedDeviceCode !== ''
-            ? $accessibleDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0)
-            : null) ?? $accessibleDevices->first();
+        // Peta nama tenant untuk label UI & agregasi armada
+        $tenantRecords = Tenant::orderBy('id')->get();
+        $tenantNameMap = $tenantRecords->pluck('name', 'code')->all();
 
-        // 1. Bacaan sensor terakhir khusus node IoT milik tenant yang sedang aktif
-        $latest = $device
-            ? SensorReading::where('device_id', $device->id)->latest('recorded_at')->first()
-            : null;
-
-        // 2. Prediksi ML terakhir untuk node tenant tersebut
-        $prediction = null;
-        if ($latest) {
-            $prediction = Prediction::where('sensor_reading_id', $latest->id)->latest('predicted_at')->first()
-                ?? $mlService->predict($latest);
+        // Snapshot reading & prediksi terakhir untuk setiap node yang bisa diakses
+        $latestByDevice = [];
+        $predictionByDevice = [];
+        foreach ($accessibleDevices as $devItem) {
+            $devLatest = SensorReading::where('device_id', $devItem->id)->latest('recorded_at')->first();
+            $latestByDevice[$devItem->id] = $devLatest;
+            if ($devLatest) {
+                $predictionByDevice[$devItem->id] = Prediction::where('sensor_reading_id', $devLatest->id)->latest('predicted_at')->first()
+                    ?? $mlService->predict($devLatest);
+            } else {
+                $predictionByDevice[$devItem->id] = null;
+            }
         }
 
-        // 3. Riwayat 288 data (24 jam) khusus device tenant aktif
-        $allReadings = $device
-            ? SensorReading::where('device_id', $device->id)
+        // 1. Resolusi Hirarki 2 Tingkat: Tenant -> Alat IoT di Tenant
+        $requestedTenantRaw = trim((string) $request->query('tenant_code', ''));
+        $requestedDeviceCode = trim((string) $request->query('device_code', ''));
+        $hasTenantQuery = $request->query('tenant_code') !== null;
+
+        if ($user->isAdmin()) {
+            if ($requestedDeviceCode !== '' && strtoupper($requestedDeviceCode) !== 'ALL' && !$hasTenantQuery) {
+                $matched = $accessibleDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0);
+                $activeTenantCode = $matched ? strtoupper((string) ($matched->tenant_code ?: 'TENANT-UTAMA')) : 'ALL';
+            } elseif ($requestedTenantRaw === '' || strtoupper($requestedTenantRaw) === 'ALL') {
+                $activeTenantCode = 'ALL';
+            } else {
+                $candidateTenant = strtoupper($requestedTenantRaw);
+                $knownCodes = collect($tenantRecords->pluck('code')->all())
+                    ->merge($accessibleDevices->pluck('tenant_code')->filter()->all())
+                    ->map(fn ($c) => strtoupper((string) $c))
+                    ->unique()
+                    ->values()
+                    ->all();
+                $activeTenantCode = in_array($candidateTenant, $knownCodes, true) ? $candidateTenant : 'ALL';
+            }
+        } else {
+            $activeTenantCode = strtoupper((string) ($user->tenant_code ?: ($accessibleDevices->first()?->tenant_code ?: 'TENANT-UTAMA')));
+        }
+
+        $scopedDevices = ($user->isAdmin() && $activeTenantCode === 'ALL')
+            ? $accessibleDevices->values()
+            : $accessibleDevices->filter(
+                fn (Device $d) => strcasecmp((string) ($d->tenant_code ?: 'TENANT-UTAMA'), $activeTenantCode) === 0
+            )->values();
+
+        // Saat mode ALL Tenant (Super Admin), jangan kunci ke 1 alat agar agregasi tetap murni per tenant
+        $selectedDevice = null;
+        if (!($user->isAdmin() && $activeTenantCode === 'ALL')) {
+            if ($requestedDeviceCode !== '' && strtoupper($requestedDeviceCode) !== 'ALL') {
+                $selectedDevice = $scopedDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0);
+            }
+        }
+        $activeDeviceCode = $selectedDevice ? $selectedDevice->device_code : 'ALL';
+
+        $scopedDeviceIds = $scopedDevices->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $alertDeviceIds = $selectedDevice ? [(int) $selectedDevice->id] : $scopedDeviceIds;
+
+        // 2. Bacaan sensor & Prediksi ML (Tunggal vs Agregasi Multi-Alat / Multi-Tenant)
+        $currentReadingData = null;
+        $predictionData = null;
+        $onlineScopedCount = 0;
+
+        if ($selectedDevice) {
+            $latest = $latestByDevice[$selectedDevice->id] ?? null;
+            $pred = $predictionByDevice[$selectedDevice->id] ?? null;
+            if ($latest) {
+                $onlineScopedCount = ($selectedDevice->status ?? 'ONLINE') === 'ONLINE' ? 1 : 0;
+                $currentReadingData = [
+                    'id' => $latest->id,
+                    'ts' => $latest->recorded_at->toIso8601String(),
+                    'ph' => $latest->ph,
+                    'temperature_c' => $latest->temperature_c,
+                    'tds_ppm' => $latest->tds_ppm,
+                    'turbidity_ntu' => $latest->turbidity_ntu,
+                    'water_level' => $latest->water_level,
+                    'aerator_on' => (bool)$latest->aerator_on,
+                    'mode' => $latest->mode,
+                    'transport' => $latest->transport ?? 'HTTP',
+                ];
+            }
+            if ($pred) {
+                $predictionData = [
+                    'risk' => $pred->risk,
+                    'p_aman' => (float)$pred->p_aman,
+                    'p_waspada' => (float)$pred->p_waspada,
+                    'p_bahaya' => (float)$pred->p_bahaya,
+                    'model_version' => $pred->model_version,
+                    'timeframe' => $pred->timeframe,
+                    'triggers' => $pred->triggers ?? [],
+                    'recommended_action' => $pred->recommended_action,
+                    'failsafe_active' => (bool)$pred->failsafe_active,
+                    'predicted_at' => $pred->predicted_at->toIso8601String(),
+                ];
+            }
+        } else {
+            $scopedReadings = collect($scopedDevices)
+                ->map(fn (Device $d) => $latestByDevice[$d->id] ?? null)
+                ->filter()
+                ->values();
+
+            $onlineScopedCount = $scopedDevices->filter(
+                fn (Device $d) => ($d->status ?? '') === 'ONLINE' || isset($latestByDevice[$d->id])
+            )->count();
+
+            if ($scopedReadings->isNotEmpty()) {
+                $phVals = $scopedReadings->pluck('ph')->filter(fn ($v) => $v !== null);
+                $tempVals = $scopedReadings->pluck('temperature_c')->filter(fn ($v) => $v !== null);
+                $tdsVals = $scopedReadings->pluck('tds_ppm')->filter(fn ($v) => $v !== null);
+                $turbVals = $scopedReadings->pluck('turbidity_ntu')->filter(fn ($v) => $v !== null);
+                $latestTs = $scopedReadings->max(fn ($r) => $r->recorded_at);
+
+                $currentReadingData = [
+                    'id' => $scopedReadings->first()->id,
+                    'ts' => $latestTs ? Carbon::parse($latestTs)->toIso8601String() : now()->toIso8601String(),
+                    'ph' => $phVals->isNotEmpty() ? round((float) $phVals->avg(), 2) : null,
+                    'temperature_c' => $tempVals->isNotEmpty() ? round((float) $tempVals->avg(), 1) : null,
+                    'tds_ppm' => $tdsVals->isNotEmpty() ? (int) round((float) $tdsVals->avg()) : null,
+                    'turbidity_ntu' => $turbVals->isNotEmpty() ? round((float) $turbVals->avg(), 1) : null,
+                    'water_level' => $scopedReadings->contains('water_level', 'LOW') ? 'LOW' : 'NORMAL',
+                    'aerator_on' => $scopedReadings->contains('aerator_on', true),
+                    'mode' => $scopedReadings->contains('mode', 'FAILSAFE')
+                        ? 'FAILSAFE'
+                        : ($scopedReadings->contains('mode', 'MANUAL') ? 'MANUAL' : 'AUTO'),
+                    'transport' => 'AGGREGATE',
+                ];
+            }
+
+            $scopedPreds = collect($scopedDevices)
+                ->map(fn (Device $d) => $predictionByDevice[$d->id] ?? null)
+                ->filter()
+                ->values();
+
+            if ($scopedPreds->isNotEmpty()) {
+                $worstRisk = $scopedPreds->contains('risk', 'BAHAYA')
+                    ? 'BAHAYA'
+                    : ($scopedPreds->contains('risk', 'WASPADA') ? 'WASPADA' : 'AMAN');
+                $firstPred = $scopedPreds->first();
+                $mergedTriggers = $scopedPreds
+                    ->flatMap(fn ($p) => is_array($p->triggers) ? $p->triggers : [])
+                    ->unique()
+                    ->values()
+                    ->all();
+                $worstPred = $scopedPreds->firstWhere('risk', $worstRisk) ?? $firstPred;
+
+                $predictionData = [
+                    'risk' => $worstRisk,
+                    'p_aman' => round((float) $scopedPreds->avg('p_aman'), 4),
+                    'p_waspada' => round((float) $scopedPreds->avg('p_waspada'), 4),
+                    'p_bahaya' => round((float) $scopedPreds->avg('p_bahaya'), 4),
+                    'model_version' => $firstPred->model_version,
+                    'timeframe' => $firstPred->timeframe ?: '1–3 jam',
+                    'triggers' => $mergedTriggers,
+                    'recommended_action' => $worstPred->recommended_action,
+                    'failsafe_active' => $scopedPreds->contains('failsafe_active', true),
+                    'predicted_at' => $worstPred->predicted_at->toIso8601String(),
+                ];
+            }
+        }
+
+        // 3. Riwayat 288 data (24 jam) khusus device aktif atau agregasi 5 menit lintas scope
+        if ($selectedDevice) {
+            $allReadings = SensorReading::where('device_id', $selectedDevice->id)
                 ->latest('recorded_at')
                 ->take(288)
                 ->get()
@@ -74,19 +220,51 @@ class DashboardController extends Controller
                         'aerator_on' => (bool)$r->aerator_on,
                         'mode' => $r->mode,
                     ];
-                })
-            : collect();
+                });
+        } elseif (!empty($scopedDeviceIds)) {
+            $rawScoped = SensorReading::whereIn('device_id', $scopedDeviceIds)
+                ->latest('recorded_at')
+                ->take(min(288 * max(1, count($scopedDeviceIds)), 864))
+                ->get();
 
-        // 4. Daftar Alert terisolasi per tenant (Super Admin melihat semua tenant)
-        $alertsQuery = Alert::latest();
-        if ($user && !$user->isAdmin()) {
-            if (empty($accessibleDeviceIds)) {
-                $alertsQuery->whereRaw('1 = 0');
-            } else {
-                $alertsQuery->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $accessibleDeviceIds));
-            }
+            $allReadings = $rawScoped
+                ->groupBy(fn ($r) => intdiv($r->recorded_at->timestamp, 300) * 300)
+                ->sortKeys()
+                ->take(-288)
+                ->values()
+                ->map(function ($bucket) {
+                    $phVals = $bucket->pluck('ph')->filter(fn ($v) => $v !== null);
+                    $tempVals = $bucket->pluck('temperature_c')->filter(fn ($v) => $v !== null);
+                    $tdsVals = $bucket->pluck('tds_ppm')->filter(fn ($v) => $v !== null);
+                    $turbVals = $bucket->pluck('turbidity_ntu')->filter(fn ($v) => $v !== null);
+                    $latestInBucket = $bucket->sortByDesc('recorded_at')->first();
+
+                    return [
+                        'ts' => $latestInBucket->recorded_at->toIso8601String(),
+                        'ph' => $phVals->isNotEmpty() ? round((float) $phVals->avg(), 2) : null,
+                        'temperature_c' => $tempVals->isNotEmpty() ? round((float) $tempVals->avg(), 1) : null,
+                        'tds_ppm' => $tdsVals->isNotEmpty() ? (int) round((float) $tdsVals->avg()) : null,
+                        'turbidity_ntu' => $turbVals->isNotEmpty() ? round((float) $turbVals->avg(), 1) : null,
+                        'water_level' => $bucket->contains('water_level', 'LOW') ? 'LOW' : 'NORMAL',
+                        'aerator_on' => $bucket->contains('aerator_on', true),
+                        'mode' => $bucket->contains('mode', 'FAILSAFE')
+                            ? 'FAILSAFE'
+                            : ($bucket->contains('mode', 'MANUAL') ? 'MANUAL' : 'AUTO'),
+                    ];
+                });
+        } else {
+            $allReadings = collect();
+        }
+
+        // 4. Daftar Alert terisolasi sesuai Scope (Tenant / Alat Aktif)
+        $alertsQuery = Alert::with('sensorReading.device:id,device_code,pond_name,tenant_code')->latest();
+        if (empty($alertDeviceIds)) {
+            $alertsQuery->whereRaw('1 = 0');
+        } else {
+            $alertsQuery->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $alertDeviceIds));
         }
         $alerts = $alertsQuery->take(50)->get()->map(function ($a) {
+            $dev = $a->sensorReading?->device;
             return [
                 'id' => $a->id,
                 'ts' => $a->created_at->toIso8601String(),
@@ -94,6 +272,9 @@ class DashboardController extends Controller
                 'param' => $a->parameter,
                 'message' => $a->message,
                 'value' => $a->value,
+                'pond_name' => $dev?->pond_name,
+                'device_code' => $dev?->device_code,
+                'tenant_code' => $dev?->tenant_code,
                 'telegram_sent' => (bool)$a->telegram_sent,
                 'whatsapp_sent' => (bool)$a->whatsapp_sent,
                 'email_sent' => (bool)$a->email_sent,
@@ -194,13 +375,89 @@ class DashboardController extends Controller
         $devices = [];
         $otaOverview = null;
         $mlOverview = null;
+        if ($canManageUsers || $canViewDocsApi || $canSelfOta) {
+            $devices = $accessibleDevices->map(function (Device $d) use ($user, $latestByDevice, $predictionByDevice) {
+                return $this->serializeDeviceForAdmin($d, $user, $latestByDevice[$d->id] ?? null, $predictionByDevice[$d->id] ?? null);
+            })->values()->all();
+        }
         if ($canViewDocsApi || $canSelfOta) {
-            $devices = $accessibleDevices->map(fn (Device $d) => $this->serializeDeviceForAdmin($d))->values()->all();
             $otaOverview = app(FirmwareOtaService::class)->getOverview($user);
         }
         if ($canViewDocsApi) {
             $mlOverview = app(MlSelfLearningAgentService::class)->getPerformanceMetrics(24);
         }
+
+        $deviceSummaryPayload = $selectedDevice
+            ? [
+                'device_code' => $selectedDevice->device_code,
+                'name' => $selectedDevice->name,
+                'pond_name' => $selectedDevice->pond_name,
+                'tenant_code' => $selectedDevice->tenant_code,
+                'firmware_version' => $selectedDevice->firmware_version ?? '-',
+                'status' => ($selectedDevice && ($latestByDevice[$selectedDevice->id] ?? null))
+                    ? ($selectedDevice->status ?? 'ONLINE')
+                    : ($selectedDevice->status ?? 'STANDBY'),
+                'transport_protocol' => $selectedDevice->transport_protocol ?? 'STANDBY',
+                'mode' => $selectedDevice->mode ?? 'AUTO',
+                'aerator_on' => (bool)($selectedDevice->aerator_on ?? false),
+            ]
+            : [
+                'device_code' => $activeTenantCode === 'ALL' ? 'SEMUA-TENANT' : $activeTenantCode,
+                'name' => $activeTenantCode === 'ALL'
+                    ? 'Agregasi Seluruh Mitra Tenant'
+                    : ($tenantNameMap[$activeTenantCode] ?? $activeTenantCode),
+                'pond_name' => $activeTenantCode === 'ALL'
+                    ? (count($scopedDevices) . ' Node Lintas Tenant')
+                    : ('Semua Kolam (' . count($scopedDevices) . ' Alat)'),
+                'tenant_code' => $activeTenantCode,
+                'firmware_version' => $scopedDevices->first()?->firmware_version ?? '-',
+                'status' => $onlineScopedCount > 0 ? 'ONLINE' : 'STANDBY',
+                'transport_protocol' => $currentReadingData ? 'AGGREGATE' : 'STANDBY',
+                'mode' => $currentReadingData['mode'] ?? 'AUTO',
+                'aerator_on' => (bool)($currentReadingData['aerator_on'] ?? false),
+            ];
+
+        $tenantDevicesPayload = $accessibleDevices->map(function (Device $d) use ($tenantNameMap, $latestByDevice, $predictionByDevice) {
+            $tCode = strtoupper((string) ($d->tenant_code ?: 'TENANT-UTAMA'));
+            $l = $latestByDevice[$d->id] ?? null;
+            $p = $predictionByDevice[$d->id] ?? null;
+
+            return [
+                'id' => $d->id,
+                'device_code' => $d->device_code,
+                'name' => $d->name,
+                'pond_name' => $d->pond_name,
+                'tenant_code' => $tCode,
+                'tenant_name' => $tenantNameMap[$tCode] ?? $tCode,
+                'firmware_version' => $d->firmware_version,
+                'hardware_profile' => $d->hardware_profile ?: 'ESP32-WROOM-CoreHub-v2',
+                'status' => $d->status,
+                'transport_protocol' => $d->transport_protocol ?? 'STANDBY',
+                'mode' => $d->mode ?? 'AUTO',
+                'aerator_on' => (bool) $d->aerator_on,
+                'last_heartbeat_at' => $d->last_heartbeat_at?->toIso8601String(),
+                'latest_reading' => $l ? [
+                    'id' => $l->id,
+                    'ts' => $l->recorded_at->toIso8601String(),
+                    'ph' => $l->ph,
+                    'temperature_c' => $l->temperature_c,
+                    'tds_ppm' => $l->tds_ppm,
+                    'turbidity_ntu' => $l->turbidity_ntu,
+                    'water_level' => $l->water_level,
+                    'aerator_on' => (bool) $l->aerator_on,
+                    'mode' => $l->mode,
+                    'transport' => $l->transport ?? 'HTTP',
+                ] : null,
+                'latest_prediction' => $p ? [
+                    'risk' => $p->risk,
+                    'p_aman' => (float) $p->p_aman,
+                    'p_waspada' => (float) $p->p_waspada,
+                    'p_bahaya' => (float) $p->p_bahaya,
+                    'timeframe' => $p->timeframe,
+                    'recommended_action' => $p->recommended_action,
+                ] : null,
+            ];
+        })->values()->all();
 
         return Inertia::render('Dashboard', [
             'user' => [
@@ -219,58 +476,18 @@ class DashboardController extends Controller
                 'custom_permissions' => $user->custom_permissions,
                 'has_custom_permissions' => $user->hasCustomPermissions(),
             ],
-            'currentReading' => $latest ? [
-                'id' => $latest->id,
-                'ts' => $latest->recorded_at->toIso8601String(),
-                'ph' => $latest->ph,
-                'temperature_c' => $latest->temperature_c,
-                'tds_ppm' => $latest->tds_ppm,
-                'turbidity_ntu' => $latest->turbidity_ntu,
-                'water_level' => $latest->water_level,
-                'aerator_on' => (bool)$latest->aerator_on,
-                'mode' => $latest->mode,
-                'transport' => $latest->transport ?? 'HTTP',
-            ] : null,
-            'prediction' => $prediction ? [
-                'risk' => $prediction->risk,
-                'p_aman' => (float)$prediction->p_aman,
-                'p_waspada' => (float)$prediction->p_waspada,
-                'p_bahaya' => (float)$prediction->p_bahaya,
-                'model_version' => $prediction->model_version,
-                'timeframe' => $prediction->timeframe,
-                'triggers' => $prediction->triggers ?? [],
-                'recommended_action' => $prediction->recommended_action,
-                'failsafe_active' => (bool)$prediction->failsafe_active,
-                'predicted_at' => $prediction->predicted_at->toIso8601String(),
-            ] : null,
+            'currentReading' => $currentReadingData,
+            'prediction' => $predictionData,
             'allReadings' => $allReadings,
             'alerts' => $alerts,
-            'device' => [
-                'device_code' => $device?->device_code ?? 'BELUM-TERHUBUNG',
-                'name' => $device?->name ?? 'Belum Ada Alat Terkait Akun',
-                'pond_name' => $device?->pond_name ?? ($user->pond_name ?: 'Menunggu Penugasan Alat IoT'),
-                'tenant_code' => $device?->tenant_code ?? $user->tenant_code,
-                'firmware_version' => $device?->firmware_version ?? '-',
-                'status' => ($device && $latest) ? ($device->status ?? 'ONLINE') : 'STANDBY',
-                'transport_protocol' => $device?->transport_protocol ?? 'STANDBY',
-                'mode' => $device?->mode ?? 'AUTO',
-                'aerator_on' => (bool)($device?->aerator_on ?? false),
-            ],
-            'tenantDevices' => $accessibleDevices->map(fn (Device $d) => [
-                'id' => $d->id,
-                'device_code' => $d->device_code,
-                'name' => $d->name,
-                'pond_name' => $d->pond_name,
-                'tenant_code' => $d->tenant_code,
-                'firmware_version' => $d->firmware_version,
-                'hardware_profile' => $d->hardware_profile ?: 'ESP32-WROOM-CoreHub-v2',
-                'status' => $d->status,
-            ])->values()->all(),
-            'activeDeviceCode' => $device?->device_code,
+            'device' => $deviceSummaryPayload,
+            'tenantDevices' => $tenantDevicesPayload,
+            'activeTenantCode' => $activeTenantCode,
+            'activeDeviceCode' => $activeDeviceCode,
             'aeratorState' => [
-                'isOn' => (bool)($latest?->aerator_on ?? false),
-                'mode' => $latest?->mode ?? 'AUTO',
-                'dailyDuration' => $latest ? '3 jam 20 menit' : '0 menit (Standby)',
+                'isOn' => (bool)($currentReadingData['aerator_on'] ?? false),
+                'mode' => $currentReadingData['mode'] ?? 'AUTO',
+                'dailyDuration' => $currentReadingData ? '3 jam 20 menit' : '0 menit (Standby)',
             ],
             'users' => $users,
             'tenants' => $tenants,
@@ -1139,7 +1356,7 @@ class DashboardController extends Controller
     public function storeDevice(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1149,6 +1366,7 @@ class DashboardController extends Controller
             'pond_name' => ['required', 'string', 'max:120'],
             'firmware_version' => ['nullable', 'string', 'max:40'],
             'hardware_profile' => ['nullable', 'string', 'max:80'],
+            'status' => ['nullable', 'string', 'in:ONLINE,STANDBY,OFFLINE,CALIBRATING'],
             'tenant_code' => ['nullable', 'string', 'max:80'],
             'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'assigned_user_ids' => ['nullable', 'array'],
@@ -1178,7 +1396,7 @@ class DashboardController extends Controller
             'firmware_version' => ($validated['firmware_version'] ?? null) ?: 'v1.4.2-failsafe',
             'hardware_profile' => ($validated['hardware_profile'] ?? null) ?: 'ESP32-WROOM-CoreHub-v2',
             'mqtt_topic' => 'banyuwening/' . Str::lower($validated['device_code']) . '/telemetry',
-            'status' => 'STANDBY',
+            'status' => strtoupper($validated['status'] ?? 'STANDBY'),
             'transport_protocol' => 'STANDBY',
             'mode' => 'AUTO',
             'aerator_on' => false,
@@ -1194,7 +1412,7 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Perangkat {$device->device_code} terdaftar (Tenant {$device->tenant_code}) dan token baru diterbitkan.",
-                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+                'device' => $this->serializeDeviceForAdmin($device->fresh(), $user),
                 'plain_token' => $plainToken,
             ], 201);
         }
@@ -1208,12 +1426,74 @@ class DashboardController extends Controller
     }
 
     /**
+     * Super Admin: Perbarui metadata, penempatan tenant, profil hardware, dan status perangkat IoT.
+     */
+    public function updateDevice(Request $request, Device $device)
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'pond_name' => ['required', 'string', 'max:120'],
+            'tenant_code' => ['nullable', 'string', 'max:80'],
+            'hardware_profile' => ['nullable', 'string', 'max:80'],
+            'firmware_version' => ['nullable', 'string', 'max:40'],
+            'status' => ['nullable', 'string', 'in:ONLINE,STANDBY,OFFLINE,CALIBRATING'],
+            'owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_ids' => ['nullable', 'array'],
+            'assigned_user_ids.*' => ['integer', 'exists:users,id'],
+            'grant_ota_permission' => ['nullable', 'boolean'],
+        ]);
+
+        $resolvedTenant = !empty($validated['tenant_code'])
+            ? User::normalizeTenantCode($validated['tenant_code'])
+            : $device->tenant_code;
+
+        $device->update([
+            'name' => $validated['name'],
+            'pond_name' => $validated['pond_name'],
+            'tenant_code' => $resolvedTenant,
+            'hardware_profile' => ($validated['hardware_profile'] ?? null) ?: $device->hardware_profile,
+            'firmware_version' => ($validated['firmware_version'] ?? null) ?: $device->firmware_version,
+            'status' => !empty($validated['status']) ? strtoupper($validated['status']) : $device->status,
+        ]);
+
+        if ($request->has('owner_user_id') || $request->has('assigned_user_ids')) {
+            $ownerId = !empty($validated['owner_user_id']) ? (int) $validated['owner_user_id'] : null;
+            $assignedIds = array_values(array_unique(array_map('intval', $validated['assigned_user_ids'] ?? [])));
+            if ($ownerId && !in_array($ownerId, $assignedIds, true)) {
+                array_unshift($assignedIds, $ownerId);
+            }
+            $device->syncAssignedUsers($ownerId, $assignedIds, $resolvedTenant);
+
+            if ($request->boolean('grant_ota_permission') && !empty($assignedIds)) {
+                $this->grantSelfOtaPermissionToUsers($assignedIds);
+            }
+        }
+
+        $msg = "Konfigurasi alat {$device->device_code} diperbarui (Tenant: {$device->tenant_code}).";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'device' => $this->serializeDeviceForAdmin($device->fresh(), $user),
+            ]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
      * Super Admin: Atur penugasan alat IoT ke akun peternak tertentu, kode tenant, & izin Self-OTA.
      */
     public function updateDeviceAssignment(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1247,7 +1527,7 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $msg,
-                'device' => $this->serializeDeviceForAdmin($updated),
+                'device' => $this->serializeDeviceForAdmin($updated, $user),
                 'overview' => app(FirmwareOtaService::class)->getOverview($user),
             ]);
         }
@@ -1273,7 +1553,7 @@ class DashboardController extends Controller
     public function rotateDeviceToken(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1283,7 +1563,7 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Token untuk {$device->device_code} berhasil dirotasi. Token lama langsung dinonaktifkan.",
-                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+                'device' => $this->serializeDeviceForAdmin($device->fresh(), $user),
                 'plain_token' => $plainToken,
             ]);
         }
@@ -1302,7 +1582,7 @@ class DashboardController extends Controller
     public function toggleDeviceToken(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1318,7 +1598,7 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $msg,
-                'device' => $this->serializeDeviceForAdmin($device->fresh()),
+                'device' => $this->serializeDeviceForAdmin($device->fresh(), $user),
             ]);
         }
 
@@ -1331,7 +1611,7 @@ class DashboardController extends Controller
     public function destroyDevice(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1379,8 +1659,12 @@ class DashboardController extends Controller
         ];
     }
 
-    private function serializeDeviceForAdmin(Device $d): array
-    {
+    private function serializeDeviceForAdmin(
+        Device $d,
+        ?User $viewer = null,
+        ?SensorReading $latest = null,
+        ?Prediction $pred = null
+    ): array {
         return [
             'id' => $d->id,
             'device_code' => $d->device_code,
@@ -1399,10 +1683,31 @@ class DashboardController extends Controller
             'api_token_prefix' => $d->api_token_prefix,
             'has_token' => (bool) $d->api_token_hash,
             'token_active' => (bool) $d->token_active,
+            'plain_token' => ($viewer && $viewer->isAdmin()) ? $d->decryptToken() : null,
             'token_rotated_at' => $d->token_rotated_at?->toIso8601String(),
             'token_last_used_at' => $d->token_last_used_at?->toIso8601String(),
             'last_heartbeat_at' => $d->last_heartbeat_at?->toIso8601String(),
             'ws_connected_at' => $d->ws_connected_at?->toIso8601String(),
+            'latest_reading' => $latest ? [
+                'id' => $latest->id,
+                'ts' => $latest->recorded_at->toIso8601String(),
+                'ph' => $latest->ph,
+                'temperature_c' => $latest->temperature_c,
+                'tds_ppm' => $latest->tds_ppm,
+                'turbidity_ntu' => $latest->turbidity_ntu,
+                'water_level' => $latest->water_level,
+                'aerator_on' => (bool) $latest->aerator_on,
+                'mode' => $latest->mode,
+                'transport' => $latest->transport ?? 'HTTP',
+            ] : null,
+            'latest_prediction' => $pred ? [
+                'risk' => $pred->risk,
+                'p_aman' => (float) $pred->p_aman,
+                'p_waspada' => (float) $pred->p_waspada,
+                'p_bahaya' => (float) $pred->p_bahaya,
+                'timeframe' => $pred->timeframe,
+                'recommended_action' => $pred->recommended_action,
+            ] : null,
         ];
     }
 

@@ -61,6 +61,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Super Admin: Manajemen Alat & Token Per Alat
     Route::post('/dashboard/devices', [DashboardController::class, 'storeDevice'])->name('dashboard.devices.store');
+    Route::match(['post', 'put'], '/dashboard/devices/{device}', [DashboardController::class, 'updateDevice'])->name('dashboard.devices.update');
     Route::post('/dashboard/devices/{device}/assignment', [DashboardController::class, 'updateDeviceAssignment'])->name('dashboard.devices.assignment');
     Route::post('/dashboard/devices/{device}/rotate-token', [DashboardController::class, 'rotateDeviceToken'])->name('dashboard.devices.rotate-token');
     Route::post('/dashboard/devices/{device}/toggle-token', [DashboardController::class, 'toggleDeviceToken'])->name('dashboard.devices.toggle-token');
