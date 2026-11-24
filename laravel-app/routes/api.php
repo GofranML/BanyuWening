@@ -22,27 +22,35 @@ Route::get('/docs/openapi.json', [SwaggerController::class, 'spec'])->name('api.
 Route::get('/docs/asyncapi.json', [SwaggerController::class, 'asyncApiJson'])->name('api.docs.asyncapi.json');
 Route::get('/docs/asyncapi.yaml', [SwaggerController::class, 'asyncApiYaml'])->name('api.docs.asyncapi.yaml');
 
-// Monitoring & Dashboard HTTP Fallback Read Endpoints
-Route::get('/latest', [ApiController::class, 'getLatest'])->name('api.latest');
-Route::get('/history', [ApiController::class, 'getHistory'])->name('api.history');
-Route::get('/alerts/recent', [ApiController::class, 'getRecentAlerts'])->name('api.alerts.recent');
+// Monitoring & Dashboard HTTP Fallback Read Endpoints (session-aware tanpa CSRF + rate-limit)
+Route::middleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    'throttle:120,1',
+])->group(function () {
+    Route::get('/latest', [ApiController::class, 'getLatest'])->name('api.latest');
+    Route::get('/history', [ApiController::class, 'getHistory'])->name('api.history');
+    Route::get('/alerts/recent', [ApiController::class, 'getRecentAlerts'])->name('api.alerts.recent');
 
-// Random Forest ML Public Status, History & Performance Endpoints
-Route::prefix('ml')->group(function () {
-    Route::get('/status', [MlApiController::class, 'status'])->name('api.ml.status');
-    Route::get('/predictions', [MlApiController::class, 'predictions'])->name('api.ml.predictions');
-    Route::get('/predictions/latest', [MlApiController::class, 'latestPrediction'])->name('api.ml.predictions.latest');
-    Route::get('/performance', [MlApiController::class, 'performance'])->name('api.ml.performance');
+    // Random Forest ML Public Status, History & Performance Endpoints
+    Route::prefix('ml')->group(function () {
+        Route::get('/status', [MlApiController::class, 'status'])->name('api.ml.status');
+        Route::get('/predictions', [MlApiController::class, 'predictions'])->name('api.ml.predictions');
+        Route::get('/predictions/latest', [MlApiController::class, 'latestPrediction'])->name('api.ml.predictions.latest');
+        Route::get('/performance', [MlApiController::class, 'performance'])->name('api.ml.performance');
+    });
 });
 
-// Endpoint Perangkat IoT — Wajib Token Unik Per Alat (Bearer / X-Device-Token)
-Route::middleware(['device.token'])->group(function () {
+// Endpoint Perangkat IoT — Wajib Token Unik Per Alat (Bearer / X-Device-Token) + Rate Limit
+Route::middleware(['device.token', 'throttle:120,1'])->group(function () {
     // Ingesti telemetri HTTP standar
     Route::post('/telemetry', [ApiController::class, 'ingestTelemetry'])->name('api.telemetry');
 
-    // Inferensi On-Demand & Batch Random Forest
-    Route::post('/ml/predict', [MlApiController::class, 'predict'])->name('api.ml.predict');
-    Route::post('/ml/predict/batch', [MlApiController::class, 'predictBatch'])->name('api.ml.predict.batch');
+    // Inferensi On-Demand & Batch Random Forest (limit ketat untuk mencegah CPU exhaustion Python)
+    Route::middleware(['throttle:30,1'])->group(function () {
+        Route::post('/ml/predict', [MlApiController::class, 'predict'])->name('api.ml.predict');
+        Route::post('/ml/predict/batch', [MlApiController::class, 'predictBatch'])->name('api.ml.predict.batch');
+    });
 
     // Jalur eksplisit HTTP Fallback ketika WebSocket gagal connect
     Route::prefix('http')->group(function () {

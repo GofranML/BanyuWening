@@ -29,7 +29,7 @@ class MachineLearningService
         $started = microtime(true);
         $jsonPayload = json_encode($payload);
         $process = new Process([$this->pythonPath, $this->predictScriptPath, $jsonPayload]);
-        $process->setTimeout(15);
+        $process->setTimeout(6);
 
         try {
             $process->run();
@@ -87,7 +87,7 @@ class MachineLearningService
             $this->predictScriptPath,
             json_encode(['batch' => $normalized]),
         ]);
-        $process->setTimeout(25);
+        $process->setTimeout(12);
 
         try {
             $process->run();

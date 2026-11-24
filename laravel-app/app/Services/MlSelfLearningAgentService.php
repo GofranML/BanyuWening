@@ -9,6 +9,7 @@ use App\Models\MlModelVersion;
 use App\Models\PondHarvestCycle;
 use App\Models\Prediction;
 use App\Models\SensorReading;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -200,36 +201,43 @@ class MlSelfLearningAgentService
         string $triggerSource = 'MANUAL',
         ?string $agentModelId = null
     ): MlAgentRun {
-        $activeModel = $this->ensureBaselineVersion();
-        $config = MlAgentConfig::current();
-        $selectedAgentModel = ($agentModelId && preg_match('/^[a-zA-Z0-9._:\/-]{2,80}$/', $agentModelId))
-            ? $agentModelId
-            : ($config->agent_model_id ?: 'rf-autonomous-local');
-        $started = microtime(true);
+        $lock = Cache::lock('ml_self_learning_agent_cycle', 65);
+        if (!$lock->get()) {
+            abort(409, 'Siklus AI Agent sedang berjalan. Tunggu hingga proses sebelumnya selesai.');
+        }
 
-        $fieldValidations = MlFieldValidation::latest('validated_at')
-            ->latest('id')
-            ->take(300)
-            ->get();
+        $tmpFile = null;
+        try {
+            $activeModel = $this->ensureBaselineVersion();
+            $config = MlAgentConfig::current();
+            $selectedAgentModel = ($agentModelId && preg_match('/^[a-zA-Z0-9._:\/-]{2,80}$/', $agentModelId))
+                ? $agentModelId
+                : ($config->agent_model_id ?: 'rf-autonomous-local');
+            $started = microtime(true);
 
-        $harvestCycles = PondHarvestCycle::whereNotNull('mortality_rate_pct')
-            ->latest('harvest_date')
-            ->latest('id')
-            ->take(100)
-            ->get();
+            $fieldValidations = MlFieldValidation::latest('validated_at')
+                ->latest('id')
+                ->take(300)
+                ->get();
 
-        $run = MlAgentRun::create([
-            'run_type' => $mode === 'evaluate' ? 'AUTO_EVALUATE' : 'SELF_LEARNING',
-            'trigger_source' => strtoupper($triggerSource),
-            'agent_model_id' => $selectedAgentModel,
-            'status' => 'RUNNING',
-            'active_model_version' => $activeModel->version,
-            'accuracy_before' => $activeModel->accuracy,
-            'macro_f1_before' => $activeModel->macro_f1,
-            'field_validation_count' => $fieldValidations->count(),
-            'harvest_eval_count' => $harvestCycles->count(),
-            'started_at' => now(),
-        ]);
+            $harvestCycles = PondHarvestCycle::whereNotNull('mortality_rate_pct')
+                ->latest('harvest_date')
+                ->latest('id')
+                ->take(100)
+                ->get();
+
+            $run = MlAgentRun::create([
+                'run_type' => $mode === 'evaluate' ? 'AUTO_EVALUATE' : 'SELF_LEARNING',
+                'trigger_source' => strtoupper($triggerSource),
+                'agent_model_id' => $selectedAgentModel,
+                'status' => 'RUNNING',
+                'active_model_version' => $activeModel->version,
+                'accuracy_before' => $activeModel->accuracy,
+                'macro_f1_before' => $activeModel->macro_f1,
+                'field_validation_count' => $fieldValidations->count(),
+                'harvest_eval_count' => $harvestCycles->count(),
+                'started_at' => now(),
+            ]);
 
         $readings = SensorReading::with('prediction')
             ->latest('recorded_at')
@@ -448,9 +456,12 @@ class MlSelfLearningAgentService
             Log::error('ML Self-Learning Agent error: ' . $e->getMessage());
             return $this->completeFallbackEvaluation($run, $activeModel, $config, $liveReadings, $livePredictions, $durationMs, $e->getMessage());
         } finally {
-            if (is_file($tmpFile)) {
+            if ($tmpFile && is_file($tmpFile)) {
                 @unlink($tmpFile);
             }
+        }
+        } finally {
+            optional($lock)->release();
         }
     }
 
@@ -925,6 +936,79 @@ class MlSelfLearningAgentService
     }
 
     /**
+     * Validasi keamanan URL eksternal untuk mencegah SSRF ke jaringan privat, loopback, atau metadata cloud.
+     */
+    public function validateExternalAgentUrl(string $url, ?string $protocol = null): ?string
+    {
+        $trimmed = trim($url);
+        if ($trimmed === '') {
+            return 'Endpoint URL belum diisi.';
+        }
+
+        $parts = parse_url($trimmed);
+        if (!is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
+            return 'Format URL endpoint tidak valid.';
+        }
+
+        if (isset($parts['user']) || isset($parts['pass'])) {
+            return 'URL endpoint tidak boleh menyertakan kredensial user/password.';
+        }
+
+        $scheme = strtolower((string) $parts['scheme']);
+        $host = strtolower(trim((string) $parts['host'], '[]'));
+        $port = $parts['port'] ?? null;
+
+        if (
+            $protocol === 'ollama'
+            && config('services.ai_agent.allow_local_ollama', false) === true
+            && in_array($host, ['127.0.0.1', 'localhost'], true)
+            && in_array($scheme, ['http', 'https'], true)
+        ) {
+            return null;
+        }
+
+        if ($scheme !== 'https') {
+            return 'Endpoint eksternal wajib menggunakan protokol HTTPS yang aman.';
+        }
+
+        if ($port !== null && !in_array((int) $port, [443, 8443], true)) {
+            return 'Port endpoint eksternal dibatasi ke 443 atau 8443.';
+        }
+
+        if (
+            $host === 'localhost'
+            || str_ends_with($host, '.localhost')
+            || str_ends_with($host, '.local')
+            || str_ends_with($host, '.internal')
+            || $host === 'metadata.google.internal'
+        ) {
+            return 'Akses ke hostname internal atau loopback diblokir demi keamanan SSRF.';
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $isPublic = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+            if ($isPublic === false) {
+                return 'Alamat IP privat, loopback, atau link-local diblokir demi keamanan SSRF.';
+            }
+            return null;
+        }
+
+        if (!app()->runningUnitTests()) {
+            $ips = @gethostbynamel($host);
+            if (!is_array($ips) || empty($ips)) {
+                return 'Hostname endpoint tidak dapat di-resolve oleh DNS.';
+            }
+            foreach ($ips as $ip) {
+                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                    return 'Domain endpoint mengarah ke IP internal/privat dan diblokir demi keamanan SSRF.';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Uji koneksi langsung ke model AI Agent (DeepSeek / OpenRouter / Gemini / Anthropic / Ollama).
      *
      * @return array<string, mixed>
@@ -956,13 +1040,13 @@ class MlSelfLearningAgentService
         );
         $effectiveKey = trim((string) ($apiKey ?: $config->agent_api_key ?: config('services.ai_agent.llm_api_key')));
 
-        if ($effectiveUrl === '') {
+        if ($urlErr = $this->validateExternalAgentUrl($effectiveUrl, $protocol)) {
             return [
                 'ok' => false,
                 'protocol' => $protocol,
                 'model' => $model,
-                'endpoint' => '-',
-                'error' => 'Endpoint URL belum diisi.',
+                'endpoint' => $effectiveUrl !== '' ? $effectiveUrl : '-',
+                'error' => $urlErr,
             ];
         }
 
@@ -1009,8 +1093,9 @@ class MlSelfLearningAgentService
         $rawUrl = trim((string) ($apiUrl ?: $config->agent_api_url ?: 'https://router.classai.id/v1/chat/completions'));
         $key = trim((string) ($apiKey ?: $config->agent_api_key ?: config('services.ai_agent.llm_api_key')));
 
-        if ($rawUrl === '') {
-            return ['ok' => false, 'models' => [], 'error' => 'Endpoint URL belum diisi.'];
+        $protocol = $this->inferProtocol($config->agent_model_id ?: 'deepseek-v4-pro', $rawUrl);
+        if ($urlErr = $this->validateExternalAgentUrl($rawUrl, $protocol)) {
+            return ['ok' => false, 'models' => [], 'error' => $urlErr];
         }
         if ($key === '') {
             return ['ok' => false, 'models' => [], 'error' => 'Tempel API Key terlebih dahulu untuk mengambil daftar model.'];
@@ -1021,8 +1106,16 @@ class MlSelfLearningAgentService
             $modelsUrl = rtrim((string) $modelsUrl, '/') . '/models';
         }
 
+        if ($urlErr = $this->validateExternalAgentUrl((string) $modelsUrl, $protocol)) {
+            return ['ok' => false, 'endpoint' => $modelsUrl, 'models' => [], 'error' => $urlErr];
+        }
+
         try {
-            $resp = Http::timeout(15)->withToken($key)->acceptJson()->get((string) $modelsUrl);
+            $resp = Http::timeout(15)
+                ->withoutRedirecting()
+                ->withToken($key)
+                ->acceptJson()
+                ->get((string) $modelsUrl);
             if (!$resp->successful()) {
                 $err = $resp->json('error.message') ?? $resp->body();
                 return [
@@ -1104,6 +1197,7 @@ class MlSelfLearningAgentService
         try {
             if ($protocol === 'openai_compatible') {
                 $resp = Http::timeout(20)
+                    ->withoutRedirecting()
                     ->withToken($apiKey)
                     ->acceptJson()
                     ->post($url, [
@@ -1133,6 +1227,7 @@ class MlSelfLearningAgentService
 
             if ($protocol === 'gemini') {
                 $resp = Http::timeout(20)
+                    ->withoutRedirecting()
                     ->withHeaders(['x-goog-api-key' => $apiKey])
                     ->acceptJson()
                     ->post($url, [
@@ -1152,6 +1247,7 @@ class MlSelfLearningAgentService
 
             if ($protocol === 'anthropic') {
                 $resp = Http::timeout(20)
+                    ->withoutRedirecting()
                     ->withHeaders([
                         'x-api-key' => $apiKey,
                         'anthropic-version' => '2023-06-01',
@@ -1175,7 +1271,7 @@ class MlSelfLearningAgentService
             }
 
             // Ollama / custom gateway
-            $req = Http::timeout(20)->acceptJson();
+            $req = Http::timeout(20)->withoutRedirecting()->acceptJson();
             if ($apiKey !== '') {
                 $req = $req->withToken($apiKey);
             }
@@ -1212,6 +1308,10 @@ class MlSelfLearningAgentService
         $key = $apiKey !== '' ? $apiKey : (string) config('services.ai_agent.llm_api_key');
 
         if ($protocol === 'local' || $url === '' || ($protocol !== 'ollama' && $key === '')) {
+            return $defaultSummary;
+        }
+
+        if ($this->validateExternalAgentUrl($url, $protocol) !== null) {
             return $defaultSummary;
         }
 

@@ -10,6 +10,7 @@ use Inertia\Response;
 use App\Models\User;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
@@ -37,11 +38,28 @@ class AuthController extends Controller
         ]);
 
         $remember = $request->boolean('remember', true);
-        $user = User::where('email', strtolower(trim($credentials['email'])))->first();
+        $email = strtolower(trim($credentials['email']));
+        $rateKey = 'login:' . $email . '|' . $request->ip();
 
-        if ($user && ($credentials['password'] === 'password123' || Hash::check($credentials['password'], $user->password) || Auth::attempt($credentials, $remember))) {
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $seconds = max(1, RateLimiter::availableIn($rateKey));
+            $msg = "Terlalu banyak percobaan login. Coba lagi dalam {$seconds} detik.";
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg], 429);
+            }
+
+            return back()->withErrors(['email' => $msg])->setStatusCode(429);
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if ($user && Hash::check($credentials['password'], $user->password)) {
+            RateLimiter::clear($rateKey);
+
             // Jika akun ini telah mengaktifkan 2FA, arahkan ke tantangan 2FA
             if ($user->hasTwoFactor()) {
+                $request->session()->regenerate();
                 $request->session()->put('login.2fa.user_id', $user->id);
                 $request->session()->put('login.2fa.remember', $remember);
                 return back()->with('info', 'Silakan masukkan kode OTP 2FA untuk menyelesaikan login.');
@@ -51,6 +69,8 @@ class AuthController extends Controller
             $request->session()->regenerate();
             return redirect()->intended(route('dashboard'));
         }
+
+        RateLimiter::hit($rateKey, 60);
 
         return back()->withErrors([
             'email' => 'Email atau kata sandi yang Anda masukkan tidak sesuai.',
@@ -62,6 +82,14 @@ class AuthController extends Controller
         $userId = $request->session()->get('login.2fa.user_id');
         if (!$userId) {
             return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi 2FA telah berakhir. Silakan masuk kembali.']);
+        }
+
+        $rateKey = '2fa:' . $userId . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $request->session()->forget(['login.2fa.user_id', 'login.2fa.remember']);
+            return redirect()->route('login')->withErrors([
+                'email' => 'Terlalu banyak percobaan OTP gagal. Silakan login ulang.',
+            ]);
         }
 
         $user = User::find($userId);
@@ -80,6 +108,14 @@ class AuthController extends Controller
         }
 
         if (!$isValid) {
+            RateLimiter::hit($rateKey, 60);
+            if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+                $request->session()->forget(['login.2fa.user_id', 'login.2fa.remember']);
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Terlalu banyak percobaan OTP gagal. Silakan login ulang.',
+                ]);
+            }
+
             return back()->withErrors([
                 'two_factor_code' => $isRecovery
                     ? 'Kode pemulihan cadangan salah atau sudah pernah digunakan.'
@@ -87,6 +123,7 @@ class AuthController extends Controller
             ]);
         }
 
+        RateLimiter::clear($rateKey);
         $remember = $request->session()->get('login.2fa.remember', true);
         $request->session()->forget(['login.2fa.user_id', 'login.2fa.remember']);
 

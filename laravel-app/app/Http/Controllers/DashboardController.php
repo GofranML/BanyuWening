@@ -89,13 +89,17 @@ class DashboardController extends Controller
                 fn (Device $d) => strcasecmp((string) ($d->tenant_code ?: 'TENANT-UTAMA'), $activeTenantCode) === 0
             )->values();
 
-        // Saat mode ALL Tenant (Super Admin), jangan kunci ke 1 alat agar agregasi tetap murni per tenant
+        // Resolusi alat aktif:
+        // - Permintaan device_code eksplisit selalu dihormati (dibatasi oleh scope tenant yang boleh diakses).
+        // - Non-admin tanpa permintaan eksplisit otomatis terkunci ke alat pertama milik tenant-nya (agregasi
+        //   lintas alat hanya relevan untuk Super Admin yang mengelola banyak tenant sekaligus).
         $selectedDevice = null;
-        if (!($user->isAdmin() && $activeTenantCode === 'ALL')) {
-            if ($requestedDeviceCode !== '' && strtoupper($requestedDeviceCode) !== 'ALL') {
-                $selectedDevice = $scopedDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0);
-            }
+        if ($requestedDeviceCode !== '' && strtoupper($requestedDeviceCode) !== 'ALL') {
+            $selectedDevice = $scopedDevices->first(fn (Device $d) => strcasecmp($d->device_code, $requestedDeviceCode) === 0);
+        } elseif (!$user->isAdmin()) {
+            $selectedDevice = $scopedDevices->first();
         }
+
         $activeDeviceCode = $selectedDevice ? $selectedDevice->device_code : 'ALL';
 
         $scopedDeviceIds = $scopedDevices->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
@@ -646,7 +650,7 @@ class DashboardController extends Controller
     public function storeUser(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -707,7 +711,9 @@ class DashboardController extends Controller
     public function destroyUser($id)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+        // Ring keamanan user-management: hanya Super Admin. Izin kustom (manage_users
+        // pada peran lain) tidak boleh membuka akses di sini — ini mencegah pelecehan.
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -734,7 +740,7 @@ class DashboardController extends Controller
     public function updateUser(Request $request, $id)
     {
         $admin = Auth::user();
-        if (!$admin || (!$admin->isAdmin() && !$admin->hasPermission('manage_users'))) {
+        if (!$admin || !$admin->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -833,8 +839,8 @@ class DashboardController extends Controller
     public function updateUserPermissions(Request $request, $id)
     {
         $admin = Auth::user();
-        if (!$admin || (!$admin->isAdmin() && !$admin->hasPermission('manage_users'))) {
-            abort(403, 'Akses terbatas untuk Super Administrator.');
+        if (!$admin || !$admin->isAdmin()) {
+            abort(403, 'Hanya Super Administrator yang dapat mengelola hak akses khusus.');
         }
 
         $numericId = (int) str_replace('usr-', '', (string) $id);
@@ -877,7 +883,7 @@ class DashboardController extends Controller
     public function storeTenant(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Administrator.');
         }
 
@@ -984,8 +990,8 @@ class DashboardController extends Controller
     public function updateTenant(Request $request, Tenant $tenant)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
-            abort(403, 'Akses terbatas untuk Administrator.');
+        if (!$user || !$user->isAdmin()) {
+            return back()->with('error', 'Hanya Super Administrator yang dapat mengelola data tenant.');
         }
 
         $validated = $request->validate([
@@ -1028,8 +1034,8 @@ class DashboardController extends Controller
     public function destroyTenant(Request $request, Tenant $tenant)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users'))) {
-            abort(403, 'Akses terbatas untuk Administrator.');
+        if (!$user || !$user->isAdmin()) {
+            return back()->with('error', 'Hanya Super Administrator yang dapat mengelola data tenant.');
         }
 
         if ($tenant->code === 'TENANT-UTAMA') {
@@ -1089,12 +1095,13 @@ class DashboardController extends Controller
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        if (!Hash::check($validated['current_password'], $user->password) && $validated['current_password'] !== 'password123') {
+        if (!Hash::check($validated['current_password'], $user->password)) {
             return back()->withErrors(['current_password' => 'Kata sandi saat ini yang Anda masukkan salah.']);
         }
 
         $user->password = Hash::make($validated['password']);
         $user->save();
+        $request->session()->regenerate();
 
         return back()->with('success', 'Kata sandi akun Anda berhasil diperbarui!');
     }
@@ -1135,7 +1142,7 @@ class DashboardController extends Controller
         ]);
 
         $code = trim($request->input('code'));
-        if (!$user->two_factor_secret || !$twoFactorService->verifyCode($user->two_factor_secret, $code)) {
+        if (!$user->two_factor_secret || !$twoFactorService->verifyCode($user->two_factor_secret, $code, 1, 'setup')) {
             return back()->withErrors(['two_factor_code' => 'Kode OTP 6-digit tidak valid atau kedaluwarsa.']);
         }
 
@@ -1163,7 +1170,7 @@ class DashboardController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (!Hash::check($request->password, $user->password) && $request->password !== 'password123') {
+        if (!Hash::check($request->password, $user->password)) {
             return back()->withErrors(['password' => 'Kata sandi salah. 2FA tidak dapat dinonaktifkan.']);
         }
 
@@ -1179,18 +1186,36 @@ class DashboardController extends Controller
     public function saveNotificationConfig(Request $request, NotificationService $service)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
-        $service->saveSettings($request->all());
+        $validated = $request->validate([
+            'telegram' => ['nullable', 'array'],
+            'whatsapp' => ['nullable', 'array'],
+            'email' => ['nullable', 'array'],
+            'triggers' => ['nullable', 'array'],
+        ]);
+
+        if (!empty($validated['whatsapp']['endpointUrl'])) {
+            $urlErr = app(\App\Services\MlSelfLearningAgentService::class)
+                ->validateExternalAgentUrl((string) $validated['whatsapp']['endpointUrl']);
+            if ($urlErr !== null) {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $urlErr], 422);
+                }
+                return back()->withErrors(['whatsapp.endpointUrl' => $urlErr]);
+            }
+        }
+
+        $service->saveSettings($validated);
         return back()->with('success', 'Konfigurasi bot dan notifikasi berhasil disimpan!');
     }
 
     public function testNotification(Request $request, NotificationService $service)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1226,7 +1251,7 @@ class DashboardController extends Controller
     public function clearDispatchLogs()
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_notifications'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1237,15 +1262,38 @@ class DashboardController extends Controller
     public function uploadLandingMedia(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_landing'))) {
+        if (!$user || !$user->isAdmin()) {
             return response()->json(['error' => 'Akses terbatas untuk Super Administrator.'], 403);
         }
 
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'ogg'];
+
         $request->validate([
-            'file' => ['required', 'file', 'max:51200', 'mimes:jpg,jpeg,png,webp,svg,gif,mp4,webm,ogg'],
+            'file' => ['required', 'file', 'max:51200', 'mimes:jpg,jpeg,png,webp,gif,mp4,webm,ogg'],
         ]);
 
         $file = $request->file('file');
+        $extension = strtolower((string) ($file->guessExtension() ?: ''));
+        if (!in_array($extension, $allowedExtensions, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Format file media tidak diizinkan (SVG dan skrip diblokir).',
+            ], 422);
+        }
+
+        // Konten-sniffing: menolak polyglot (contoh GIF89a + PHP/SVG script) yang disebarkan
+        // dengan ekstensi gambar sekadar simulasi upload. Server-side menurunkan ekstensi
+        // yang dibutuhkan tipe media beneran seperti jpg/png/webp/mp4.
+        $head = $this->readUploadHead($file);
+        foreach (['<?php', '<?=', '<svg', '<script', 'javascript:'] as $needle) {
+            if (stripos($head, $needle) !== false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Format file media tidak diizinkan (SVG dan skrip diblokir).',
+                ], 422);
+            }
+        }
+
         $uploadDir = public_path('uploads/landing');
         if (!file_exists($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -1253,8 +1301,7 @@ class DashboardController extends Controller
 
         $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $slug = \Illuminate\Support\Str::slug($originalName) ?: 'media';
-        $extension = $file->getClientOriginalExtension() ?: 'jpg';
-        $filename = time() . '_' . $slug . '.' . $extension;
+        $filename = time() . '_' . $slug . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
 
         $file->move($uploadDir, $filename);
 
@@ -1267,10 +1314,45 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Membaca awalan (8 KB) konten upload untuk sniffing konten.
+     *
+     * Untuk upload sejati nilai diambil dari deskriptor file; untuk file tiruan tes
+     * (Illuminate\Http\Testing\File) membaca via property stream yang terlindungi.
+     */
+    private function readUploadHead($file): string
+    {
+        $realPath = method_exists($file, 'getRealPath') ? $file->getRealPath() : null;
+        if (is_string($realPath) && is_file($realPath)) {
+            $contents = @file_get_contents($realPath);
+            if (is_string($contents)) {
+                return strtolower($contents);
+            }
+        }
+
+        if ($file instanceof \Illuminate\Http\Testing\File) {
+            try {
+                $prop = new \ReflectionProperty(\Illuminate\Http\Testing\File::class, 'tempFile');
+                $resource = $prop->getValue($file);
+                if (is_resource($resource)) {
+                    $pos = ftell($resource);
+                    fseek($resource, 0);
+                    $head = strtolower((string) fread($resource, 8192));
+                    fseek($resource, max(0, $pos ?: 0)); // pulihkan pointer agar move() tetap berjalan
+                    return $head;
+                }
+            } catch (\Throwable) {
+                // Jika stream tidak bisa dibaca, sniffing dilewati.
+            }
+        }
+
+        return '';
+    }
+
     public function saveLandingContent(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_landing'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1318,7 +1400,7 @@ class DashboardController extends Controller
     public function createBackup(Request $request)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
@@ -1391,36 +1473,56 @@ class DashboardController extends Controller
     public function downloadBackup(string $filename)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
-        $cleanFilename = basename($filename);
-        $filePath = storage_path('app/backups/' . $cleanFilename);
-
-        if (!file_exists($filePath)) {
+        $filePath = $this->resolveSafeBackupPath($filename);
+        if (!$filePath || !is_file($filePath)) {
             abort(404, 'File backup tidak ditemukan.');
         }
 
-        return response()->download($filePath, $cleanFilename);
+        return response()->download($filePath, basename($filePath));
     }
 
     public function deleteBackup(string $filename)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_backups'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 
-        $cleanFilename = basename($filename);
-        $filePath = storage_path('app/backups/' . $cleanFilename);
-
-        if (file_exists($filePath)) {
+        $filePath = $this->resolveSafeBackupPath($filename);
+        if ($filePath && is_file($filePath)) {
             unlink($filePath);
-            return back()->with('success', "File backup {$cleanFilename} berhasil dihapus dari server.");
+            $safeName = basename($filePath);
+            return back()->with('success', "File backup {$safeName} berhasil dihapus dari server.");
         }
 
         return back()->with('error', 'File backup tidak ditemukan.');
+    }
+
+    private function resolveSafeBackupPath(string $filename): ?string
+    {
+        if (
+            $filename === ''
+            || str_contains($filename, '/')
+            || str_contains($filename, '\\')
+            || str_contains($filename, '..')
+            || !preg_match('/^[A-Za-z0-9._-]+$/', $filename)
+        ) {
+            abort(422, 'Nama file backup tidak valid.');
+        }
+
+        $backupDir = storage_path('app/backups');
+        $realDir = realpath($backupDir);
+        $realFile = realpath($backupDir . DIRECTORY_SEPARATOR . $filename);
+
+        if (!$realDir || !$realFile || !str_starts_with($realFile, $realDir . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return $realFile;
     }
 
     /**
@@ -1626,7 +1728,7 @@ class DashboardController extends Controller
     public function rotateDeviceToken(Request $request, Device $device)
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('manage_users') && !$user->hasPermission('view_docs_api'))) {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Akses terbatas untuk Super Administrator.');
         }
 

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
+
 class TwoFactorService
 {
     private const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -68,9 +70,9 @@ class TwoFactorService
     }
 
     /**
-     * Verify a 6-digit TOTP code against a Base32 secret.
+     * Verify a 6-digit TOTP code against a Base32 secret (with anti-replay cache).
      */
-    public function verifyCode(string $secret, string $code, int $discrepancy = 1): bool
+    public function verifyCode(string $secret, string $code, int $discrepancy = 1, string $context = 'auth'): bool
     {
         $code = trim($code);
         if (strlen($code) !== 6 || !ctype_digit($code)) {
@@ -113,7 +115,8 @@ class TwoFactorService
             $calculatedCode = str_pad((string) $truncatedHash, 6, '0', STR_PAD_LEFT);
 
             if (hash_equals($calculatedCode, $code)) {
-                return true;
+                $replayKey = 'totp_used:' . $context . ':' . hash('sha256', $secret) . ':' . (int) $slice;
+                return Cache::add($replayKey, 1, 120);
             }
         }
 

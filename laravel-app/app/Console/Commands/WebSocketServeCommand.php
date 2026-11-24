@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Log;
 
 class WebSocketServeCommand extends Command
 {
+    private const MAX_CLIENTS = 256;
+    private const MAX_BUFFER_BYTES = 262144;
+    private const HANDSHAKE_TIMEOUT_SEC = 10;
+
     protected $signature = 'ws:serve {--host= : Host bind (default dari config services.realtime.ws_host)} {--port= : Port bind (default dari config services.realtime.ws_port)}';
     protected $description = 'Menjalankan server WebSocket multi-protokol BanyuWening (telemetry, control, alerts, heartbeat, stream)';
 
@@ -74,20 +78,32 @@ class WebSocketServeCommand extends Command
                 if (in_array($server, $read, true)) {
                     $conn = @stream_socket_accept($server, 0);
                     if ($conn) {
-                        stream_set_blocking($conn, false);
-                        $id = (int) $conn;
-                        $this->clients[$id] = [
-                            'id' => $id,
-                            'socket' => $conn,
-                            'handshaked' => false,
-                            'buffer' => '',
-                            'role' => null, // 'device' | 'dashboard'
-                            'device_id' => null,
-                            'device_code' => null,
-                            'channels' => [],
-                            'protocol' => null,
-                            'connected_at' => time(),
-                        ];
+                        if (count($this->clients) >= self::MAX_CLIENTS) {
+                            $errResp = WebSocketProtocol::buildHttpErrorResponse(
+                                503,
+                                'Service Unavailable',
+                                json_encode(['success' => false, 'message' => 'Kapasitas koneksi WebSocket penuh'])
+                            );
+                            @fwrite($conn, $errResp);
+                            @fclose($conn);
+                        } else {
+                            stream_set_blocking($conn, false);
+                            $id = (int) $conn;
+                            $this->clients[$id] = [
+                                'id' => $id,
+                                'socket' => $conn,
+                                'handshaked' => false,
+                                'buffer' => '',
+                                'role' => null, // 'device' | 'dashboard'
+                                'is_admin' => false,
+                                'allowed_devices' => [],
+                                'device_id' => null,
+                                'device_code' => null,
+                                'channels' => [],
+                                'protocol' => null,
+                                'connected_at' => time(),
+                            ];
+                        }
                     }
                 }
 
@@ -111,12 +127,24 @@ class WebSocketServeCommand extends Command
                     }
 
                     $this->clients[$id]['buffer'] .= $chunk;
+                    if (strlen($this->clients[$id]['buffer']) > self::MAX_BUFFER_BYTES) {
+                        $this->disconnectClient($id);
+                        continue;
+                    }
 
                     if (!$this->clients[$id]['handshaked']) {
                         $this->handleHandshake($id, $broadcaster);
                     } else {
                         $this->handleFrames($id, $ingestionService, $broadcaster);
                     }
+                }
+            }
+
+            // Tutup koneksi lambat (Slowloris) yang tidak menyelesaikan handshake dalam batas waktu
+            $nowTs = time();
+            foreach ($this->clients as $cid => $cMeta) {
+                if (!$cMeta['handshaked'] && ($nowTs - ($cMeta['connected_at'] ?? $nowTs)) > self::HANDSHAKE_TIMEOUT_SEC) {
+                    $this->disconnectClient($cid);
                 }
             }
 
@@ -267,6 +295,10 @@ class WebSocketServeCommand extends Command
                 : ['telemetry', 'control', 'alerts', 'heartbeat', 'ota'];
 
             $client['role'] = 'dashboard';
+            $client['is_admin'] = (bool) ($authedDashboard['is_admin'] ?? (strtoupper((string) ($authedDashboard['role'] ?? '')) === 'ADMIN'));
+            $client['allowed_devices'] = is_array($authedDashboard['allowed_devices'] ?? null)
+                ? $authedDashboard['allowed_devices']
+                : [];
             $client['channels'] = $route['channel'] === 'stream' ? $requestedChannels : [$route['channel']];
 
             $this->info('[WS+] Dashboard client #' . $id . ' terhubung (' . implode(',', $client['channels']) . ')');
@@ -511,13 +543,23 @@ class WebSocketServeCommand extends Command
         }
 
         fseek($fp, $this->busOffset);
-        $content = stream_get_contents($fp);
-        $this->busOffset = (int) ftell($fp);
+        $content = stream_get_contents($fp, 524288);
         fclose($fp);
 
-        if (!$content) {
+        if ($content === false || $content === '') {
             return;
         }
+
+        $lastNl = strrpos($content, "\n");
+        if ($lastNl === false) {
+            if (strlen($content) >= 524288) {
+                $this->busOffset += strlen($content);
+            }
+            return;
+        }
+
+        $this->busOffset += $lastNl + 1;
+        $content = substr($content, 0, $lastNl);
 
         foreach (explode("\n", trim($content)) as $line) {
             if ($line === '') {
@@ -534,7 +576,6 @@ class WebSocketServeCommand extends Command
     private function broadcastEnvelope(array $envelope): void
     {
         $channel = $envelope['channel'] ?? 'telemetry';
-        $targetDevice = $envelope['device_code'] ?? null;
         $encoded = WebSocketProtocol::encodeFrame(
             json_encode($envelope, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
@@ -546,8 +587,7 @@ class WebSocketServeCommand extends Command
             if (!in_array($channel, $client['channels'], true)) {
                 continue;
             }
-            // Untuk klien perangkat, kirim hanya event yang ditujukan bagi alat tersebut
-            if ($client['role'] === 'device' && $targetDevice && $client['device_code'] !== $targetDevice) {
+            if (!RealtimeBroadcaster::canClientReceiveEnvelope($client, $envelope)) {
                 continue;
             }
 

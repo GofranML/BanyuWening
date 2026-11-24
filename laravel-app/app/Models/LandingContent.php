@@ -79,10 +79,26 @@ class LandingContent extends Model
     }
 
     /**
+     * Sanitisasi nilai landing (hanya string dibiarkan; tag lain dibuang).
+     * Mencegah stored-XSS pada konten landing.
+     */
+    public static function sanitizeValue($value)
+    {
+        if (is_string($value)) {
+            return strip_tags($value);
+        }
+        if (is_array($value)) {
+            return array_map([static::class, 'sanitizeValue'], $value);
+        }
+        return $value;
+    }
+
+    /**
      * Simpan satu setting.
      */
     public static function setValue(string $key, $value): void
     {
+        $value = static::sanitizeValue($value);
         $serialized = is_array($value) || is_object($value) ? json_encode($value) : (string) $value;
         static::updateOrCreate(['key' => $key], ['value' => $serialized]);
     }

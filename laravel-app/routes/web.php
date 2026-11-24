@@ -25,7 +25,7 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/2fa', [AuthController::class, 'verifyTwoFactor'])->name('login.2fa');
 Route::post('/login/2fa/cancel', [AuthController::class, 'cancelTwoFactor'])->name('login.2fa.cancel');
-Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Authenticated Dashboard Routes
 Route::middleware(['auth'])->group(function () {

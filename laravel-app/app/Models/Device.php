@@ -195,6 +195,36 @@ class Device extends Model
     }
 
     /**
+     * Periksa apakah perangkat merupakan node showcase publik (tidak mengekspos perangkat tenant privat ke publik).
+     */
+    public function isPublicDemoDevice(): bool
+    {
+        if (strcasecmp((string) $this->device_code, 'ESP32-NODE-01') === 0) {
+            return true;
+        }
+
+        $assigned = is_array($this->assigned_user_ids) ? array_filter($this->assigned_user_ids) : [];
+        $tenant = strtoupper(trim((string) ($this->tenant_code ?? '')));
+
+        return $this->owner_user_id === null
+            && empty($assigned)
+            && ($tenant === '' || $tenant === 'TENANT-UTAMA');
+    }
+
+    /**
+     * Daftar perangkat showcase publik yang aman diakses tanpa sesi tenant.
+     *
+     * @return Collection<int, Device>
+     */
+    public static function publicDemoDevices(): Collection
+    {
+        return static::orderBy('id')
+            ->get()
+            ->filter(fn (self $device) => $device->isPublicDemoDevice())
+            ->values();
+    }
+
+    /**
      * Tetapkan pemilik & daftar akun peternak yang diberi akses ke alat IoT ini.
      *
      * @param  array<int, int|string>  $assignedUserIds

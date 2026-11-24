@@ -69,6 +69,13 @@ class NotificationService
     public function saveSettings(array $data): void
     {
         $setting = NotificationSetting::firstOrNew(['key' => 'default']);
+        if (!$setting->exists) {
+            // Spesifikasi kolom NOT NULL — default kosong dibutuhkan sebelum partial update.
+            $setting->telegram_config = [];
+            $setting->whatsapp_config = [];
+            $setting->email_config = [];
+            $setting->trigger_rules = [];
+        }
         if (isset($data['telegram'])) $setting->telegram_config = $data['telegram'];
         if (isset($data['whatsapp'])) $setting->whatsapp_config = $data['whatsapp'];
         if (isset($data['email'])) $setting->email_config = $data['email'];

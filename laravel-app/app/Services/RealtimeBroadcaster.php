@@ -104,9 +104,16 @@ class RealtimeBroadcaster
      */
     public function issueDashboardTicket(User $user, int $ttlSeconds = 7200): string
     {
+        $isAdmin = $user->isAdmin();
+        $allowedDevices = $isAdmin
+            ? ['*']
+            : \App\Models\Device::accessibleBy($user)->pluck('device_code')->values()->all();
+
         $payload = [
             'uid' => $user->id,
             'role' => $user->role,
+            'is_admin' => $isAdmin,
+            'allowed_devices' => $allowedDevices,
             'exp' => time() + $ttlSeconds,
             'nonce' => bin2hex(random_bytes(8)),
         ];
@@ -115,6 +122,31 @@ class RealtimeBroadcaster
         $sig = hash_hmac('sha256', $encoded, $this->signingKey());
 
         return $encoded . '.' . $sig;
+    }
+
+    /**
+     * Validasi isolasi multi-tenant sebelum mengirim envelope realtime ke klien WebSocket.
+     */
+    public static function canClientReceiveEnvelope(array $client, array $envelope): bool
+    {
+        $role = $client['role'] ?? null;
+        $envDevice = $envelope['device_code'] ?? ($envelope['payload']['device_code'] ?? null);
+
+        if ($role === 'device') {
+            return !$envDevice || ($client['device_code'] ?? null) === $envDevice;
+        }
+
+        if ($role === 'dashboard') {
+            if (!empty($client['is_admin'])) {
+                return true;
+            }
+            if (!$envDevice) {
+                return false;
+            }
+            return in_array($envDevice, $client['allowed_devices'] ?? [], true);
+        }
+
+        return false;
     }
 
     /**

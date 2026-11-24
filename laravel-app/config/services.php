@@ -45,6 +45,7 @@ return [
         'llm_api_url' => env('AI_AGENT_LLM_URL'),
         'llm_api_key' => env('AI_AGENT_LLM_KEY'),
         'llm_model' => env('AI_AGENT_LLM_MODEL', 'gemini-2.0-flash'),
+        'allow_local_ollama' => (bool) env('AI_AGENT_ALLOW_LOCAL_OLLAMA', false),
     ],
 
     'mqtt' => [

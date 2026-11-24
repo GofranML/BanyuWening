@@ -8,6 +8,7 @@ use App\Models\MlAgentRun;
 use App\Models\MlFieldValidation;
 use App\Models\MlModelVersion;
 use App\Models\Prediction;
+use App\Models\User;
 use App\Services\MachineLearningService;
 use App\Services\MlSelfLearningAgentService;
 use Illuminate\Http\JsonResponse;
@@ -127,6 +128,9 @@ class MlApiController extends Controller
         $risk = strtoupper(trim((string) $request->query('risk', '')));
         $deviceCode = trim((string) ($request->query('device_code') ?? ''));
 
+        $user = Auth::user() ?: Auth::guard('web')->user();
+        $tokenDevice = $this->resolveTokenDevice($request);
+
         $query = Prediction::with('sensorReading.device:id,device_code,name,pond_name')
             ->latest('predicted_at');
 
@@ -134,8 +138,68 @@ class MlApiController extends Controller
             $query->where('risk', $risk);
         }
 
-        if ($deviceCode !== '') {
-            $query->whereHas('sensorReading.device', fn ($q) => $q->where('device_code', $deviceCode));
+        if ($user instanceof User) {
+            if (!$user->isAdmin()) {
+                $accessible = Device::accessibleBy($user);
+                $accessibleIds = $accessible->pluck('id')->all();
+
+                if ($deviceCode !== '') {
+                    $dev = Device::where('device_code', $deviceCode)->first();
+                    if (!$dev || !$dev->isAccessibleBy($user)) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'TENANT_ACCESS_DENIED',
+                            'message' => 'Alat IoT ini bukan milik tenant akun Anda.',
+                        ], 403);
+                    }
+                    $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $dev->id));
+                } elseif (empty($accessibleIds)) {
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $accessibleIds));
+                }
+            } elseif ($deviceCode !== '') {
+                $query->whereHas('sensorReading.device', fn ($q) => $q->where('device_code', $deviceCode));
+            }
+        } elseif ($tokenDevice !== null) {
+            if ($deviceCode !== '' && strcasecmp($deviceCode, $tokenDevice->device_code) !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'DEVICE_TOKEN_MISMATCH',
+                    'message' => "Token ini terikat pada perangkat '{$tokenDevice->device_code}', bukan '{$deviceCode}'.",
+                ], 403);
+            }
+
+            if ($deviceCode !== '') {
+                $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $tokenDevice->id));
+            } else {
+                $query->where(function ($q) use ($tokenDevice) {
+                    $q->whereHas('sensorReading', fn ($sq) => $sq->where('device_id', $tokenDevice->id))
+                        ->orWhereNull('sensor_reading_id');
+                });
+            }
+        } else {
+            if ($deviceCode !== '') {
+                $dev = Device::where('device_code', $deviceCode)->first();
+                if (!$dev || !$dev->isPublicDemoDevice()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'TENANT_ACCESS_DENIED',
+                        'message' => 'Autentikasi diperlukan untuk mengakses data perangkat tenant ini.',
+                    ], 403);
+                }
+                $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $dev->id));
+            } else {
+                $publicIds = Device::publicDemoDevices()->pluck('id')->all();
+                $query->where(function ($q) use ($publicIds) {
+                    if (!empty($publicIds)) {
+                        $q->whereHas('sensorReading', fn ($sq) => $sq->whereIn('device_id', $publicIds))
+                            ->orWhereNull('sensor_reading_id');
+                    } else {
+                        $q->whereNull('sensor_reading_id');
+                    }
+                });
+            }
         }
 
         $items = $query->take($limit)->get();
@@ -153,12 +217,74 @@ class MlApiController extends Controller
     public function latestPrediction(Request $request): JsonResponse
     {
         $deviceCode = trim((string) ($request->query('device_code') ?? ''));
+        $user = Auth::user() ?: Auth::guard('web')->user();
+        $tokenDevice = $this->resolveTokenDevice($request);
 
         $query = Prediction::with('sensorReading.device:id,device_code,name,pond_name')
             ->latest('predicted_at');
 
-        if ($deviceCode !== '') {
-            $query->whereHas('sensorReading.device', fn ($q) => $q->where('device_code', $deviceCode));
+        if ($user instanceof User) {
+            if (!$user->isAdmin()) {
+                $accessible = Device::accessibleBy($user);
+                $accessibleIds = $accessible->pluck('id')->all();
+
+                if ($deviceCode !== '') {
+                    $dev = Device::where('device_code', $deviceCode)->first();
+                    if (!$dev || !$dev->isAccessibleBy($user)) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'TENANT_ACCESS_DENIED',
+                            'message' => 'Alat IoT ini bukan milik tenant akun Anda.',
+                        ], 403);
+                    }
+                    $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $dev->id));
+                } elseif (empty($accessibleIds)) {
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereHas('sensorReading', fn ($q) => $q->whereIn('device_id', $accessibleIds));
+                }
+            } elseif ($deviceCode !== '') {
+                $query->whereHas('sensorReading.device', fn ($q) => $q->where('device_code', $deviceCode));
+            }
+        } elseif ($tokenDevice !== null) {
+            if ($deviceCode !== '' && strcasecmp($deviceCode, $tokenDevice->device_code) !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'DEVICE_TOKEN_MISMATCH',
+                    'message' => "Token ini terikat pada perangkat '{$tokenDevice->device_code}', bukan '{$deviceCode}'.",
+                ], 403);
+            }
+
+            if ($deviceCode !== '') {
+                $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $tokenDevice->id));
+            } else {
+                $query->where(function ($q) use ($tokenDevice) {
+                    $q->whereHas('sensorReading', fn ($sq) => $sq->where('device_id', $tokenDevice->id))
+                        ->orWhereNull('sensor_reading_id');
+                });
+            }
+        } else {
+            if ($deviceCode !== '') {
+                $dev = Device::where('device_code', $deviceCode)->first();
+                if (!$dev || !$dev->isPublicDemoDevice()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'TENANT_ACCESS_DENIED',
+                        'message' => 'Autentikasi diperlukan untuk mengakses data perangkat tenant ini.',
+                    ], 403);
+                }
+                $query->whereHas('sensorReading', fn ($q) => $q->where('device_id', $dev->id));
+            } else {
+                $publicIds = Device::publicDemoDevices()->pluck('id')->all();
+                $query->where(function ($q) use ($publicIds) {
+                    if (!empty($publicIds)) {
+                        $q->whereHas('sensorReading', fn ($sq) => $sq->whereIn('device_id', $publicIds))
+                            ->orWhereNull('sensor_reading_id');
+                    } else {
+                        $q->whereNull('sensor_reading_id');
+                    }
+                });
+            }
         }
 
         $prediction = $query->first();
@@ -206,7 +332,7 @@ class MlApiController extends Controller
      */
     public function triggerEvaluate(Request $request): JsonResponse
     {
-        $this->authorizeAdmin();
+        $this->authorizeStrictAdmin();
 
         $agentModelId = $request->input('agent_model_id');
         if ($agentModelId !== null && !in_array($agentModelId, MlSelfLearningAgentService::validAgentModelIds(), true)) {
@@ -228,7 +354,7 @@ class MlApiController extends Controller
      */
     public function triggerSelfLearn(Request $request): JsonResponse
     {
-        $this->authorizeAdmin();
+        $this->authorizeStrictAdmin();
 
         $validated = $request->validate([
             'force_retrain' => ['nullable', 'boolean'],
@@ -257,7 +383,7 @@ class MlApiController extends Controller
      */
     public function updateAgentConfig(Request $request): JsonResponse
     {
-        $this->authorizeAdmin();
+        $this->authorizeStrictAdmin();
 
         $validated = $request->validate([
             'auto_learning_enabled' => ['required', 'boolean'],
@@ -274,6 +400,14 @@ class MlApiController extends Controller
         ]);
 
         $config = MlAgentConfig::current();
+        $agentModelId = $validated['agent_model_id'] ?? $config->agent_model_id ?? 'rf-autonomous-local';
+        if (!empty($validated['agent_api_url'])) {
+            $meta = MlSelfLearningAgentService::findAgentModelMeta($agentModelId);
+            if ($urlErr = $this->agentService->validateExternalAgentUrl((string) $validated['agent_api_url'], $meta['protocol'] ?? null)) {
+                return response()->json(['success' => false, 'message' => $urlErr], 422);
+            }
+        }
+
         $updatePayload = [
             'auto_learning_enabled' => (bool) $validated['auto_learning_enabled'],
             'promotion_mode' => $validated['promotion_mode'],
@@ -282,7 +416,7 @@ class MlApiController extends Controller
             'min_new_samples' => (int) $validated['min_new_samples'],
             'schedule_interval_hours' => (int) $validated['schedule_interval_hours'],
             'llm_advisor_enabled' => (bool) ($validated['llm_advisor_enabled'] ?? false),
-            'agent_model_id' => $validated['agent_model_id'] ?? $config->agent_model_id ?? 'rf-autonomous-local',
+            'agent_model_id' => $agentModelId,
             'agent_api_url' => $validated['agent_api_url'] ?? null,
         ];
 
@@ -314,6 +448,17 @@ class MlApiController extends Controller
             'agent_api_key' => ['nullable', 'string', 'max:500'],
         ]);
 
+        if (!empty($validated['agent_api_url'])) {
+            $meta = !empty($validated['agent_model_id']) ? MlSelfLearningAgentService::findAgentModelMeta($validated['agent_model_id']) : null;
+            if ($urlErr = $this->agentService->validateExternalAgentUrl((string) $validated['agent_api_url'], $meta['protocol'] ?? null)) {
+                return response()->json([
+                    'success' => false,
+                    'result' => ['ok' => false, 'error' => $urlErr],
+                    'message' => $urlErr,
+                ], 422);
+            }
+        }
+
         $result = $this->agentService->testAgentConnection(
             $validated['agent_model_id'] ?? null,
             $validated['agent_api_url'] ?? null,
@@ -334,12 +479,22 @@ class MlApiController extends Controller
      */
     public function fetchRemoteModels(Request $request): JsonResponse
     {
-        $this->authorizeAdmin();
+        $this->authorizeStrictAdmin();
 
         $validated = $request->validate([
             'agent_api_url' => ['nullable', 'url', 'max:255'],
             'agent_api_key' => ['nullable', 'string', 'max:500'],
         ]);
+
+        if (!empty($validated['agent_api_url'])) {
+            if ($urlErr = $this->agentService->validateExternalAgentUrl((string) $validated['agent_api_url'])) {
+                return response()->json([
+                    'success' => false,
+                    'models' => [],
+                    'message' => $urlErr,
+                ], 422);
+            }
+        }
 
         $result = $this->agentService->fetchRemoteModels(
             $validated['agent_api_url'] ?? null,
@@ -361,7 +516,7 @@ class MlApiController extends Controller
      */
     public function storeFieldValidation(Request $request): JsonResponse
     {
-        $user = $this->authorizeAdmin();
+        $user = $this->authorizeStrictAdmin();
 
         $validated = $request->validate([
             'prediction_id' => ['nullable', 'integer', 'exists:predictions,id'],
@@ -420,7 +575,7 @@ class MlApiController extends Controller
      */
     public function destroyFieldValidation(MlFieldValidation $validation): JsonResponse
     {
-        $this->authorizeAdmin();
+        $this->authorizeStrictAdmin();
         $validation->delete();
 
         return response()->json([
@@ -435,7 +590,7 @@ class MlApiController extends Controller
      */
     public function promoteModel(MlModelVersion $mlModelVersion): JsonResponse
     {
-        $admin = $this->authorizeAdmin();
+        $admin = $this->authorizeStrictAdmin();
 
         $promoted = $this->agentService->promoteVersion(
             $mlModelVersion,
@@ -449,11 +604,41 @@ class MlApiController extends Controller
         ]);
     }
 
+    private function resolveTokenDevice(Request $request): ?Device
+    {
+        if ($bearer = $request->bearerToken()) {
+            if ($byToken = Device::findByPlainToken($bearer)) {
+                return $byToken;
+            }
+        }
+
+        if ($headerToken = $request->header('X-Device-Token')) {
+            if ($byToken = Device::findByPlainToken($headerToken)) {
+                return $byToken;
+            }
+        }
+
+        return null;
+    }
+
     private function authorizeAdmin()
     {
         $user = Auth::user();
         if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
             abort(403, 'Akses terbatas untuk Super Administrator atau pengguna dengan izin Dokumentasi & MLOps.');
+        }
+        return $user;
+    }
+
+    /**
+     * Ring keamanan mutasi (konfig, eval, promote, dll): khusus Super Admin.
+     * Izin kustom view_docs_api tidak boleh membuka mutasi ini.
+     */
+    private function authorizeStrictAdmin()
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
         }
         return $user;
     }
