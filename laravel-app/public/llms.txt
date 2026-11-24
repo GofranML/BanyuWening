@@ -3,8 +3,8 @@
 > Platform IoT akuakultur presisi (1 Core Hub untuk 1–4 kolam) dengan kecerdasan Edge Fuzzy lokal, penyimpanan offline LittleFS 72 jam, sensor pH/suhu/TDS/kekeruhan multi-ADC 16-bit, dan prediksi risiko Random Forest + WeningBot WhatsApp-First untuk petambak lele Indonesia.
 
 ## Halaman Utama
-- [Beranda BanyuWening](https://banyuwening.ciptasol.cloud/): Penjelasan arsitektur 1 Core Hub untuk 1–4 kolam, siklus 24 jam kolam terpal, arsitektur 3D interaktif, paket Starter 2K / Juragan 4K / Entry 1K, dan kalkulator ROI budidaya lele.
-- [Demo Interaktif Simulator](https://banyuwening.ciptasol.cloud/demo): Simulasi langsung dashboard monitoring kualitas air 24 jam (pH, suhu, TDS, turbiditas), kendali aerator otomatis, dan prediksi Random Forest tanpa login.
+- [Beranda BanyuWening](https://banyuwening.banyuwening.web.id/): Penjelasan arsitektur 1 Core Hub untuk 1–4 kolam, siklus 24 jam kolam terpal, arsitektur 3D interaktif, paket Starter 2K / Juragan 4K / Entry 1K, dan kalkulator ROI budidaya lele.
+- [Demo Interaktif Simulator](https://banyuwening.banyuwening.web.id/demo): Simulasi langsung dashboard monitoring kualitas air 24 jam (pH, suhu, TDS, turbiditas), kendali aerator otomatis, dan prediksi Random Forest tanpa login.
 
 ## Arsitektur & Spesifikasi Utama
 - **Topologi Hardware**: 1 Core Hub ESP32-WROOM melayani 1–4 modul kolam melalui konektor kedap air GX16 dan 2–3x ADC 16-bit ADS1115.
@@ -14,5 +14,5 @@
 - **Paket**: Entry 1K (Rp1.290.000), Starter 2K (Rp1.890.000), dan Juragan 4K (Rp2.990.000) dengan Mode Offline-Plus Rp0/bulan.
 
 ## Dokumentasi Teknis Internal
-- [Dokumentasi API Swagger](https://banyuwening.ciptasol.cloud/api/docs): Spesifikasi OpenAPI REST & telemetri perangkat.
-- [AsyncAPI Realtime](https://banyuwening.ciptasol.cloud/api/docs/asyncapi): Spesifikasi WebSocket telemetri dan OTA ESP32.
+- [Dokumentasi API Swagger](https://banyuwening.banyuwening.web.id/api/docs): Spesifikasi OpenAPI REST & telemetri perangkat.
+- [AsyncAPI Realtime](https://banyuwening.banyuwening.web.id/api/docs/asyncapi): Spesifikasi WebSocket telemetri dan OTA ESP32.

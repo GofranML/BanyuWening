@@ -6,4 +6,4 @@ Disallow: /login
 Disallow: /logout
 Disallow: /api/
 
-Sitemap: https://banyuwening.ciptasol.cloud/sitemap.xml
+Sitemap: https://banyuwening.banyuwening.web.id/sitemap.xml

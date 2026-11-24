@@ -192,7 +192,7 @@ class RealtimeBroadcaster
             $httpHost = parse_url($httpOrigin, PHP_URL_HOST);
             $wsHost = parse_url($wsBase, PHP_URL_HOST);
             $isLocalHttp = in_array($httpHost, ['127.0.0.1', 'localhost'], true);
-            if (!$isLocalHttp && $httpHost && $wsHost && str_contains((string) $wsHost, '.ciptasol.cloud') && strcasecmp((string) $httpHost, (string) $wsHost) !== 0) {
+            if (!$isLocalHttp && $httpHost && $wsHost && (str_contains((string) $wsHost, '.ciptasol.cloud') || str_contains((string) $wsHost, 'banyuwening.web.id')) && strcasecmp((string) $httpHost, (string) $wsHost) !== 0) {
                 $scheme = parse_url($httpOrigin, PHP_URL_SCHEME) === 'https' ? 'wss' : 'ws';
                 $port = parse_url($httpOrigin, PHP_URL_PORT);
                 $wsBase = $scheme . '://' . $httpHost . ($port ? ':' . $port : '');

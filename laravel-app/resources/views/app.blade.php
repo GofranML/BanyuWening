@@ -3,7 +3,7 @@
     if ($appBaseUrl === '' || str_contains($appBaseUrl, 'localhost') || str_contains($appBaseUrl, '127.0.0.1')) {
         $appBaseUrl = request()->getSchemeAndHttpHost();
     }
-    if (str_contains($appBaseUrl, 'banyuwening.ciptasol.cloud')) {
+    if ((str_contains($appBaseUrl, 'banyuwening.ciptasol.cloud') || str_contains($appBaseUrl, 'banyuwening.web.id'))) {
         $appBaseUrl = preg_replace('/^http:\/\//i', 'https://', $appBaseUrl);
     }
 

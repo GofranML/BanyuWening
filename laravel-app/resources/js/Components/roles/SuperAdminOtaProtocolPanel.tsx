@@ -171,7 +171,7 @@ export function SuperAdminOtaProtocolPanel({
   const [snippetTab, setSnippetTab] = useState<"esp32" | "cirkit" | "curl">("esp32");
 
   const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://banyuwening.ciptasol.cloud";
+    typeof window !== "undefined" ? window.location.origin : "https://banyuwening.banyuwening.web.id";
   const wsBase = realtimeConfig?.ws_base_url || "ws://127.0.0.1:8081";
   const wsMeta = parseWsOrigin(wsBase);
 
