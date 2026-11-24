@@ -378,10 +378,22 @@ class DashboardController extends Controller
             }
             $dbSizeHuman = $dbSize >= 1048576 ? round($dbSize / 1048576, 2) . ' MB' : round($dbSize / 1024, 2) . ' KB';
 
+            $dbDriverLabel = strtoupper((string) $driver);
+            if ($driver === 'pgsql') {
+                try {
+                    $tsExt = \Illuminate\Support\Facades\DB::selectOne("SELECT extversion FROM pg_extension WHERE extname = 'timescaledb'");
+                    if ($tsExt) {
+                        $dbDriverLabel = 'PGSQL + TIMESCALEDB (' . $tsExt->extversion . ')';
+                    }
+                } catch (\Throwable) {
+                    // abaikan jika ekstensi tidak aktif
+                }
+            }
+
             $securityStats = [
                 'total_users' => User::count(),
                 'users_with_2fa' => User::where('two_factor_enabled', true)->count(),
-                'db_driver' => strtoupper(config('database.default')),
+                'db_driver' => $dbDriverLabel,
                 'db_size' => $dbSizeHuman,
                 'total_readings' => SensorReading::count(),
                 'total_predictions' => Prediction::count(),
