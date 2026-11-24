@@ -232,7 +232,7 @@ class MlApiController extends Controller
 
         $validated = $request->validate([
             'force_retrain' => ['nullable', 'boolean'],
-            'agent_model_id' => ['nullable', 'string', Rule::in(MlSelfLearningAgentService::validAgentModelIds())],
+            'agent_model_id' => ['nullable', 'string', 'max:80', 'regex:/^[a-zA-Z0-9._:\/-]+$/'],
         ]);
 
         $force = (bool) ($validated['force_retrain'] ?? false);
@@ -267,7 +267,7 @@ class MlApiController extends Controller
             'min_new_samples' => ['required', 'integer', 'min:1', 'max:5000'],
             'schedule_interval_hours' => ['required', 'integer', 'min:1', 'max:168'],
             'llm_advisor_enabled' => ['nullable', 'boolean'],
-            'agent_model_id' => ['nullable', 'string', Rule::in(MlSelfLearningAgentService::validAgentModelIds())],
+            'agent_model_id' => ['nullable', 'string', 'max:80', 'regex:/^[a-zA-Z0-9._:\/-]+$/'],
             'agent_api_url' => ['nullable', 'url', 'max:255'],
             'agent_api_key' => ['nullable', 'string', 'max:500'],
             'clear_api_key' => ['nullable', 'boolean'],
@@ -299,6 +299,34 @@ class MlApiController extends Controller
             'message' => 'Konfigurasi kebijakan & model AI Self-Learning Agent berhasil disimpan.',
             'overview' => $this->agentService->getPerformanceMetrics(24),
         ]);
+    }
+
+    /**
+     * Super Admin: Uji koneksi live ke model AI Agent (DeepSeek / OpenRouter / Gemini / Anthropic / Ollama).
+     */
+    public function testAgentConnection(Request $request): JsonResponse
+    {
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'agent_model_id' => ['nullable', 'string', 'max:80', 'regex:/^[a-zA-Z0-9._:\/-]+$/'],
+            'agent_api_url' => ['nullable', 'url', 'max:255'],
+            'agent_api_key' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $result = $this->agentService->testAgentConnection(
+            $validated['agent_model_id'] ?? null,
+            $validated['agent_api_url'] ?? null,
+            $validated['agent_api_key'] ?? null
+        );
+
+        return response()->json([
+            'success' => (bool) ($result['ok'] ?? false),
+            'result' => $result,
+            'message' => !empty($result['ok'])
+                ? "Koneksi ke {$result['model']} berhasil ({$result['latency_ms']} ms)."
+                : ($result['error'] ?? 'Gagal menghubungi endpoint AI Agent.'),
+        ], !empty($result['ok']) ? 200 : 422);
     }
 
     /**

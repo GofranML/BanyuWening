@@ -84,6 +84,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/ml/evaluate', [MlApiController::class, 'triggerEvaluate'])->name('dashboard.ml.evaluate');
     Route::post('/dashboard/ml/agent/run', [MlApiController::class, 'triggerSelfLearn'])->name('dashboard.ml.agent.run');
     Route::post('/dashboard/ml/agent/config', [MlApiController::class, 'updateAgentConfig'])->name('dashboard.ml.agent.config');
+    Route::post('/dashboard/ml/agent/test', [MlApiController::class, 'testAgentConnection'])->name('dashboard.ml.agent.test');
     Route::post('/dashboard/ml/models/{mlModelVersion}/promote', [MlApiController::class, 'promoteModel'])->name('dashboard.ml.models.promote');
     Route::post('/dashboard/ml/field-validations', [MlApiController::class, 'storeFieldValidation'])->name('dashboard.ml.field-validations.store');
     Route::delete('/dashboard/ml/field-validations/{validation}', [MlApiController::class, 'destroyFieldValidation'])->name('dashboard.ml.field-validations.destroy');

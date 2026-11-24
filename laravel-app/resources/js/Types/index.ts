@@ -609,6 +609,8 @@ export interface MlAgentModelOption {
   id: string;
   name: string;
   provider: string;
+  protocol?: string;
+  default_api_url?: string;
   badge: string;
   description: string;
   requires_api_key: boolean;

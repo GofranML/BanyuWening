@@ -8,6 +8,7 @@ use App\Models\MlFieldValidation;
 use App\Models\PondHarvestCycle;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class MlAgentAndHarvestEvaluationFeatureTest extends TestCase
@@ -146,5 +147,33 @@ class MlAgentAndHarvestEvaluationFeatureTest extends TestCase
         $del = $this->actingAs($admin)->deleteJson("/dashboard/harvest-cycles/{$cycleId}");
         $del->assertOk();
         $this->assertSame(0, PondHarvestCycle::count());
+    }
+
+    public function test_admin_can_configure_and_test_deepseek_v4_pro_connection(): void
+    {
+        $admin = $this->createAdmin();
+
+        Http::fake([
+            'https://api.deepseek.com/chat/completions' => Http::response([
+                'choices' => [
+                    [
+                        'message' => [
+                            'content' => 'Terhubung sebagai AI Agent MLOps BanyuWening dengan DeepSeek V4 Pro.',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $res = $this->actingAs($admin)->postJson('/dashboard/ml/agent/test', [
+            'agent_model_id' => 'deepseek-v4-pro',
+            'agent_api_url' => 'https://api.deepseek.com/chat/completions',
+            'agent_api_key' => 'sk-test-deepseek-key',
+        ]);
+
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('result.protocol', 'openai_compatible')
+            ->assertJsonPath('result.model', 'deepseek-v4-pro');
     }
 }

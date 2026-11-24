@@ -21,14 +21,38 @@ class MlSelfLearningAgentService
             'id' => 'rf-autonomous-local',
             'name' => 'BanyuWening Autonomous RF Agent (Lokal)',
             'provider' => 'Local Python Engine',
+            'protocol' => 'local',
+            'default_api_url' => '',
             'badge' => 'Default · Offline Ready',
             'description' => 'Orkestrator deterministik lokal (TimeSeriesSplit 3-fold + Safety Gate SNI) tanpa ketergantungan API eksternal.',
             'requires_api_key' => false,
         ],
         [
+            'id' => 'deepseek-v4-pro',
+            'name' => 'DeepSeek V4 Pro',
+            'provider' => 'DeepSeek API',
+            'protocol' => 'openai_compatible',
+            'default_api_url' => 'https://api.deepseek.com/chat/completions',
+            'badge' => 'Deep Reasoning · DeepSeek',
+            'description' => 'Retraining RF grid mendalam (hingga 240 trees) + analisis drift, validasi lapangan & mortalitas panen via DeepSeek V4 Pro (mendukung DeepSeek API & OpenRouter).',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'deepseek-reasoner',
+            'name' => 'DeepSeek Reasoner',
+            'provider' => 'DeepSeek API',
+            'protocol' => 'openai_compatible',
+            'default_api_url' => 'https://api.deepseek.com/chat/completions',
+            'badge' => 'Reasoning · DeepSeek',
+            'description' => 'Penalaran bertahap DeepSeek untuk evaluasi anomali kualitas air dan Safety Gate SNI.',
+            'requires_api_key' => true,
+        ],
+        [
             'id' => 'gemini-2.5-flash',
             'name' => 'Google Gemini 2.5 Flash',
             'provider' => 'Google AI',
+            'protocol' => 'gemini',
+            'default_api_url' => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
             'badge' => 'Cepat & Hemat',
             'description' => 'Retraining RF cepat + ringkasan analisis drift, validasi lapangan, dan korelasi mortalitas panen.',
             'requires_api_key' => true,
@@ -37,6 +61,8 @@ class MlSelfLearningAgentService
             'id' => 'gemini-2.5-pro',
             'name' => 'Google Gemini 2.5 Pro',
             'provider' => 'Google AI',
+            'protocol' => 'gemini',
+            'default_api_url' => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
             'badge' => 'Deep Grid Search',
             'description' => 'Pencarian hyperparameter RF lebih mendalam (hingga 240 trees) + evaluasi teknis budidaya mendalam.',
             'requires_api_key' => true,
@@ -45,6 +71,8 @@ class MlSelfLearningAgentService
             'id' => 'gpt-4o-mini',
             'name' => 'OpenAI GPT-4o Mini',
             'provider' => 'OpenAI',
+            'protocol' => 'openai_compatible',
+            'default_api_url' => 'https://api.openai.com/v1/chat/completions',
             'badge' => 'Balanced MLOps',
             'description' => 'Profil retraining seimbang untuk pembaruan model berkala dengan evaluasi lapangan & panen.',
             'requires_api_key' => true,
@@ -53,6 +81,8 @@ class MlSelfLearningAgentService
             'id' => 'claude-3-5-sonnet',
             'name' => 'Anthropic Claude 3.5 Sonnet',
             'provider' => 'Anthropic',
+            'protocol' => 'anthropic',
+            'default_api_url' => 'https://api.anthropic.com/v1/messages',
             'badge' => 'Safety-Gate Strict',
             'description' => 'Fokus konservatif pada recall kelas BAHAYA dan audit stabilitas distribusi sensor.',
             'requires_api_key' => true,
@@ -61,11 +91,23 @@ class MlSelfLearningAgentService
             'id' => 'llama-3.3-70b-local',
             'name' => 'Llama 3.3 70B (Ollama / DMZ Local)',
             'provider' => 'Ollama Local',
+            'protocol' => 'ollama',
+            'default_api_url' => 'http://127.0.0.1:11434/api/generate',
             'badge' => 'Private DMZ',
             'description' => 'Integrasi agent LLM lokal di jaringan privat/DMZ tanpa mengirim data tambak ke cloud publik.',
             'requires_api_key' => false,
         ],
     ];
+
+    public static function findAgentModelMeta(string $modelId): ?array
+    {
+        foreach (self::AVAILABLE_AGENT_MODELS as $item) {
+            if ($item['id'] === $modelId) {
+                return $item;
+            }
+        }
+        return null;
+    }
 
     public static function validAgentModelIds(): array
     {
@@ -150,7 +192,7 @@ class MlSelfLearningAgentService
     ): MlAgentRun {
         $activeModel = $this->ensureBaselineVersion();
         $config = MlAgentConfig::current();
-        $selectedAgentModel = $agentModelId && in_array($agentModelId, self::validAgentModelIds(), true)
+        $selectedAgentModel = ($agentModelId && preg_match('/^[a-zA-Z0-9._:\/-]{2,80}$/', $agentModelId))
             ? $agentModelId
             : ($config->agent_model_id ?: 'rf-autonomous-local');
         $started = microtime(true);
@@ -345,8 +387,9 @@ class MlSelfLearningAgentService
 
             $summary = (string) ($decoded['summary'] ?? 'Siklus Agent AI selesai.');
             $effectiveApiKey = (string) ($config->agent_api_key ?: config('services.ai_agent.llm_api_key'));
-            $effectiveApiUrl = (string) ($config->agent_api_url ?: config('services.ai_agent.llm_api_url'));
-            if (($config->llm_advisor_enabled || $selectedAgentModel !== 'rf-autonomous-local') && $effectiveApiUrl !== '') {
+            $meta = self::findAgentModelMeta($selectedAgentModel);
+            $effectiveApiUrl = (string) ($config->agent_api_url ?: ($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url'));
+            if ($selectedAgentModel !== 'rf-autonomous-local' && $effectiveApiUrl !== '' && ($effectiveApiKey !== '' || ($meta['protocol'] ?? '') === 'ollama')) {
                 $summary = $this->enrichSummaryWithLlm($summary, $decoded, $selectedAgentModel, $effectiveApiUrl, $effectiveApiKey);
             }
 
@@ -871,49 +914,234 @@ class MlSelfLearningAgentService
         ];
     }
 
+    /**
+     * Uji koneksi langsung ke model AI Agent (DeepSeek / OpenRouter / Gemini / Anthropic / Ollama).
+     *
+     * @return array<string, mixed>
+     */
+    public function testAgentConnection(
+        ?string $agentModelId = null,
+        ?string $apiUrl = null,
+        ?string $apiKey = null
+    ): array {
+        $config = MlAgentConfig::current();
+        $model = trim((string) ($agentModelId ?: $config->agent_model_id ?: 'rf-autonomous-local'));
+        $meta = self::findAgentModelMeta($model);
+        $protocol = $meta['protocol'] ?? $this->inferProtocol($model, (string) ($apiUrl ?: $config->agent_api_url));
+
+        if ($protocol === 'local') {
+            return [
+                'ok' => true,
+                'protocol' => 'local',
+                'model' => $model,
+                'endpoint' => 'Local Python scikit-learn Engine',
+                'latency_ms' => 1,
+                'reply' => 'Engine lokal BanyuWening siap digunakan tanpa API key eksternal.',
+            ];
+        }
+
+        $effectiveUrl = trim((string) ($apiUrl ?: $config->agent_api_url ?: ($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url')));
+        $effectiveKey = trim((string) ($apiKey ?: $config->agent_api_key ?: config('services.ai_agent.llm_api_key')));
+
+        if ($effectiveUrl === '') {
+            return [
+                'ok' => false,
+                'protocol' => $protocol,
+                'model' => $model,
+                'endpoint' => '-',
+                'error' => 'Endpoint URL belum diisi.',
+            ];
+        }
+
+        if ($protocol !== 'ollama' && $effectiveKey === '') {
+            return [
+                'ok' => false,
+                'protocol' => $protocol,
+                'model' => $model,
+                'endpoint' => $effectiveUrl,
+                'error' => 'API Key wajib diisi untuk menghubungi ' . ($meta['provider'] ?? $model) . '.',
+            ];
+        }
+
+        $started = microtime(true);
+        $res = $this->callLlmProvider(
+            $protocol,
+            $model,
+            $effectiveUrl,
+            $effectiveKey,
+            'Jawab singkat dalam 1 kalimat Bahasa Indonesia: Konfirmasi bahwa kamu terhubung sebagai AI Agent MLOps BanyuWening.'
+        );
+        $latencyMs = (int) max(1, round((microtime(true) - $started) * 1000));
+
+        return [
+            'ok' => $res['ok'],
+            'protocol' => $protocol,
+            'model' => $model,
+            'endpoint' => $effectiveUrl,
+            'http_status' => $res['status'] ?? null,
+            'latency_ms' => $latencyMs,
+            'reply' => $res['text'] ?? null,
+            'error' => $res['error'] ?? null,
+        ];
+    }
+
+    private function inferProtocol(string $modelId, string $url): string
+    {
+        $lowerModel = strtolower($modelId);
+        $lowerUrl = strtolower($url);
+        if ($lowerModel === 'rf-autonomous-local') {
+            return 'local';
+        }
+        if (str_contains($lowerUrl, 'generativelanguage.googleapis.com') || (str_starts_with($lowerModel, 'gemini') && $lowerUrl === '')) {
+            return 'gemini';
+        }
+        if (str_contains($lowerUrl, 'api.anthropic.com') || (str_starts_with($lowerModel, 'claude') && $lowerUrl === '')) {
+            return 'anthropic';
+        }
+        if (str_contains($lowerUrl, '/api/generate') || str_contains($lowerUrl, ':11434')) {
+            return 'ollama';
+        }
+        return 'openai_compatible';
+    }
+
+    /**
+     * Panggil API LLM sesuai protokol (OpenAI/DeepSeek/OpenRouter, Gemini, Anthropic, atau Ollama).
+     *
+     * @return array{ok: bool, status?: int, text?: string, error?: string}
+     */
+    private function callLlmProvider(
+        string $protocol,
+        string $modelId,
+        string $url,
+        string $apiKey,
+        string $prompt
+    ): array {
+        try {
+            if ($protocol === 'openai_compatible') {
+                $resp = Http::timeout(20)
+                    ->withToken($apiKey)
+                    ->acceptJson()
+                    ->post($url, [
+                        'model' => $modelId,
+                        'messages' => [
+                            [
+                                'role' => 'system',
+                                'content' => 'Anda adalah AI Agent MLOps untuk sistem akuakultur BanyuWening (Random Forest kualitas air lele SNI 8228.4:2015). Jawab ringkas, teknis, dan objektif dalam Bahasa Indonesia.',
+                            ],
+                            [
+                                'role' => 'user',
+                                'content' => $prompt,
+                            ],
+                        ],
+                        'temperature' => 0.2,
+                        'max_tokens' => 300,
+                    ]);
+
+                if (!$resp->successful()) {
+                    $errMsg = $resp->json('error.message') ?? $resp->body();
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                }
+
+                $text = trim((string) ($resp->json('choices.0.message.content') ?? ''));
+                return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari server LLM.' : null];
+            }
+
+            if ($protocol === 'gemini') {
+                $resp = Http::timeout(20)
+                    ->withHeaders(['x-goog-api-key' => $apiKey])
+                    ->acceptJson()
+                    ->post($url, [
+                        'contents' => [
+                            ['parts' => [['text' => $prompt]]],
+                        ],
+                    ]);
+
+                if (!$resp->successful()) {
+                    $errMsg = $resp->json('error.message') ?? $resp->body();
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                }
+
+                $text = trim((string) ($resp->json('candidates.0.content.parts.0.text') ?? ''));
+                return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari Gemini.' : null];
+            }
+
+            if ($protocol === 'anthropic') {
+                $resp = Http::timeout(20)
+                    ->withHeaders([
+                        'x-api-key' => $apiKey,
+                        'anthropic-version' => '2023-06-01',
+                    ])
+                    ->acceptJson()
+                    ->post($url, [
+                        'model' => $modelId,
+                        'max_tokens' => 300,
+                        'messages' => [
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                    ]);
+
+                if (!$resp->successful()) {
+                    $errMsg = $resp->json('error.message') ?? $resp->body();
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                }
+
+                $text = trim((string) ($resp->json('content.0.text') ?? ''));
+                return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari Anthropic.' : null];
+            }
+
+            // Ollama / custom gateway
+            $req = Http::timeout(20)->acceptJson();
+            if ($apiKey !== '') {
+                $req = $req->withToken($apiKey);
+            }
+            $resp = $req->post($url, [
+                'model' => $modelId,
+                'prompt' => $prompt,
+                'stream' => false,
+            ]);
+
+            if (!$resp->successful()) {
+                return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($resp->body(), 0, 240)];
+            }
+
+            $text = trim((string) ($resp->json('response') ?? $resp->json('summary') ?? $resp->json('text') ?? ''));
+            return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari endpoint LLM.' : null];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => mb_substr($e->getMessage(), 0, 240)];
+        }
+    }
+
     private function enrichSummaryWithLlm(
         string $defaultSummary,
         array $agentResult,
-        string $agentModelId = 'gemini-2.5-flash',
+        string $agentModelId = 'deepseek-v4-pro',
         string $apiUrl = '',
         string $apiKey = ''
     ): string {
-        $url = $apiUrl !== '' ? $apiUrl : (string) config('services.ai_agent.llm_api_url');
+        $meta = self::findAgentModelMeta($agentModelId);
+        $protocol = $meta['protocol'] ?? $this->inferProtocol($agentModelId, $apiUrl);
+        $url = $apiUrl !== '' ? $apiUrl : (string) (($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url'));
         $key = $apiKey !== '' ? $apiKey : (string) config('services.ai_agent.llm_api_key');
-        if ($url === '') {
+
+        if ($protocol === 'local' || $url === '' || ($protocol !== 'ollama' && $key === '')) {
             return $defaultSummary;
         }
 
-        try {
-            $prompt = "Ringkas hasil siklus MLOps Random Forest BanyuWening berikut dalam 2 kalimat Bahasa Indonesia teknis yang objektif, termasuk evaluasi lapangan dan mortalitas panen jika ada:\n"
-                . json_encode([
-                    'agent_model' => $agentModelId,
-                    'decision' => $agentResult['decision'] ?? null,
-                    'current_version' => $agentResult['current_version'] ?? null,
-                    'candidate_version' => $agentResult['candidate_version'] ?? null,
-                    'drift_score' => $agentResult['drift_score'] ?? null,
-                    'field_match_rate' => $agentResult['field_match_rate'] ?? null,
-                    'avg_mortality_rate_pct' => $agentResult['avg_mortality_rate_pct'] ?? null,
-                    'summary' => $defaultSummary,
-                ]);
-
-            $req = Http::timeout(8);
-            if ($key !== '') {
-                $req = $req->withToken($key);
-            }
-            $resp = $req->post($url, [
-                'model' => $agentModelId,
-                'prompt' => $prompt,
+        $prompt = "Ringkas hasil siklus MLOps Random Forest BanyuWening berikut dalam 2-3 kalimat Bahasa Indonesia teknis yang objektif, termasuk rekomendasi jika ada mismatch lapangan atau mortalitas panen tinggi:\n"
+            . json_encode([
+                'agent_model' => $agentModelId,
+                'decision' => $agentResult['decision'] ?? null,
+                'current_version' => $agentResult['current_version'] ?? null,
+                'candidate_version' => $agentResult['candidate_version'] ?? null,
+                'drift_score' => $agentResult['drift_score'] ?? null,
+                'field_match_rate' => $agentResult['field_match_rate'] ?? null,
+                'avg_mortality_rate_pct' => $agentResult['avg_mortality_rate_pct'] ?? null,
+                'summary' => $defaultSummary,
             ]);
 
-            if ($resp->successful()) {
-                $text = trim((string) ($resp->json('summary') ?? $resp->json('text') ?? $resp->json('response') ?? ''));
-                if ($text !== '') {
-                    return $text;
-                }
-            }
-        } catch (\Throwable) {
-            // fallback ke summary deterministik lokal
+        $res = $this->callLlmProvider($protocol, $agentModelId, $url, $key, $prompt);
+        if (!empty($res['ok']) && !empty($res['text'])) {
+            return $res['text'];
         }
 
         return $defaultSummary;

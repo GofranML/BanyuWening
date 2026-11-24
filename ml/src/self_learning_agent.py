@@ -55,6 +55,23 @@ AGENT_SEARCH_PROFILES = {
             {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
         ],
     },
+    "deepseek-v4-pro": {
+        "label": "DeepSeek V4 Pro MLOps Agent",
+        "grid": [
+            {"n_estimators": 120, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 160, "max_depth": 14, "min_samples_leaf": 1},
+            {"n_estimators": 200, "max_depth": 12, "min_samples_leaf": 2},
+            {"n_estimators": 240, "max_depth": 16, "min_samples_leaf": 1},
+        ],
+    },
+    "deepseek-reasoner": {
+        "label": "DeepSeek Reasoner MLOps Agent",
+        "grid": [
+            {"n_estimators": 120, "max_depth": 10, "min_samples_leaf": 2},
+            {"n_estimators": 180, "max_depth": 14, "min_samples_leaf": 1},
+            {"n_estimators": 220, "max_depth": 14, "min_samples_leaf": 2},
+        ],
+    },
     "gemini-2.5-flash": {
         "label": "Gemini 2.5 Flash MLOps Agent",
         "grid": [

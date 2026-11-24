@@ -81,6 +81,14 @@ export function SuperAdminMlOpsPanel({
     initialOverview?.agent_config?.agent_model_id || "rf-autonomous-local"
   );
   const [agentApiKeyInput, setAgentApiKeyInput] = useState<string>("");
+  const [agentTestResult, setAgentTestResult] = useState<{
+    ok: boolean;
+    model?: string;
+    endpoint?: string;
+    latency_ms?: number;
+    reply?: string;
+    error?: string;
+  } | null>(null);
   const [forceRetrain, setForceRetrain] = useState(true);
 
   // Field Validation (Cek Kesesuaian Lapangan) state
@@ -214,6 +222,46 @@ export function SuperAdminMlOpsPanel({
         setNotice({ type: "ok", text: json.message });
       }
     } catch (err: any) {
+      setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleTestAgentConnection = async () => {
+    setBusyAction("agent-test");
+    setAgentTestResult(null);
+    setNotice(null);
+    try {
+      const payload: Record<string, any> = {
+        agent_model_id: selectedAgentModel,
+        agent_api_url: configForm.agent_api_url || null,
+      };
+      if (agentApiKeyInput.trim() !== "") {
+        payload.agent_api_key = agentApiKeyInput.trim();
+      }
+      const res = await fetch("/dashboard/ml/agent/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      setAgentTestResult(
+        json.result || {
+          ok: res.ok,
+          error: json.message || "Gagal menguji koneksi AI Agent.",
+        }
+      );
+      setNotice({
+        type: res.ok && json.success ? "ok" : "err",
+        text: json.message || (res.ok ? "Koneksi berhasil." : "Koneksi gagal."),
+      });
+    } catch (err: any) {
+      setAgentTestResult({ ok: false, error: err?.message || "Kesalahan jaringan." });
       setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
     } finally {
       setBusyAction(null);
@@ -805,14 +853,20 @@ export function SuperAdminMlOpsPanel({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-3">
               <label className="block text-[11px] font-semibold text-muted mb-1">Model AI Agent Aktif</label>
               <select
-                value={selectedAgentModel}
+                value={agentModels.some((m) => m.id === selectedAgentModel) ? selectedAgentModel : "deepseek-v4-pro"}
                 onChange={(e) => {
-                  setSelectedAgentModel(e.target.value);
-                  setConfigForm({ ...configForm, agent_model_id: e.target.value });
+                  const nextId = e.target.value;
+                  const nextMeta = agentModels.find((m) => m.id === nextId);
+                  setSelectedAgentModel(nextId);
+                  setConfigForm({
+                    ...configForm,
+                    agent_model_id: nextId,
+                    agent_api_url: nextMeta?.default_api_url ?? configForm.agent_api_url ?? "",
+                  });
                 }}
                 className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs font-semibold text-ink"
               >
@@ -823,31 +877,62 @@ export function SuperAdminMlOpsPanel({
                 ))}
               </select>
             </div>
-            <div>
+            <div className="md:col-span-4">
               <label className="block text-[11px] font-semibold text-muted mb-1">
-                Endpoint URL AI Agent (Opsional — Ollama / Gateway)
+                Endpoint URL AI Agent (DeepSeek / OpenRouter / Ollama)
               </label>
               <input
                 type="url"
-                placeholder="https://... atau http://127.0.0.1:11434/api/generate"
+                placeholder={activeAgentMeta?.default_api_url || "https://api.deepseek.com/chat/completions"}
                 value={configForm.agent_api_url || ""}
                 onChange={(e) => setConfigForm({ ...configForm, agent_api_url: e.target.value })}
                 className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
               />
             </div>
-            <div>
+            <div className="md:col-span-3">
               <label className="block text-[11px] font-semibold text-muted mb-1">
                 API Key AI Agent {configForm.has_agent_api_key ? "(Tersimpan ✓)" : "(Opsional)"}
               </label>
               <input
                 type="password"
-                placeholder={configForm.has_agent_api_key ? "•••••••• (kosongkan jika tidak ubah)" : "Isi API key jika pakai cloud LLM"}
+                placeholder={configForm.has_agent_api_key ? "•••••••• (kosongkan jika tidak ubah)" : "sk-... (DeepSeek / OpenRouter)"}
                 value={agentApiKeyInput}
                 onChange={(e) => setAgentApiKeyInput(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
               />
             </div>
+            <div className="md:col-span-2">
+              <button
+                type="button"
+                disabled={busyAction !== null}
+                onClick={handleTestAgentConnection}
+                className="w-full h-9 px-3 bg-surface hover:bg-brand/10 border border-line rounded-[6px] text-xs font-semibold text-ink inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
+              >
+                <Activity className="w-3.5 h-3.5 text-brand shrink-0" />
+                <span>{busyAction === "agent-test" ? "Menguji..." : "Uji Koneksi"}</span>
+              </button>
+            </div>
           </div>
+
+          {agentTestResult && (
+            <div
+              className={`p-3 rounded-[6px] border text-xs space-y-1 ${
+                agentTestResult.ok
+                  ? "bg-aman-bg border-aman/30 text-aman-text"
+                  : "bg-bahaya-bg border-bahaya/30 text-bahaya-text"
+              }`}
+            >
+              <div className="font-mono font-semibold flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {agentTestResult.ok ? "Koneksi AI Agent Aktif" : "Koneksi Gagal"} · {agentTestResult.model}
+                </span>
+                {agentTestResult.latency_ms && <span>{agentTestResult.latency_ms} ms</span>}
+              </div>
+              <div className="text-[11.5px]">
+                {agentTestResult.ok ? agentTestResult.reply : agentTestResult.error}
+              </div>
+            </div>
+          )}
 
           {activeAgentMeta && (
             <div className="text-[11px] text-muted flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-line/60">
