@@ -356,8 +356,26 @@ class DashboardController extends Controller
                 ->values()
                 ->all();
 
-            $dbPath = config('database.connections.sqlite.database');
-            $dbSize = ($dbPath && file_exists($dbPath)) ? filesize($dbPath) : 0;
+            $driver = config('database.default');
+            $dbSize = 0;
+            try {
+                if ($driver === 'pgsql') {
+                    $row = \Illuminate\Support\Facades\DB::selectOne('SELECT pg_database_size(current_database()) AS size');
+                    $dbSize = (int) ($row->size ?? 0);
+                } elseif ($driver === 'mysql' || $driver === 'mariadb') {
+                    $dbName = config("database.connections.{$driver}.database");
+                    $row = \Illuminate\Support\Facades\DB::selectOne(
+                        'SELECT COALESCE(SUM(data_length + index_length), 0) AS size FROM information_schema.tables WHERE table_schema = ?',
+                        [$dbName]
+                    );
+                    $dbSize = (int) ($row->size ?? 0);
+                } else {
+                    $dbPath = config('database.connections.sqlite.database');
+                    $dbSize = ($dbPath && file_exists($dbPath)) ? (int) filesize($dbPath) : 0;
+                }
+            } catch (\Throwable) {
+                $dbSize = 0;
+            }
             $dbSizeHuman = $dbSize >= 1048576 ? round($dbSize / 1048576, 2) . ' MB' : round($dbSize / 1024, 2) . ' KB';
 
             $securityStats = [
@@ -1300,12 +1318,41 @@ class DashboardController extends Controller
         $timestamp = date('Y-m-d_His');
         $createdFiles = [];
 
-        // 1. Snapshot SQLite jika menggunakan file sqlite lokal
-        $dbPath = config('database.connections.sqlite.database');
-        if ($dbPath && file_exists($dbPath)) {
-            $sqliteBackupName = "banyuwening_backup_{$timestamp}.sqlite";
-            copy($dbPath, $backupDir . '/' . $sqliteBackupName);
-            $createdFiles[] = $sqliteBackupName;
+        $driver = config('database.default');
+
+        // 1. Snapshot native database sesuai driver (PostgreSQL / SQLite)
+        if ($driver === 'pgsql') {
+            $sqlBackupName = "banyuwening_pgsql_{$timestamp}.sql";
+            $sqlBackupPath = $backupDir . '/' . $sqlBackupName;
+            $pgCfg = config('database.connections.pgsql');
+            $proc = new \Symfony\Component\Process\Process(
+                [
+                    'pg_dump',
+                    '-h', (string) ($pgCfg['host'] ?? '127.0.0.1'),
+                    '-p', (string) ($pgCfg['port'] ?? 5432),
+                    '-U', (string) ($pgCfg['username'] ?? 'postgres'),
+                    '-d', (string) ($pgCfg['database'] ?? 'banyuwening'),
+                    '-f', $sqlBackupPath,
+                ],
+                null,
+                ['PGPASSWORD' => (string) ($pgCfg['password'] ?? '')]
+            );
+            $proc->setTimeout(30);
+            try {
+                $proc->run();
+                if ($proc->isSuccessful() && file_exists($sqlBackupPath) && filesize($sqlBackupPath) > 0) {
+                    $createdFiles[] = $sqlBackupName;
+                }
+            } catch (\Throwable) {
+                // fallback ke snapshot JSON di bawah
+            }
+        } elseif ($driver === 'sqlite') {
+            $dbPath = config('database.connections.sqlite.database');
+            if ($dbPath && file_exists($dbPath)) {
+                $sqliteBackupName = "banyuwening_backup_{$timestamp}.sqlite";
+                copy($dbPath, $backupDir . '/' . $sqliteBackupName);
+                $createdFiles[] = $sqliteBackupName;
+            }
         }
 
         // 2. Snapshot JSON komprehensif data aplikasi (portable)
