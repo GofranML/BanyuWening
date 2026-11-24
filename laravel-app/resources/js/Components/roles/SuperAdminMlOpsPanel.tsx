@@ -89,6 +89,7 @@ export function SuperAdminMlOpsPanel({
     reply?: string;
     error?: string;
   } | null>(null);
+  const [remoteModels, setRemoteModels] = useState<{ id: string; name: string; owned_by?: string }[]>([]);
   const [forceRetrain, setForceRetrain] = useState(true);
 
   // Field Validation (Cek Kesesuaian Lapangan) state
@@ -223,6 +224,45 @@ export function SuperAdminMlOpsPanel({
       }
     } catch (err: any) {
       setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleFetchRemoteModels = async () => {
+    setBusyAction("fetch-models");
+    setNotice(null);
+    try {
+      const payload: Record<string, any> = {
+        agent_api_url: configForm.agent_api_url || activeAgentMeta?.default_api_url || "https://router.classai.id/v1/chat/completions",
+      };
+      if (agentApiKeyInput.trim() !== "") {
+        payload.agent_api_key = agentApiKeyInput.trim();
+      }
+      const res = await fetch("/dashboard/ml/agent/models", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotice({ type: "err", text: json?.message || "Gagal memuat daftar model dari provider." });
+      } else {
+        const list = Array.isArray(json.models) ? json.models : [];
+        setRemoteModels(list);
+        const deepseekMatch = list.find((m: any) => String(m.id).toLowerCase().includes("deepseek"));
+        if (deepseekMatch) {
+          setSelectedAgentModel(deepseekMatch.id);
+          setConfigForm((prev) => ({ ...prev, agent_model_id: deepseekMatch.id }));
+        }
+        setNotice({ type: "ok", text: json.message || `Berhasil memuat ${list.length} model.` });
+      }
+    } catch (err: any) {
+      setNotice({ type: "err", text: err?.message || "Kesalahan jaringan saat memuat model." });
     } finally {
       setBusyAction(null);
     }
@@ -855,7 +895,7 @@ export function SuperAdminMlOpsPanel({
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
             <div className="md:col-span-3">
-              <label className="block text-[11px] font-semibold text-muted mb-1">Model AI Agent Aktif</label>
+              <label className="block text-[11px] font-semibold text-muted mb-1">Preset Provider AI Agent</label>
               <select
                 value={agentModels.some((m) => m.id === selectedAgentModel) ? selectedAgentModel : "deepseek-v4-pro"}
                 onChange={(e) => {
@@ -877,13 +917,28 @@ export function SuperAdminMlOpsPanel({
                 ))}
               </select>
             </div>
-            <div className="md:col-span-4">
+            <div className="md:col-span-3">
               <label className="block text-[11px] font-semibold text-muted mb-1">
-                Endpoint URL AI Agent (DeepSeek / OpenRouter / Ollama)
+                Model ID / Slug Persis (bisa edit bebas)
+              </label>
+              <input
+                type="text"
+                placeholder="deepseek-v4-pro atau slug dari ClassAI"
+                value={selectedAgentModel}
+                onChange={(e) => {
+                  setSelectedAgentModel(e.target.value);
+                  setConfigForm({ ...configForm, agent_model_id: e.target.value });
+                }}
+                className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs font-mono text-ink"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-[11px] font-semibold text-muted mb-1">
+                Endpoint URL (ClassAI / DeepSeek / Ollama)
               </label>
               <input
                 type="url"
-                placeholder={activeAgentMeta?.default_api_url || "https://api.deepseek.com/chat/completions"}
+                placeholder={activeAgentMeta?.default_api_url || "https://router.classai.id/v1/chat/completions"}
                 value={configForm.agent_api_url || ""}
                 onChange={(e) => setConfigForm({ ...configForm, agent_api_url: e.target.value })}
                 className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
@@ -891,28 +946,74 @@ export function SuperAdminMlOpsPanel({
             </div>
             <div className="md:col-span-3">
               <label className="block text-[11px] font-semibold text-muted mb-1">
-                API Key AI Agent {configForm.has_agent_api_key ? "(Tersimpan ✓)" : "(Opsional)"}
+                API Key {configForm.has_agent_api_key ? "(Tersimpan ✓)" : "(sk_live_... / sk-...)"}
               </label>
               <input
                 type="password"
-                placeholder={configForm.has_agent_api_key ? "•••••••• (kosongkan jika tidak ubah)" : "sk-... (DeepSeek / OpenRouter)"}
+                placeholder={configForm.has_agent_api_key ? "•••••••• (kosongkan jika tidak ubah)" : "Tempel API key ClassAI / DeepSeek"}
                 value={agentApiKeyInput}
                 onChange={(e) => setAgentApiKeyInput(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
               />
             </div>
-            <div className="md:col-span-2">
-              <button
-                type="button"
-                disabled={busyAction !== null}
-                onClick={handleTestAgentConnection}
-                className="w-full h-9 px-3 bg-surface hover:bg-brand/10 border border-line rounded-[6px] text-xs font-semibold text-ink inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
-              >
-                <Activity className="w-3.5 h-3.5 text-brand shrink-0" />
-                <span>{busyAction === "agent-test" ? "Menguji..." : "Uji Koneksi"}</span>
-              </button>
-            </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={busyAction !== null}
+              onClick={handleFetchRemoteModels}
+              className="h-8 px-3 bg-surface hover:bg-brand/10 border border-line rounded-[6px] text-xs font-semibold text-ink inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-brand ${busyAction === "fetch-models" ? "animate-spin" : ""}`} />
+              <span>{busyAction === "fetch-models" ? "Memuat Model..." : "Muat Daftar Model (/v1/models)"}</span>
+            </button>
+            <button
+              type="button"
+              disabled={busyAction !== null}
+              onClick={handleTestAgentConnection}
+              className="h-8 px-3 bg-surface hover:bg-brand/10 border border-line rounded-[6px] text-xs font-semibold text-ink inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
+            >
+              <Activity className="w-3.5 h-3.5 text-brand" />
+              <span>{busyAction === "agent-test" ? "Menguji..." : "Uji Koneksi AI Agent"}</span>
+            </button>
+            <button
+              type="button"
+              disabled={busyAction !== null}
+              onClick={(e) => void handleSaveConfig(e as any)}
+              className="h-8 px-3 bg-brand text-brand-ink rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{busyAction === "config" ? "Menyimpan..." : "Simpan AI Agent"}</span>
+            </button>
+          </div>
+
+          {remoteModels.length > 0 && (
+            <div className="p-3 bg-surface border border-line rounded-[6px] space-y-2">
+              <div className="text-[11px] font-semibold text-ink">
+                Model Aktif dari Provider ({remoteModels.length}) — klik untuk memilih:
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                {remoteModels.map((rm) => (
+                  <button
+                    key={rm.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAgentModel(rm.id);
+                      setConfigForm((prev) => ({ ...prev, agent_model_id: rm.id }));
+                    }}
+                    className={`px-2 py-1 rounded-[4px] font-mono text-[11px] border cursor-pointer transition-colors ${
+                      selectedAgentModel === rm.id
+                        ? "bg-brand text-brand-ink border-brand font-semibold"
+                        : "bg-surface-2 text-ink border-line hover:bg-brand/10"
+                    }`}
+                  >
+                    {rm.id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {agentTestResult && (
             <div

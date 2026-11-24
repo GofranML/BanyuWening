@@ -29,12 +29,22 @@ class MlSelfLearningAgentService
         ],
         [
             'id' => 'deepseek-v4-pro',
-            'name' => 'DeepSeek V4 Pro',
+            'name' => 'DeepSeek V4 Pro (ClassAI Router)',
+            'provider' => 'ClassAI Router',
+            'protocol' => 'openai_compatible',
+            'default_api_url' => 'https://router.classai.id/v1/chat/completions',
+            'badge' => 'ClassAI · DeepSeek',
+            'description' => 'Terhubung ke ClassAI Router (https://router.classai.id/v1/chat/completions) memakai API key sk_live_... Anda + retraining RF grid mendalam.',
+            'requires_api_key' => true,
+        ],
+        [
+            'id' => 'deepseek-chat',
+            'name' => 'DeepSeek Official API (deepseek-chat)',
             'provider' => 'DeepSeek API',
             'protocol' => 'openai_compatible',
             'default_api_url' => 'https://api.deepseek.com/chat/completions',
-            'badge' => 'Deep Reasoning · DeepSeek',
-            'description' => 'Retraining RF grid mendalam (hingga 240 trees) + analisis drift, validasi lapangan & mortalitas panen via DeepSeek V4 Pro (mendukung DeepSeek API & OpenRouter).',
+            'badge' => 'Official · DeepSeek',
+            'description' => 'Terhubung langsung ke API resmi DeepSeek (https://api.deepseek.com/chat/completions).',
             'requires_api_key' => true,
         ],
         [
@@ -940,7 +950,10 @@ class MlSelfLearningAgentService
             ];
         }
 
-        $effectiveUrl = trim((string) ($apiUrl ?: $config->agent_api_url ?: ($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url')));
+        $effectiveUrl = $this->normalizeEndpointUrl(
+            trim((string) ($apiUrl ?: $config->agent_api_url ?: ($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url'))),
+            $protocol
+        );
         $effectiveKey = trim((string) ($apiKey ?: $config->agent_api_key ?: config('services.ai_agent.llm_api_key')));
 
         if ($effectiveUrl === '') {
@@ -983,6 +996,78 @@ class MlSelfLearningAgentService
             'reply' => $res['text'] ?? null,
             'error' => $res['error'] ?? null,
         ];
+    }
+
+    /**
+     * Ambil daftar model asli yang tersedia dari endpoint OpenAI-compatible (/v1/models), misal ClassAI / OpenRouter.
+     *
+     * @return array<string, mixed>
+     */
+    public function fetchRemoteModels(?string $apiUrl = null, ?string $apiKey = null): array
+    {
+        $config = MlAgentConfig::current();
+        $rawUrl = trim((string) ($apiUrl ?: $config->agent_api_url ?: 'https://router.classai.id/v1/chat/completions'));
+        $key = trim((string) ($apiKey ?: $config->agent_api_key ?: config('services.ai_agent.llm_api_key')));
+
+        if ($rawUrl === '') {
+            return ['ok' => false, 'models' => [], 'error' => 'Endpoint URL belum diisi.'];
+        }
+        if ($key === '') {
+            return ['ok' => false, 'models' => [], 'error' => 'Tempel API Key terlebih dahulu untuk mengambil daftar model.'];
+        }
+
+        $modelsUrl = preg_replace('#/(chat/completions|completions|messages)/?$#i', '/models', rtrim($rawUrl, '/'));
+        if (!str_ends_with((string) $modelsUrl, '/models')) {
+            $modelsUrl = rtrim((string) $modelsUrl, '/') . '/models';
+        }
+
+        try {
+            $resp = Http::timeout(15)->withToken($key)->acceptJson()->get((string) $modelsUrl);
+            if (!$resp->successful()) {
+                $err = $resp->json('error.message') ?? $resp->body();
+                return [
+                    'ok' => false,
+                    'endpoint' => $modelsUrl,
+                    'models' => [],
+                    'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $err, 0, 220),
+                ];
+            }
+
+            $data = $resp->json('data') ?? $resp->json('models') ?? [];
+            $ids = [];
+            if (is_array($data)) {
+                foreach ($data as $item) {
+                    if (is_array($item) && !empty($item['id'])) {
+                        $ids[] = [
+                            'id' => (string) $item['id'],
+                            'name' => (string) ($item['name'] ?? $item['id']),
+                            'owned_by' => (string) ($item['owned_by'] ?? ''),
+                        ];
+                    }
+                }
+            }
+
+            return [
+                'ok' => true,
+                'endpoint' => $modelsUrl,
+                'models' => $ids,
+                'count' => count($ids),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'endpoint' => $modelsUrl, 'models' => [], 'error' => mb_substr($e->getMessage(), 0, 220)];
+        }
+    }
+
+    private function normalizeEndpointUrl(string $url, string $protocol): string
+    {
+        $clean = rtrim(trim($url), '/');
+        if ($clean === '' || $protocol !== 'openai_compatible') {
+            return $clean;
+        }
+        if (preg_match('#/v1$#i', $clean)) {
+            return $clean . '/chat/completions';
+        }
+        return $clean;
     }
 
     private function inferProtocol(string $modelId, string $url): string
@@ -1120,7 +1205,10 @@ class MlSelfLearningAgentService
     ): string {
         $meta = self::findAgentModelMeta($agentModelId);
         $protocol = $meta['protocol'] ?? $this->inferProtocol($agentModelId, $apiUrl);
-        $url = $apiUrl !== '' ? $apiUrl : (string) (($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url'));
+        $url = $this->normalizeEndpointUrl(
+            $apiUrl !== '' ? $apiUrl : (string) (($meta['default_api_url'] ?? '') ?: config('services.ai_agent.llm_api_url')),
+            $protocol
+        );
         $key = $apiKey !== '' ? $apiKey : (string) config('services.ai_agent.llm_api_key');
 
         if ($protocol === 'local' || $url === '' || ($protocol !== 'ollama' && $key === '')) {

@@ -330,6 +330,33 @@ class MlApiController extends Controller
     }
 
     /**
+     * Super Admin: Ambil daftar model live dari /v1/models (ClassAI, OpenRouter, dll).
+     */
+    public function fetchRemoteModels(Request $request): JsonResponse
+    {
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'agent_api_url' => ['nullable', 'url', 'max:255'],
+            'agent_api_key' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $result = $this->agentService->fetchRemoteModels(
+            $validated['agent_api_url'] ?? null,
+            $validated['agent_api_key'] ?? null
+        );
+
+        return response()->json([
+            'success' => (bool) ($result['ok'] ?? false),
+            'models' => $result['models'] ?? [],
+            'endpoint' => $result['endpoint'] ?? null,
+            'message' => !empty($result['ok'])
+                ? 'Berhasil memuat ' . count($result['models'] ?? []) . ' model dari provider.'
+                : ($result['error'] ?? 'Gagal memuat daftar model.'),
+        ], !empty($result['ok']) ? 200 : 422);
+    }
+
+    /**
      * Super Admin / Petugas: Catat validasi lapangan (Prediksi RF vs Kondisi Aktual Kolam).
      */
     public function storeFieldValidation(Request $request): JsonResponse
