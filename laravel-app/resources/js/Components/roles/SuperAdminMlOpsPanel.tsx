@@ -803,53 +803,86 @@ export function SuperAdminMlOpsPanel({
       {/* Confusion Matrix 3x3 + Feature Importances */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Confusion Matrix */}
-        <div className="bg-surface border border-line rounded-[6px] p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-ink">
-              Confusion Matrix 3×3 (Holdout Evaluation)
-            </h3>
-            <span className="text-[11px] text-muted">Baris: Aktual · Kolom: Prediksi</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-center text-xs border border-line">
-              <thead className="bg-surface-2 text-muted font-semibold">
-                <tr>
-                  <th className="p-2.5 border border-line text-left">Aktual \ Prediksi</th>
-                  {classLabels.map((lbl) => (
-                    <th key={lbl} className="p-2.5 border border-line font-mono">
-                      {lbl}
+        <div className="bg-surface border border-line rounded-[6px] p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-ink">
+                Confusion Matrix 3×3 (Holdout Evaluation)
+              </h3>
+              <span className="text-[11px] text-muted">Baris: Aktual · Kolom: Prediksi</span>
+            </div>
+            <div className="overflow-x-auto rounded-[6px] border border-line">
+              <table className="w-full text-center text-xs border-collapse">
+                <thead className="bg-surface-2 text-muted font-semibold">
+                  <tr>
+                    <th className="px-3 py-2.5 border-b border-r border-line text-left whitespace-nowrap">
+                      Aktual \ Prediksi
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {classLabels.map((rowLabel, rIdx) => (
-                  <tr key={rowLabel}>
-                    <td className="p-2.5 border border-line text-left font-mono font-semibold text-ink bg-surface-2/60">
-                      {rowLabel}
-                    </td>
-                    {classLabels.map((_, cIdx) => {
-                      const val = cm[rIdx]?.[cIdx] ?? 0;
-                      const isDiag = rIdx === cIdx;
-                      return (
-                        <td
-                          key={cIdx}
-                          className={`p-2.5 border border-line font-mono tnum font-semibold ${
-                            isDiag
-                              ? "bg-aman-bg text-aman-text"
-                              : val > 0
-                              ? "bg-bahaya-bg text-bahaya-text"
-                              : "text-muted"
-                          }`}
-                        >
-                          {val}
-                        </td>
-                      );
-                    })}
+                    {classLabels.map((lbl) => (
+                      <th key={lbl} className="px-3 py-2.5 border-b border-r last:border-r-0 border-line font-mono whitespace-nowrap">
+                        {lbl}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {classLabels.map((rowLabel, rIdx) => {
+                    const rowSum = (cm[rIdx] || []).reduce((acc, v) => acc + (v || 0), 0);
+                    return (
+                      <tr key={rowLabel} className="border-b last:border-b-0 border-line">
+                        <td className="px-3 py-3 border-r border-line text-left font-mono font-semibold text-ink bg-surface-2/60 whitespace-nowrap">
+                          {rowLabel}
+                        </td>
+                        {classLabels.map((_, cIdx) => {
+                          const val = cm[rIdx]?.[cIdx] ?? 0;
+                          const isDiag = rIdx === cIdx;
+                          const pct = rowSum > 0 ? Math.round((val / rowSum) * 100) : 0;
+                          return (
+                            <td
+                              key={cIdx}
+                              className={`px-3 py-3 border-r last:border-r-0 border-line font-mono tnum ${
+                                isDiag
+                                  ? "bg-aman-bg text-aman-text font-bold"
+                                  : val > 0
+                                  ? "bg-bahaya-bg text-bahaya-text font-semibold"
+                                  : "text-muted"
+                              }`}
+                            >
+                              <div className="text-[14px] leading-tight">{val}</div>
+                              <div className="text-[10px] opacity-75 mt-0.5">{pct}%</div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-line">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-ink">Ringkasan Metrik Per Kelas</span>
+              <span className="font-mono text-muted tnum">
+                Total Holdout: {cm.flat().reduce((acc, v) => acc + (v || 0), 0)} sampel
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
+              {classLabels.map((cls) => {
+                const m = overview?.per_class_metrics?.[cls];
+                return (
+                  <div key={cls} className="p-2.5 rounded-[5px] bg-surface-2/70 border border-line space-y-1">
+                    <div className="font-mono font-bold text-ink">{cls}</div>
+                    <div className="font-mono tnum text-[10.5px] text-muted space-y-0.5">
+                      <div>P: <strong className="text-ink">{m ? `${(m.precision * 100).toFixed(1)}%` : "-"}</strong></div>
+                      <div>R: <strong className="text-ink">{m ? `${(m.recall * 100).toFixed(1)}%` : "-"}</strong></div>
+                      <div>F1: <strong className="text-ink">{m ? m.f1.toFixed(3) : "-"}</strong></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -1214,7 +1247,6 @@ export function SuperAdminMlOpsPanel({
             <span className="text-xs font-semibold text-ink">
               Registry Versi Model Random Forest &amp; 1-Klik Rollback
             </span>
-            <span className="text-[11px] text-muted">Artefak tersimpan atomik di ml/models/versions/</span>
           </div>
           {/* Mobile Card View (< md) */}
           <div className="md:hidden divide-y divide-line">
@@ -1290,15 +1322,15 @@ export function SuperAdminMlOpsPanel({
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-2/60 border-b border-line text-muted uppercase text-[10px] font-semibold">
                 <tr>
-                  <th className="px-4 py-2">Versi &amp; Format</th>
-                  <th className="px-4 py-2">Tanggal Evaluasi</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Akurasi</th>
-                  <th className="px-4 py-2">Macro-F1</th>
-                  <th className="px-4 py-2">Recall BAHAYA</th>
-                  <th className="px-4 py-2">Sampel Train/Live</th>
-                  <th className="px-4 py-2">Komentar AI</th>
-                  <th className="px-4 py-2 text-right">Aksi</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Versi &amp; Format</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Tanggal Evaluasi</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Status</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Akurasi</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Macro-F1</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Recall Bahaya</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Sampel Train/Live</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap">Komentar AI</th>
+                  <th className="px-3.5 py-2.5 whitespace-nowrap text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">

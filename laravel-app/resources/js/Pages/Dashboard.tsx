@@ -2123,7 +2123,7 @@ export default function Dashboard({
                       </strong>
                     </p>
                   </div>
-                  {hasPerm("manage_users") && (
+                  {user.role === "ADMIN" && (
                     <button
                       type="button"
                       onClick={() =>
