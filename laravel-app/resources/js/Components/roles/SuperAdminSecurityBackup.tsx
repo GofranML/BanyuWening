@@ -260,145 +260,135 @@ export function SuperAdminSecurityBackup({
       </div>
 
       {/* Pipeline Unggahan Aman (Secure File Upload Pipeline) */}
-      {securityStats?.upload_pipeline && (
-        <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-[16px] font-semibold text-ink flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-brand" />
-                <span>Pipeline Unggahan Aman (Defense-in-Depth)</span>
-              </h2>
-              <p className="text-[12px] text-muted mt-0.5">
-                Karantina privat{" "}
-                <code className="text-brand">storage/app/private/quarantine/</code>,
-                inspeksi struktur &amp; polyglot, approval gate, dan audit log bebas rahasia.
-              </p>
-            </div>
+      {securityStats?.upload_pipeline && (() => {
+        const up = securityStats.upload_pipeline;
+        const driverUpper = up.scanner_driver.toUpperCase();
+        const scannerLabel = up.scanner_available
+          ? up.scanner_version && up.scanner_version.toLowerCase().includes(up.scanner_driver.toLowerCase())
+            ? `${up.scanner_version} · Aktif`
+            : `${driverUpper} · Aktif`
+          : `${driverUpper} · Tidak Aktif`;
 
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+        const metricCells = [
+          { label: "Lolos Verifikasi", sub: "CLEAN", value: up.clean_count, tone: "text-emerald-600" },
+          { label: "Dalam Antrean", sub: "PENDING", value: up.pending_count, tone: "text-ink" },
+          { label: "Dikarantina", sub: "QUARANTINED", value: up.quarantined_count, tone: "text-bahaya" },
+          { label: "Ditolak Validasi", sub: "REJECTED", value: up.rejected_count, tone: "text-amber-600" },
+          { label: "Gagal Pindai", sub: "FAIL-CLOSED", value: up.scan_failed_count, tone: "text-bahaya", span: "col-span-2 sm:col-span-1" },
+        ];
+
+        return (
+          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-[16px] font-semibold text-ink flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-brand shrink-0" />
+                  <span>Pipeline Unggahan Aman</span>
+                </h2>
+                <p className="text-[12px] text-muted mt-0.5">
+                  Karantina privat, inspeksi struktur &amp; polyglot, serta pemindaian malware fail-closed.
+                </p>
+              </div>
+
               <span
-                className={`px-2.5 py-1 rounded-[4px] font-semibold inline-flex items-center gap-1.5 ${
-                  securityStats.upload_pipeline.scanner_available
-                    ? "bg-emerald-500/10 text-emerald-600"
-                    : "bg-amber-500/10 text-amber-600"
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium whitespace-nowrap ${
+                  up.scanner_available
+                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                 }`}
               >
-                {securityStats.upload_pipeline.scanner_available ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                {up.scanner_available ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
                 )}
-                <span>
-                  Scanner: {securityStats.upload_pipeline.scanner_driver.toUpperCase()} (
-                  {securityStats.upload_pipeline.scanner_available
-                    ? securityStats.upload_pipeline.scanner_version || "Aktif"
-                    : "Tidak Aktif · Fail-Closed"}
-                  )
-                </span>
+                <span>{scannerLabel}</span>
               </span>
-              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
-                Fail-Closed
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2.5 border-y border-line text-[12px] text-muted">
+              <span>
+                Kebijakan: <strong className="text-ink font-medium">Fail-Closed</strong>
               </span>
-              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
-                Rate Limit {securityStats.upload_pipeline.rate_limit_per_minute}/mnt
+              <span>
+                Batas Unggah: <strong className="text-ink font-medium font-mono">{up.rate_limit_per_minute}/menit</strong>
               </span>
-              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
-                TTL {securityStats.upload_pipeline.quarantine_ttl_minutes} mnt
+              <span>
+                Retensi Karantina: <strong className="text-ink font-medium font-mono">{up.quarantine_ttl_minutes} menit</strong>
               </span>
+              <span>
+                Direktori: <code className="text-brand text-[11.5px]">storage/app/private/quarantine/</code>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-line border border-line rounded-[6px] bg-surface-2/40 overflow-hidden">
+              {metricCells.map((cell) => (
+                <div key={cell.sub} className={`px-4 py-3.5 ${cell.span || ""}`}>
+                  <div className="text-[12px] font-medium text-ink">{cell.label}</div>
+                  <div className={`text-[20px] font-bold font-mono tabular-nums mt-1 ${cell.tone}`}>
+                    {cell.value}
+                  </div>
+                  <div className="text-[10.5px] font-mono uppercase tracking-wider text-muted mt-0.5">
+                    {cell.sub}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h3 className="text-[12px] font-semibold text-ink mb-2">
+                Log Audit Unggahan Terbaru
+              </h3>
+              {up.recent_audit_logs.length === 0 ? (
+                <div className="py-5 px-4 border border-line rounded-[6px] bg-surface-2/30 text-center text-[12px] text-muted">
+                  Belum ada aktivitas unggahan tercatat di audit log keamanan.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-line rounded-[6px]">
+                  <table className="w-full text-left text-[12px]">
+                    <thead className="bg-surface-2 border-b border-line text-muted uppercase text-[10.5px] font-semibold tracking-wider">
+                      <tr>
+                        <th className="px-3 py-2.5">Waktu</th>
+                        <th className="px-3 py-2.5">Event</th>
+                        <th className="px-3 py-2.5">Status</th>
+                        <th className="px-3 py-2.5">Tenant</th>
+                        <th className="px-3 py-2.5">MIME / Hasil</th>
+                        <th className="px-3 py-2.5">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {up.recent_audit_logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-surface-2/40">
+                          <td className="px-3 py-2 font-mono text-[11px] text-muted whitespace-nowrap">
+                            {log.created_at}
+                          </td>
+                          <td className="px-3 py-2 font-mono font-semibold text-ink">
+                            {log.event}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-[11px]">
+                            <span className="px-2 py-0.5 rounded-[4px] bg-surface-2 border border-line text-ink">
+                              {log.status_to || "-"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-muted">
+                            {log.tenant_code || "GLOBAL"}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-muted">
+                            {log.detected_mime || "-"} {log.scan_result ? `(${log.scan_result})` : ""}
+                          </td>
+                          <td className="px-3 py-2 text-muted max-w-xs truncate">
+                            {log.rejection_reason || log.promotion_result || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
-                CLEAN
-              </span>
-              <span className="text-[18px] font-bold font-mono text-emerald-600">
-                {securityStats.upload_pipeline.clean_count}
-              </span>
-            </div>
-            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
-                PENDING_SCAN
-              </span>
-              <span className="text-[18px] font-bold font-mono text-ink">
-                {securityStats.upload_pipeline.pending_count}
-              </span>
-            </div>
-            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
-                QUARANTINED
-              </span>
-              <span className="text-[18px] font-bold font-mono text-bahaya">
-                {securityStats.upload_pipeline.quarantined_count}
-              </span>
-            </div>
-            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
-                REJECTED
-              </span>
-              <span className="text-[18px] font-bold font-mono text-amber-600">
-                {securityStats.upload_pipeline.rejected_count}
-              </span>
-            </div>
-            <div className="p-3 rounded-[6px] bg-surface-2 border border-line col-span-2 sm:col-span-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
-                SCAN_FAILED
-              </span>
-              <span className="text-[18px] font-bold font-mono text-bahaya">
-                {securityStats.upload_pipeline.scan_failed_count}
-              </span>
-            </div>
-          </div>
-
-          {securityStats.upload_pipeline.recent_audit_logs.length === 0 ? (
-            <div className="text-center py-6 border border-dashed border-line rounded-[6px] bg-surface-2/40 text-xs text-muted">
-              Belum ada aktivitas unggahan tercatat di audit log keamanan.
-            </div>
-          ) : (
-            <div className="overflow-x-auto border border-line rounded-[6px]">
-              <table className="w-full text-left text-[12px]">
-                <thead className="bg-surface-2 border-b border-line text-muted uppercase text-[10.5px] font-semibold tracking-wider">
-                  <tr>
-                    <th className="px-3 py-2.5">Waktu</th>
-                    <th className="px-3 py-2.5">Event</th>
-                    <th className="px-3 py-2.5">Status</th>
-                    <th className="px-3 py-2.5">Tenant</th>
-                    <th className="px-3 py-2.5">MIME / Hasil</th>
-                    <th className="px-3 py-2.5">Keterangan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {securityStats.upload_pipeline.recent_audit_logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-surface-2/40">
-                      <td className="px-3 py-2 font-mono text-[11px] text-muted whitespace-nowrap">
-                        {log.created_at}
-                      </td>
-                      <td className="px-3 py-2 font-mono font-semibold text-ink">
-                        {log.event}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[11px]">
-                        <span className="px-2 py-0.5 rounded-[4px] bg-surface-2 border border-line text-ink">
-                          {log.status_to || "-"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-muted">
-                        {log.tenant_code || "GLOBAL"}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-muted">
-                        {log.detected_mime || "-"} {log.scan_result ? `(${log.scan_result})` : ""}
-                      </td>
-                      <td className="px-3 py-2 text-muted max-w-xs truncate">
-                        {log.rejection_reason || log.promotion_result || "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabel File Backup */}
       <div className="p-6 bg-surface rounded-[6px] border border-line">
