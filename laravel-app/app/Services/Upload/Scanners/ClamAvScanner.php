@@ -48,13 +48,12 @@ class ClamAvScanner implements MalwareScannerInterface
     {
         $cfg = config('uploads.scanner.clamav', []);
         $mode = strtolower((string) ($cfg['mode'] ?? 'auto'));
-        $version = $this->queryDaemonVersion($cfg, 2);
 
-        if ($version !== null) {
+        if ($this->pingDaemon($cfg, 2)) {
             return [
                 'driver' => 'clamav',
                 'available' => true,
-                'version' => $version,
+                'version' => $this->resolveDaemonVersion($cfg),
                 'mode' => 'daemon',
             ];
         }
@@ -157,11 +156,11 @@ class ClamAvScanner implements MalwareScannerInterface
             }
 
             if (preg_match('/:\s*OK$/i', $trimmed)) {
-                return ScanResult::clean('clamd', $this->queryDaemonVersion($cfg, 2) ?? 'clamd', $this->elapsedMs($start), $trimmed);
+                return ScanResult::clean('clamd', $this->resolveDaemonVersion($cfg), $this->elapsedMs($start), $trimmed);
             }
 
             if (preg_match('/:\s*(.+?)\s+FOUND$/i', $trimmed, $m)) {
-                return ScanResult::infected('clamd', $this->queryDaemonVersion($cfg, 2) ?? 'clamd', trim($m[1]), $this->elapsedMs($start), $trimmed);
+                return ScanResult::infected('clamd', $this->resolveDaemonVersion($cfg), trim($m[1]), $this->elapsedMs($start), $trimmed);
             }
 
             return ScanResult::error('clamd', $version, $this->elapsedMs($start), "Respons clamd tidak dikenal: {$trimmed}");
@@ -245,6 +244,65 @@ class ClamAvScanner implements MalwareScannerInterface
     /**
      * @param  array<string, mixed>  $cfg
      */
+    private function pingDaemon(array $cfg, int $timeout): bool
+    {
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client($this->daemonEndpoint($cfg), $errno, $errstr, $timeout);
+        if ($socket === false) {
+            return false;
+        }
+
+        try {
+            stream_set_timeout($socket, $timeout);
+            fwrite($socket, "zPING\0");
+            $resp = fread($socket, 64);
+            $clean = is_string($resp) ? trim(str_replace("\0", '', $resp)) : '';
+
+            return strcasecmp($clean, 'PONG') === 0;
+        } finally {
+            fclose($socket);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $cfg
+     */
+    private function resolveDaemonVersion(array $cfg): string
+    {
+        $daemonVer = $this->queryDaemonVersion($cfg, 2);
+        if ($daemonVer !== null) {
+            return $daemonVer;
+        }
+
+        foreach ([$cfg['binary'] ?? 'clamdscan', $cfg['fallback_binary'] ?? 'clamscan'] as $bin) {
+            if (! $bin) {
+                continue;
+            }
+            try {
+                $proc = new Process([(string) $bin, '--version']);
+                $proc->setTimeout(2);
+                $proc->run();
+                if ($proc->isSuccessful()) {
+                    $raw = trim($proc->getOutput());
+                    if (preg_match('/^(ClamAV\s+[^\/\s]+\/\d+)/i', $raw, $m)) {
+                        return $m[1];
+                    }
+                    if ($raw !== '') {
+                        return $raw;
+                    }
+                }
+            } catch (\Throwable) {
+                // ignore and try next
+            }
+        }
+
+        return 'clamd';
+    }
+
+    /**
+     * @param  array<string, mixed>  $cfg
+     */
     private function queryDaemonVersion(array $cfg, int $timeout): ?string
     {
         $errno = 0;
@@ -260,7 +318,20 @@ class ClamAvScanner implements MalwareScannerInterface
             $resp = fread($socket, 256);
             $clean = is_string($resp) ? trim(str_replace("\0", '', $resp)) : '';
 
-            return $clean !== '' ? $clean : null;
+            if (
+                $clean === ''
+                || stripos($clean, 'COMMAND UNAVAILABLE') !== false
+                || stripos($clean, 'UNKNOWN COMMAND') !== false
+                || stripos($clean, 'ERROR') === 0
+            ) {
+                return null;
+            }
+
+            if (preg_match('/^(ClamAV\s+[^\/\s]+\/\d+)/i', $clean, $m)) {
+                return $m[1];
+            }
+
+            return $clean;
         } finally {
             fclose($socket);
         }
