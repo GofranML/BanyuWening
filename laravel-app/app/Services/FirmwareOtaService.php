@@ -41,17 +41,36 @@ class FirmwareOtaService
         string $actor,
         bool $isActive = true,
         string $scanStatus = 'CLEAN',
+        ?array $compileResult = null,
     ): FirmwareRelease {
         $version = trim((string) $data['version']);
         $minPrev = !empty($data['min_previous_version']) ? trim((string) $data['min_previous_version']) : null;
         $targetHw = (string) ($data['target_hardware'] ?? 'ESP32-WROOM-CoreHub-v2');
 
-        $storedRel = $upload->permanent_path
-            ? 'firmware/' . ltrim((string) $upload->permanent_path, '/')
-            : 'quarantine/' . ltrim((string) ($upload->quarantine_path ?? $upload->uuid . '.bin'), '/');
+        $safeBase = preg_replace('/[^A-Za-z0-9._-]/', '_', $version) ?: ('fw_' . time());
 
-        $sha256 = strtolower((string) $upload->sha256_hash);
-        $sizeBytes = (int) $upload->file_size_bytes;
+        if ($compileResult !== null) {
+            $storedRel = 'firmware/' . ltrim((string) $compileResult['binary_rel_path'], '/');
+            $sourceRel = 'firmware/' . ltrim((string) $compileResult['source_rel_path'], '/');
+            $sha256 = strtolower((string) $compileResult['sha256']);
+            $sizeBytes = (int) $compileResult['size_bytes'];
+            $fileName = (string) ($compileResult['binary_file_name'] ?? ($safeBase . '.bin'));
+            $sourceType = 'ino';
+            $compileStatus = (string) ($compileResult['compile_status'] ?? 'COMPILED');
+            $compileLog = $compileResult['compile_log'] ?? null;
+        } else {
+            $storedRel = $upload->permanent_path
+                ? 'firmware/' . ltrim((string) $upload->permanent_path, '/')
+                : 'quarantine/' . ltrim((string) ($upload->quarantine_path ?? $upload->uuid . '.bin'), '/');
+            $sourceRel = null;
+            $sha256 = strtolower((string) $upload->sha256_hash);
+            $sizeBytes = (int) $upload->file_size_bytes;
+            $fileName = $safeBase . '.bin';
+            $sourceType = strtolower((string) ($upload->detected_extension ?: 'bin'));
+            $compileStatus = $sourceType === 'ino' ? 'PENDING_COMPILE' : 'PRECOMPILED';
+            $compileLog = null;
+        }
+
         $hmac = FirmwareRelease::computeSignature($version, $sha256, $sizeBytes, $minPrev);
 
         $allowedIds = $this->resolveInitialAllowedDeviceIds(
@@ -60,16 +79,16 @@ class FirmwareOtaService
             $minPrev
         );
 
-        $safeBase = preg_replace('/[^A-Za-z0-9._-]/', '_', $version) ?: ('fw_' . time());
-
         return FirmwareRelease::create([
             'secure_upload_id' => $upload->id,
             'version' => $version,
             'channel' => strtolower((string) ($data['channel'] ?? 'stable')),
+            'source_type' => $sourceType,
             'target_hardware' => $targetHw,
             'allowed_device_ids' => $allowedIds,
             'file_path' => $storedRel,
-            'file_name' => $safeBase . '.bin',
+            'source_file_path' => $sourceRel,
+            'file_name' => $fileName,
             'file_size_bytes' => $sizeBytes,
             'sha256_checksum' => $sha256,
             'hmac_signature' => $hmac,
@@ -78,6 +97,8 @@ class FirmwareOtaService
             'changelog' => $data['changelog'] ?? null,
             'is_active' => $isActive,
             'scan_status' => $scanStatus,
+            'compile_status' => $compileStatus,
+            'compile_log' => $compileLog,
             'is_mandatory' => (bool) ($data['is_mandatory'] ?? false),
             'uploaded_by' => $actor,
             'released_at' => now(),
@@ -945,6 +966,9 @@ class FirmwareOtaService
                     'id' => $r->id,
                     'version' => $r->version,
                     'channel' => $r->channel,
+                    'source_type' => $r->source_type ?: 'bin',
+                    'compile_status' => $r->compile_status ?: 'PRECOMPILED',
+                    'compile_log' => $r->compile_log,
                     'target_hardware' => $r->target_hardware,
                     'allowed_device_ids' => $allowed,
                     'file_name' => $r->file_name,

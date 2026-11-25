@@ -63,9 +63,10 @@ return [
         ],
 
         'firmware' => [
-            'extensions' => ['bin'],
+            'extensions' => ['bin', 'ino'],
             'mime_map' => [
                 'bin' => ['application/octet-stream', 'application/x-binary', 'text/plain'],
+                'ino' => ['text/plain', 'text/x-c', 'text/x-c++', 'text/x-c++src', 'text/x-csrc', 'application/octet-stream'],
             ],
             'max_bytes' => 16777216, // 16 MB
             'destination_disk' => 'firmware_private',

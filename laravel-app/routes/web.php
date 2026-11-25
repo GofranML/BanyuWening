@@ -113,6 +113,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/harvest-cycles', [HarvestCycleController::class, 'index'])->name('dashboard.harvest-cycles.index');
     Route::post('/dashboard/harvest-cycles', [HarvestCycleController::class, 'store'])->name('dashboard.harvest-cycles.store');
     Route::match(['post', 'put'], '/dashboard/harvest-cycles/{cycle}', [HarvestCycleController::class, 'update'])->name('dashboard.harvest-cycles.update');
+    Route::post('/dashboard/harvest-cycles/{cycle}/analyze-ai', [HarvestCycleController::class, 'reanalyzeAi'])->name('dashboard.harvest-cycles.analyze-ai');
     Route::delete('/dashboard/harvest-cycles/{cycle}', [HarvestCycleController::class, 'destroy'])->name('dashboard.harvest-cycles.destroy');
 });
 

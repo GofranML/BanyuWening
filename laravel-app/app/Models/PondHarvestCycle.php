@@ -22,6 +22,8 @@ class PondHarvestCycle extends Model
         'seed_size_cm',
         'harvest_weight_kg',
         'fish_per_kg',
+        'harvest_fish_count',
+        'harvest_size_cm',
         'avg_fish_weight_g',
         'estimated_harvest_count',
         'estimated_mortality_count',
@@ -33,6 +35,7 @@ class PondHarvestCycle extends Model
         'avg_ph_cycle',
         'avg_temp_cycle',
         'ai_evaluation_note',
+        'ai_diagnosis',
         'notes',
         'recorded_by',
     ];
@@ -45,6 +48,7 @@ class PondHarvestCycle extends Model
             'seed_count' => 'integer',
             'harvest_weight_kg' => 'float',
             'fish_per_kg' => 'float',
+            'harvest_fish_count' => 'integer',
             'avg_fish_weight_g' => 'float',
             'estimated_harvest_count' => 'integer',
             'estimated_mortality_count' => 'integer',
@@ -54,6 +58,7 @@ class PondHarvestCycle extends Model
             'ai_warning_events' => 'integer',
             'avg_ph_cycle' => 'float',
             'avg_temp_cycle' => 'float',
+            'ai_diagnosis' => 'array',
         ];
     }
 

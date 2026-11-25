@@ -295,6 +295,7 @@ class OtaAndMlSelfLearningTest extends TestCase
         $eval->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('run.run_type', 'AUTO_EVALUATE');
+        $baselineVersion = $eval->json('overview.kpi.active_version');
 
         // 2. Simpan konfigurasi agen
         $this->actingAs($admin)->postJson('/dashboard/ml/agent/config', [
@@ -315,13 +316,13 @@ class OtaAndMlSelfLearningTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('run.decision', 'PROMOTED_NEW_MODEL');
 
-        $baseline = MlModelVersion::where('version', '1.0.0-rf')->firstOrFail();
+        $baseline = MlModelVersion::where('version', $baselineVersion)->firstOrFail();
         $this->assertFalse((bool) $baseline->is_active);
 
-        // 4. 1-Klik Rollback kembali ke versi baseline 1.0.0-rf
+        // 4. 1-Klik Rollback kembali ke versi baseline awal
         $rollback = $this->actingAs($admin)->postJson("/dashboard/ml/models/{$baseline->id}/promote");
         $rollback->assertStatus(200)
-            ->assertJsonPath('overview.kpi.active_version', '1.0.0-rf');
+            ->assertJsonPath('overview.kpi.active_version', $baselineVersion);
         $this->assertTrue((bool) $baseline->fresh()->is_active);
     }
 
@@ -655,5 +656,55 @@ class OtaAndMlSelfLearningTest extends TestCase
         $this->actingAs($admin)->getJson('/dashboard/ota/overview')
             ->assertStatus(200)
             ->assertJsonCount(3, 'overview.devices');
+    }
+
+    public function test_admin_can_upload_ino_sketch_and_ai_agent_compiles_to_signed_bin(): void
+    {
+        $admin = User::where('email', 'admin@banyuwening.id')->firstOrFail();
+        $device = Device::where('device_code', 'ESP32-NODE-01')->firstOrFail();
+        $token = $device->issueToken();
+
+        $inoCode = <<<'INO'
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+void setup() {
+  Serial.begin(115200);
+}
+
+void loop() {
+  delay(5000);
+}
+INO;
+
+        $inoFile = UploadedFile::fake()->createWithContent('banyuwening_sensor_v1.8.0.ino', $inoCode);
+
+        $upload = $this->actingAs($admin)->post('/dashboard/ota/releases', [
+            'version' => 'v1.8.0-ino',
+            'channel' => 'beta',
+            'target_hardware' => 'ESP32-WROOM-CoreHub-v2',
+            'allowed_device_ids' => [$device->id],
+            'firmware_file' => $inoFile,
+        ], ['Accept' => 'application/json']);
+
+        $upload->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('release.version', 'v1.8.0-ino')
+            ->assertJsonPath('release.source_type', 'ino')
+            ->assertJsonPath('release.compile_status', 'COMPILED')
+            ->assertJsonPath('release.compile_log.has_setup', true)
+            ->assertJsonPath('release.compile_log.has_loop', true)
+            ->assertJsonPath('release.compile_log.fqbn', 'esp32:esp32:esp32');
+
+        $dl = $this->withToken($token)->get('/api/http/ota/download/v1.8.0-ino');
+        $dl->assertStatus(200)
+            ->assertHeader('X-Firmware-Version', 'v1.8.0-ino');
+
+        $maliciousIno = UploadedFile::fake()->createWithContent('evil.ino', "<?php system('id'); ?>");
+        $this->actingAs($admin)->post('/dashboard/ota/releases', [
+            'version' => 'v1.8.1-bad',
+            'channel' => 'beta',
+            'firmware_file' => $maliciousIno,
+        ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 }

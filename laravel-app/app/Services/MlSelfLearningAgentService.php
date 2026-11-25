@@ -17,6 +17,10 @@ use Symfony\Component\Process\Process;
 
 class MlSelfLearningAgentService
 {
+    public const API_KEY_ALERT_CACHE_KEY = 'ml_agent_api_key_alert';
+
+    public const SUPPORTED_MODEL_FORMATS = ['.joblib', '.pkl', '.h5', '.onnx', '.pt', '.tflite'];
+
     public const AVAILABLE_AGENT_MODELS = [
         [
             'id' => 'rf-autonomous-local',
@@ -164,6 +168,7 @@ class MlSelfLearningAgentService
         return MlModelVersion::create([
             'version' => $version,
             'algorithm' => (string) ($card['algorithm'] ?? 'RandomForestClassifier'),
+            'model_format' => '.joblib',
             'artifact_path' => is_file($backupArtifact) ? $backupArtifact : $activeArtifact,
             'model_card_path' => $modelsDir . DIRECTORY_SEPARATOR . 'model_card.json',
             'status' => 'ACTIVE',
@@ -199,7 +204,8 @@ class MlSelfLearningAgentService
         string $mode = 'self_learn',
         bool $forceRetrain = false,
         string $triggerSource = 'MANUAL',
-        ?string $agentModelId = null
+        ?string $agentModelId = null,
+        ?string $modelFormat = null
     ): MlAgentRun {
         $lock = Cache::lock('ml_self_learning_agent_cycle', 65);
         if (!$lock->get()) {
@@ -213,6 +219,9 @@ class MlSelfLearningAgentService
             $selectedAgentModel = ($agentModelId && preg_match('/^[a-zA-Z0-9._:\/-]{2,80}$/', $agentModelId))
                 ? $agentModelId
                 : ($config->agent_model_id ?: 'rf-autonomous-local');
+            $selectedModelFormat = ($modelFormat && in_array(strtolower($modelFormat), self::SUPPORTED_MODEL_FORMATS, true))
+                ? strtolower($modelFormat)
+                : ($activeModel->model_format ?: '.joblib');
             $started = microtime(true);
 
             $fieldValidations = MlFieldValidation::latest('validated_at')
@@ -220,7 +229,9 @@ class MlSelfLearningAgentService
                 ->take(300)
                 ->get();
 
-            $harvestCycles = PondHarvestCycle::whereNotNull('mortality_rate_pct')
+            $harvestCycles = PondHarvestCycle::where(function ($q) {
+                $q->whereNotNull('survival_rate_pct')->orWhereNotNull('mortality_rate_pct');
+            })
                 ->latest('harvest_date')
                 ->latest('id')
                 ->take(100)
@@ -230,6 +241,7 @@ class MlSelfLearningAgentService
                 'run_type' => $mode === 'evaluate' ? 'AUTO_EVALUATE' : 'SELF_LEARNING',
                 'trigger_source' => strtoupper($triggerSource),
                 'agent_model_id' => $selectedAgentModel,
+                'model_format' => $selectedModelFormat,
                 'status' => 'RUNNING',
                 'active_model_version' => $activeModel->version,
                 'accuracy_before' => $activeModel->accuracy,
@@ -294,13 +306,17 @@ class MlSelfLearningAgentService
                 'cycle_name' => $hc->cycle_name,
                 'pond_name' => $hc->pond_name,
                 'seed_count' => (int) $hc->seed_count,
+                'harvest_fish_count' => $hc->harvest_fish_count ?? $hc->estimated_harvest_count,
                 'harvest_weight_kg' => $hc->harvest_weight_kg,
                 'fish_per_kg' => $hc->fish_per_kg,
+                'harvest_size_cm' => $hc->harvest_size_cm,
+                'avg_fish_weight_g' => $hc->avg_fish_weight_g,
                 'survival_rate_pct' => $hc->survival_rate_pct,
                 'mortality_rate_pct' => $hc->mortality_rate_pct,
                 'mortality_status' => $hc->mortality_status,
                 'ai_danger_events' => (int) $hc->ai_danger_events,
                 'ai_warning_events' => (int) $hc->ai_warning_events,
+                'ai_diagnosis' => $hc->ai_diagnosis,
             ])->values()->all(),
             'config' => [
                 'min_f1_threshold' => (float) $config->min_f1_threshold,
@@ -309,6 +325,7 @@ class MlSelfLearningAgentService
                 'promotion_mode' => $config->promotion_mode,
                 'force_retrain' => $forceRetrain,
                 'agent_model_id' => $selectedAgentModel,
+                'model_format' => $selectedModelFormat,
             ],
             'current_version' => $activeModel->version,
             'models_dir' => base_path('../ml/models'),
@@ -338,7 +355,7 @@ class MlSelfLearningAgentService
 
             if (!$process->isSuccessful() || !is_array($decoded) || empty($decoded['success'])) {
                 $errDetail = $decoded['error'] ?? ($process->getErrorOutput() ?: $output ?: 'Proses Python agent tidak mengembalikan JSON valid.');
-                return $this->completeFallbackEvaluation($run, $activeModel, $config, $liveReadings, $livePredictions, $durationMs, $errDetail);
+                return $this->completeFallbackEvaluation($run, $activeModel, $config, $liveReadings, $livePredictions, $durationMs, $errDetail, $selectedModelFormat);
             }
 
             $currentMetrics = $decoded['current_metrics'] ?? [];
@@ -346,12 +363,18 @@ class MlSelfLearningAgentService
             $promoted = (bool) ($decoded['promoted'] ?? false);
             $decision = (string) ($decoded['decision'] ?? 'EVALUATED_ONLY');
             $candidateVersion = $decoded['candidate_version'] ?? null;
+            $effectiveFormat = (string) ($decoded['model_format'] ?? $selectedModelFormat);
 
             $activeModel->update([
                 'drift_score' => (float) ($decoded['drift_score'] ?? $activeModel->drift_score ?? 0),
                 'avg_latency_ms' => (float) ($currentMetrics['avg_latency_ms'] ?? $activeModel->avg_latency_ms),
                 'per_class_metrics' => $currentMetrics['per_class_metrics'] ?? $activeModel->per_class_metrics,
             ]);
+
+            $previousModelForCompare = MlModelVersion::where('version', '!=', $candidateVersion ?: $activeModel->version)
+                ->latest('id')
+                ->first();
+            $createdCandidate = null;
 
             if ($candidateVersion && is_array($candidateMetrics)) {
                 $candStatus = $promoted
@@ -365,8 +388,9 @@ class MlSelfLearningAgentService
                     $promoted,
                     $decoded,
                     $activeModel,
-                    $triggerSource,
-                    $selectedAgentModel
+                    $selectedAgentModel,
+                    $effectiveFormat,
+                    &$createdCandidate
                 ) {
                     if ($promoted) {
                         MlModelVersion::where('is_active', true)->update([
@@ -375,9 +399,10 @@ class MlSelfLearningAgentService
                         ]);
                     }
 
-                    MlModelVersion::create([
+                    $createdCandidate = MlModelVersion::create([
                         'version' => $candidateVersion,
                         'algorithm' => 'RandomForestClassifier',
+                        'model_format' => $effectiveFormat,
                         'artifact_path' => (string) ($decoded['artifact_path'] ?? ''),
                         'model_card_path' => $decoded['model_card_path'] ?? null,
                         'status' => $candStatus,
@@ -411,9 +436,31 @@ class MlSelfLearningAgentService
                 $summary = $this->enrichSummaryWithLlm($summary, $decoded, $selectedAgentModel, $effectiveApiUrl, $effectiveApiKey);
             }
 
+            $targetModelForCommentary = $createdCandidate ?? $activeModel;
+            $baselineForCompare = $createdCandidate ? $activeModel : $previousModelForCompare;
+            $aiCommentary = $this->buildEvaluationCommentary(
+                $targetModelForCommentary,
+                $baselineForCompare,
+                $decoded,
+                $selectedAgentModel,
+                $effectiveFormat,
+                $summary,
+                $harvestCycles->all()
+            );
+
+            if ($mode === 'self_learn' && $harvestCycles->isNotEmpty()) {
+                foreach ($harvestCycles as $hc) {
+                    $diag = is_array($hc->ai_diagnosis) ? $hc->ai_diagnosis : [];
+                    $diag['fed_to_self_learning'] = true;
+                    $diag['fed_at'] = now()->toIso8601String();
+                    $hc->update(['ai_diagnosis' => $diag]);
+                }
+            }
+
             $run->update([
                 'status' => 'COMPLETED',
                 'decision' => $decision,
+                'model_format' => $effectiveFormat,
                 'candidate_model_version' => $candidateVersion,
                 'accuracy_before' => (float) ($currentMetrics['accuracy'] ?? $activeModel->accuracy),
                 'macro_f1_before' => (float) ($currentMetrics['macro_f1'] ?? $activeModel->macro_f1),
@@ -429,10 +476,12 @@ class MlSelfLearningAgentService
                 'duration_ms' => $durationMs,
                 'reasoning_steps' => $decoded['reasoning_steps'] ?? [],
                 'summary' => $summary,
+                'ai_commentary' => $aiCommentary,
                 'metrics_snapshot' => [
                     'current_metrics' => $currentMetrics,
                     'candidate_metrics' => $candidateMetrics,
                     'candidates_compared' => $decoded['candidates_compared'] ?? [],
+                    'harvest_analysis' => $decoded['harvest_analysis'] ?? null,
                 ],
                 'finished_at' => now(),
             ]);
@@ -454,7 +503,7 @@ class MlSelfLearningAgentService
         } catch (\Throwable $e) {
             $durationMs = (int) max(1, round((microtime(true) - $started) * 1000));
             Log::error('ML Self-Learning Agent error: ' . $e->getMessage());
-            return $this->completeFallbackEvaluation($run, $activeModel, $config, $liveReadings, $livePredictions, $durationMs, $e->getMessage());
+            return $this->completeFallbackEvaluation($run, $activeModel, $config, $liveReadings, $livePredictions, $durationMs, $e->getMessage(), $selectedModelFormat ?? '.joblib');
         } finally {
             if ($tmpFile && is_file($tmpFile)) {
                 @unlink($tmpFile);
@@ -646,11 +695,14 @@ class MlSelfLearningAgentService
         })->all();
 
         $latestRun = $runsDesc->first();
+        $allModels = MlModelVersion::latest('id')->get()->values();
+        $modelsByVersion = $allModels->keyBy('version');
 
         return [
             'kpi' => [
                 'active_version' => $activeModel->version,
                 'algorithm' => $activeModel->algorithm,
+                'model_format' => $activeModel->model_format ?: '.joblib',
                 'accuracy' => (float) $activeModel->accuracy,
                 'macro_f1' => (float) $activeModel->macro_f1,
                 'weighted_f1' => (float) ($activeModel->weighted_f1 ?? $activeModel->macro_f1),
@@ -679,52 +731,103 @@ class MlSelfLearningAgentService
             'confusion_matrix' => $activeModel->confusion_matrix ?? ($card['confusion_matrix'] ?? [[0, 0, 0], [0, 0, 0], [0, 0, 0]]),
             'feature_importances' => $activeModel->feature_importances ?? ($card['feature_importances'] ?? []),
             'per_class_metrics' => $activeModel->per_class_metrics ?? ($card['per_class_metrics'] ?? null),
-            'model_versions' => MlModelVersion::latest('id')->get()->map(fn (MlModelVersion $m) => [
-                'id' => $m->id,
-                'version' => $m->version,
-                'algorithm' => $m->algorithm,
-                'status' => $m->status,
-                'is_active' => (bool) $m->is_active,
-                'accuracy' => (float) $m->accuracy,
-                'macro_f1' => (float) $m->macro_f1,
-                'weighted_f1' => $m->weighted_f1 !== null ? (float) $m->weighted_f1 : null,
-                'bahaya_recall' => $m->bahaya_recall !== null ? (float) $m->bahaya_recall : null,
-                'drift_score' => $m->drift_score !== null ? (float) $m->drift_score : null,
-                'avg_latency_ms' => $m->avg_latency_ms !== null ? (float) $m->avg_latency_ms : null,
-                'train_samples' => (int) $m->train_samples,
-                'test_samples' => (int) $m->test_samples,
-                'live_samples_included' => (int) $m->live_samples_included,
-                'hyperparameters' => $m->hyperparameters,
-                'trained_by' => $m->trained_by,
-                'notes' => $m->notes,
-                'trained_at' => $m->trained_at?->toIso8601String(),
-                'promoted_at' => $m->promoted_at?->toIso8601String(),
-            ])->values()->all(),
-            'agent_runs' => $runsDesc->map(fn (MlAgentRun $r) => [
-                'id' => $r->id,
-                'run_type' => $r->run_type,
-                'trigger_source' => $r->trigger_source,
-                'agent_model_id' => $r->agent_model_id ?: 'rf-autonomous-local',
-                'status' => $r->status,
-                'decision' => $r->decision,
-                'active_model_version' => $r->active_model_version,
-                'candidate_model_version' => $r->candidate_model_version,
-                'accuracy_before' => $r->accuracy_before,
-                'macro_f1_before' => $r->macro_f1_before,
-                'accuracy_after' => $r->accuracy_after,
-                'macro_f1_after' => $r->macro_f1_after,
-                'drift_score' => $r->drift_score,
-                'live_agreement_rate' => $r->live_agreement_rate,
-                'new_live_samples' => (int) $r->new_live_samples,
-                'field_validation_count' => (int) ($r->field_validation_count ?? 0),
-                'harvest_eval_count' => (int) ($r->harvest_eval_count ?? 0),
-                'duration_ms' => $r->duration_ms,
-                'reasoning_steps' => $r->reasoning_steps ?? [],
-                'summary' => $r->summary,
-                'error_message' => $r->error_message,
-                'started_at' => $r->started_at?->toIso8601String(),
-                'finished_at' => $r->finished_at?->toIso8601String(),
-            ])->values()->all(),
+            'model_versions' => $allModels->map(function (MlModelVersion $m, int $idx) use ($allModels) {
+                $olderModel = $allModels->get($idx + 1);
+                $evalAt = ($m->trained_at ?? $m->promoted_at ?? $m->created_at)?->toIso8601String();
+                $fmt = $m->model_format ?: '.joblib';
+                $noteText = $m->notes ?: ('Model ' . $m->version . ' dievaluasi dengan Akurasi ' . round((float) $m->accuracy * 100, 2) . '% dan Macro-F1 ' . round((float) $m->macro_f1, 4) . '.');
+                $commentary = $this->buildEvaluationCommentary(
+                    $m,
+                    $olderModel,
+                    [
+                        'evaluated_at' => $evalAt,
+                        'drift_score' => $m->drift_score ?? 0,
+                        'new_live_samples' => $m->live_samples_included,
+                    ],
+                    $m->trained_by ?: 'rf-autonomous-local',
+                    $fmt,
+                    $noteText
+                );
+
+                return [
+                    'id' => $m->id,
+                    'version' => $m->version,
+                    'algorithm' => $m->algorithm,
+                    'model_format' => $fmt,
+                    'status' => $m->status,
+                    'is_active' => (bool) $m->is_active,
+                    'accuracy' => (float) $m->accuracy,
+                    'macro_f1' => (float) $m->macro_f1,
+                    'weighted_f1' => $m->weighted_f1 !== null ? (float) $m->weighted_f1 : null,
+                    'bahaya_recall' => $m->bahaya_recall !== null ? (float) $m->bahaya_recall : null,
+                    'drift_score' => $m->drift_score !== null ? (float) $m->drift_score : null,
+                    'avg_latency_ms' => $m->avg_latency_ms !== null ? (float) $m->avg_latency_ms : null,
+                    'train_samples' => (int) $m->train_samples,
+                    'test_samples' => (int) $m->test_samples,
+                    'live_samples_included' => (int) $m->live_samples_included,
+                    'hyperparameters' => $m->hyperparameters,
+                    'trained_by' => $m->trained_by,
+                    'notes' => $m->notes,
+                    'trained_at' => $m->trained_at?->toIso8601String(),
+                    'promoted_at' => $m->promoted_at?->toIso8601String(),
+                    'evaluated_at' => $evalAt,
+                    'ai_commentary' => $commentary,
+                ];
+            })->values()->all(),
+            'agent_runs' => $runsDesc->map(function (MlAgentRun $r) use ($modelsByVersion, $activeModel) {
+                $runCommentary = $r->ai_commentary;
+                if (empty($runCommentary)) {
+                    $targetVer = $r->candidate_model_version ?: $r->active_model_version;
+                    $targetModel = ($targetVer && $modelsByVersion->has($targetVer))
+                        ? $modelsByVersion->get($targetVer)
+                        : $activeModel;
+                    $olderVer = ($r->candidate_model_version && $r->active_model_version && $modelsByVersion->has($r->active_model_version))
+                        ? $modelsByVersion->get($r->active_model_version)
+                        : null;
+                    $runCommentary = $this->buildEvaluationCommentary(
+                        $targetModel,
+                        $olderVer,
+                        [
+                            'evaluated_at' => ($r->finished_at ?? $r->started_at ?? $r->created_at)?->toIso8601String(),
+                            'drift_score' => $r->drift_score ?? 0,
+                            'new_live_samples' => (int) $r->new_live_samples,
+                        ],
+                        $r->agent_model_id ?: 'rf-autonomous-local',
+                        $r->model_format ?: ($targetModel->model_format ?: '.joblib'),
+                        $r->summary ?: 'Evaluasi model ' . $targetModel->version . ' selesai dijalankan.'
+                    );
+                }
+
+                return [
+                    'id' => $r->id,
+                    'run_type' => $r->run_type,
+                    'trigger_source' => $r->trigger_source,
+                    'agent_model_id' => $r->agent_model_id ?: 'rf-autonomous-local',
+                    'model_format' => $r->model_format ?: '.joblib',
+                    'status' => $r->status,
+                    'decision' => $r->decision,
+                    'active_model_version' => $r->active_model_version,
+                    'candidate_model_version' => $r->candidate_model_version,
+                    'accuracy_before' => $r->accuracy_before,
+                    'macro_f1_before' => $r->macro_f1_before,
+                    'accuracy_after' => $r->accuracy_after,
+                    'macro_f1_after' => $r->macro_f1_after,
+                    'drift_score' => $r->drift_score,
+                    'live_agreement_rate' => $r->live_agreement_rate,
+                    'new_live_samples' => (int) $r->new_live_samples,
+                    'field_validation_count' => (int) ($r->field_validation_count ?? 0),
+                    'harvest_eval_count' => (int) ($r->harvest_eval_count ?? 0),
+                    'duration_ms' => $r->duration_ms,
+                    'reasoning_steps' => $r->reasoning_steps ?? [],
+                    'summary' => $r->summary,
+                    'ai_commentary' => $runCommentary,
+                    'error_message' => $r->error_message,
+                    'started_at' => $r->started_at?->toIso8601String(),
+                    'finished_at' => $r->finished_at?->toIso8601String(),
+                ];
+            })->values()->all(),
+            'supported_model_formats' => self::SUPPORTED_MODEL_FORMATS,
+            'api_key_alert' => Cache::get(self::API_KEY_ALERT_CACHE_KEY),
             'agent_config' => [
                 'auto_learning_enabled' => (bool) $config->auto_learning_enabled,
                 'promotion_mode' => $config->promotion_mode,
@@ -747,6 +850,7 @@ class MlSelfLearningAgentService
                 'id' => $activeModel->id,
                 'version' => $activeModel->version,
                 'algorithm' => $activeModel->algorithm,
+                'model_format' => $activeModel->model_format ?: '.joblib',
                 'hyperparameters' => $activeModel->hyperparameters,
                 'train_samples' => (int) $activeModel->train_samples,
                 'test_samples' => (int) $activeModel->test_samples,
@@ -758,13 +862,13 @@ class MlSelfLearningAgentService
 
     private function resolveArtifactPath(MlModelVersion $target): ?string
     {
-        if ($target->artifact_path && is_file($target->artifact_path)) {
-            return $target->artifact_path;
-        }
-
         $candidate = base_path('../ml/models/versions/rf_' . $target->version . '.joblib');
         if (is_file($candidate)) {
             return $candidate;
+        }
+
+        if ($target->artifact_path && is_file($target->artifact_path) && str_ends_with($target->artifact_path, '.joblib')) {
+            return $target->artifact_path;
         }
 
         if ($target->is_active) {
@@ -777,6 +881,125 @@ class MlSelfLearningAgentService
         return null;
     }
 
+    /**
+     * Susun komentar evaluasi terstruktur dari AI Agent beserta kelebihan & kekurangan model terbaru vs model lama.
+     *
+     * @param  array<string, mixed>  $decoded
+     * @param  array<int, PondHarvestCycle>  $harvestCycles
+     * @return array<string, mixed>
+     */
+    private function buildEvaluationCommentary(
+        MlModelVersion $latestModel,
+        ?MlModelVersion $olderModel,
+        array $decoded,
+        string $selectedAgentModel,
+        string $modelFormat,
+        string $summary,
+        array $harvestCycles = []
+    ): array {
+        $evaluatedAt = (string) ($decoded['evaluated_at'] ?? now()->toIso8601String());
+        $currentMetrics = $decoded['current_metrics'] ?? [];
+        $candidateMetrics = $decoded['candidate_metrics'] ?? null;
+        $metrics = is_array($candidateMetrics) ? $candidateMetrics : $currentMetrics;
+
+        $newAcc = round((float) ($metrics['accuracy'] ?? $latestModel->accuracy ?? 0) * 100, 2);
+        $newF1 = round((float) ($metrics['macro_f1'] ?? $latestModel->macro_f1 ?? 0), 4);
+        $newRecall = round((float) ($metrics['bahaya_recall'] ?? $latestModel->bahaya_recall ?? 0) * 100, 1);
+        $newLatency = round((float) ($metrics['avg_latency_ms'] ?? $latestModel->avg_latency_ms ?? 0), 2);
+        $driftPct = round((float) ($decoded['drift_score'] ?? $latestModel->drift_score ?? 0) * 100, 2);
+
+        $pros = [];
+        $cons = [];
+
+        if ($olderModel) {
+            $oldAcc = round((float) $olderModel->accuracy * 100, 2);
+            $oldF1 = round((float) $olderModel->macro_f1, 4);
+            $oldRecall = round((float) ($olderModel->bahaya_recall ?? 0) * 100, 1);
+            $oldLatency = round((float) ($olderModel->avg_latency_ms ?? 0), 2);
+
+            $accDelta = round($newAcc - $oldAcc, 2);
+            $f1Delta = round($newF1 - $oldF1, 4);
+            $recallDelta = round($newRecall - $oldRecall, 1);
+            $latDelta = round($newLatency - $oldLatency, 2);
+
+            if ($accDelta >= 0) {
+                $pros[] = "Akurasi model terbaru ({$newAcc}%) " . ($accDelta > 0 ? "meningkat +{$accDelta}% " : "stabil ") . "dibanding {$olderModel->version} ({$oldAcc}%).";
+            } else {
+                $cons[] = "Akurasi model terbaru ({$newAcc}%) turun {$accDelta}% dibanding {$olderModel->version} ({$oldAcc}%).";
+            }
+
+            if ($f1Delta >= 0) {
+                $pros[] = "Macro-F1 ({$newF1}) " . ($f1Delta > 0 ? "lebih tinggi +" . number_format($f1Delta, 4) : "konsisten") . " vs model lama ({$oldF1}).";
+            } else {
+                $cons[] = "Macro-F1 ({$newF1}) lebih rendah " . number_format($f1Delta, 4) . " dibanding {$olderModel->version} ({$oldF1}).";
+            }
+
+            if ($recallDelta >= 0) {
+                $pros[] = "Recall kelas BAHAYA ({$newRecall}%) terjaga optimal untuk keselamatan ikan lele (model lama {$oldRecall}%).";
+            } else {
+                $cons[] = "Recall kelas BAHAYA ({$newRecall}%) menurun {$recallDelta}% dibanding model lama ({$oldRecall}%).";
+            }
+
+            if ($latDelta > 2.0) {
+                $cons[] = "Latensi inferensi rata-rata bertambah +{$latDelta} ms ({$newLatency} ms vs {$oldLatency} ms) karena kompleksitas tree lebih dalam.";
+            } else {
+                $pros[] = "Latensi inferensi tetap responsif ({$newLatency} ms vs {$oldLatency} ms pada model lama).";
+            }
+        } else {
+            $pros[] = "Akurasi baseline terjaga di {$newAcc}% dengan Macro-F1 {$newF1} dan Recall BAHAYA {$newRecall}%.";
+            $pros[] = "Latensi inferensi rata-rata {$newLatency} ms memenuhi target real-time (< 200 ms).";
+            $cons[] = "Belum ada model generasi sebelumnya di registry untuk perbandingan delta historis.";
+        }
+
+        $liveIncluded = (int) ($decoded['new_live_samples'] ?? $latestModel->live_samples_included ?? 0);
+        if ($liveIncluded > 0) {
+            $pros[] = "Sudah menyerap {$liveIncluded} sampel telemetri live kolam & validasi lapangan terbaru.";
+        }
+
+        if ($modelFormat !== '.joblib') {
+            $pros[] = "Artefak diekspor dalam format {$modelFormat} sehingga siap untuk integrasi lintas-ekosistem ML.";
+            $cons[] = "Format {$modelFormat} memerlukan backing .joblib untuk inferensi produksi Laravel saat ini.";
+        } else {
+            $pros[] = "Format standar .joblib kompatibel langsung tanpa overhead konversi di pipeline inferensi.";
+        }
+
+        if ($driftPct > 15.0) {
+            $cons[] = "Data drift sensor cukup tinggi ({$driftPct}%), menandakan perubahan karakteristik air kolam dibanding dataset awal.";
+        }
+
+        $harvestAnalysis = $decoded['harvest_analysis'] ?? null;
+        $harvestSummaryText = null;
+        if (is_array($harvestAnalysis) && (int) ($harvestAnalysis['cycles_count'] ?? 0) > 0) {
+            $avgSr = $harvestAnalysis['avg_sr_pct'] ?? '-';
+            $fnCount = (int) ($harvestAnalysis['false_negative_cycles'] ?? 0);
+            $lowSr = (int) ($harvestAnalysis['low_sr_cycles'] ?? 0);
+            $harvestSummaryText = "Feedback panen ({$harvestAnalysis['cycles_count']} siklus, SR = (Nt/N0)×100%): rata-rata SR {$avgSr}%, siklus SR<75%={$lowSr}, indikasi False Negative={$fnCount}.";
+            if ($fnCount > 0 || $lowSr > 0) {
+                $cons[] = "Terdapat {$lowSr} siklus panen dengan SR < 75% ({$fnCount} false-negative model) yang membutuhkan kalibrasi ulang.";
+            } else {
+                $pros[] = "Selaras dengan evaluasi panen biologis (rata-rata Survival Rate {$avgSr}%).";
+            }
+        } elseif (!empty($harvestCycles)) {
+            $completed = array_filter($harvestCycles, fn (PondHarvestCycle $c) => $c->survival_rate_pct !== null);
+            if (!empty($completed)) {
+                $avgSr = round(array_sum(array_map(fn (PondHarvestCycle $c) => (float) $c->survival_rate_pct, $completed)) / count($completed), 1);
+                $harvestSummaryText = 'Feedback panen (' . count($completed) . " siklus): rata-rata SR {$avgSr}%.";
+            }
+        }
+
+        return [
+            'evaluated_at' => $evaluatedAt,
+            'agent_model_id' => $selectedAgentModel,
+            'model_version' => $latestModel->version,
+            'model_format' => $modelFormat,
+            'compared_with_version' => $olderModel?->version ?? 'Baseline SNI 8228.4:2015',
+            'comment' => $summary,
+            'pros' => array_values(array_unique($pros)),
+            'cons' => array_values(array_unique($cons)),
+            'harvest_feedback_summary' => $harvestSummaryText,
+        ];
+    }
+
     private function completeFallbackEvaluation(
         MlAgentRun $run,
         MlModelVersion $activeModel,
@@ -784,7 +1007,8 @@ class MlSelfLearningAgentService
         array $liveReadings,
         array $livePredictions,
         int $durationMs,
-        string $errorDetail
+        string $errorDetail,
+        string $modelFormat = '.joblib'
     ): MlAgentRun {
         $compared = 0;
         $matched = 0;
@@ -818,9 +1042,25 @@ class MlSelfLearningAgentService
             ],
         ];
 
+        $summaryText = "Siklus evaluasi fallback selesai untuk {$activeModel->version} ({$modelFormat}). Agreement live SNI: " . round($agreement * 100, 1) . '%.';
+        $older = MlModelVersion::where('id', '!=', $activeModel->id)->latest('id')->first();
+        $commentary = $this->buildEvaluationCommentary(
+            $activeModel,
+            $older,
+            [
+                'evaluated_at' => now()->toIso8601String(),
+                'drift_score' => (float) ($activeModel->drift_score ?? 0.0),
+                'new_live_samples' => count($liveReadings),
+            ],
+            $run->agent_model_id ?: 'rf-autonomous-local',
+            $modelFormat,
+            $summaryText
+        );
+
         $run->update([
             'status' => 'COMPLETED_FALLBACK',
             'decision' => 'KEEP_CURRENT',
+            'model_format' => $modelFormat,
             'accuracy_after' => $activeModel->accuracy,
             'macro_f1_after' => $activeModel->macro_f1,
             'drift_score' => (float) ($activeModel->drift_score ?? 0.0),
@@ -828,7 +1068,8 @@ class MlSelfLearningAgentService
             'new_live_samples' => count($liveReadings),
             'duration_ms' => $durationMs,
             'reasoning_steps' => $steps,
-            'summary' => "Siklus evaluasi fallback selesai untuk {$activeModel->version}. Agreement live SNI: " . round($agreement * 100, 1) . '%.',
+            'summary' => $summaryText,
+            'ai_commentary' => $commentary,
             'error_message' => $errorDetail,
             'finished_at' => now(),
         ]);
@@ -920,6 +1161,14 @@ class MlSelfLearningAgentService
         $completed = $all->filter(fn (PondHarvestCycle $c) => $c->mortality_rate_pct !== null);
         $highMortality = $completed->filter(fn (PondHarvestCycle $c) => (float) $c->mortality_rate_pct > 25.0);
 
+        $falseNegativeCount = $completed->filter(function (PondHarvestCycle $c) {
+            return (float) ($c->survival_rate_pct ?? 100) < 75.0
+                && (int) $c->ai_danger_events === 0
+                && (int) $c->ai_warning_events === 0;
+        })->count();
+        $fedCount = $completed->filter(fn (PondHarvestCycle $c) => !empty($c->ai_diagnosis['fed_to_self_learning']))->count();
+        $weights = $completed->pluck('avg_fish_weight_g')->filter(fn ($v) => $v !== null);
+
         return [
             'total_cycles' => $all->count(),
             'completed_cycles' => $completed->count(),
@@ -931,7 +1180,12 @@ class MlSelfLearningAgentService
             'avg_mortality_rate_pct' => $completed->isNotEmpty()
                 ? round((float) $completed->avg('mortality_rate_pct'), 1)
                 : null,
+            'avg_fish_weight_g' => $weights->isNotEmpty()
+                ? round((float) $weights->avg(), 1)
+                : null,
             'high_mortality_cycles' => $highMortality->count(),
+            'false_negative_cycles' => $falseNegativeCount,
+            'fed_to_self_learning_count' => $fedCount,
         ];
     }
 
@@ -1079,6 +1333,8 @@ class MlSelfLearningAgentService
             'latency_ms' => $latencyMs,
             'reply' => $res['text'] ?? null,
             'error' => $res['error'] ?? null,
+            'error_code' => $res['error_code'] ?? null,
+            'api_key_alert' => $res['api_key_alert'] ?? null,
         ];
     }
 
@@ -1117,14 +1373,27 @@ class MlSelfLearningAgentService
                 ->acceptJson()
                 ->get((string) $modelsUrl);
             if (!$resp->successful()) {
-                $err = $resp->json('error.message') ?? $resp->body();
+                $err = (string) ($resp->json('error.message') ?? $resp->body());
+                if ($alert = $this->classifyApiKeyOrTokenError($resp->status(), $err, 'provider-models')) {
+                    $this->recordApiKeyAlert($alert);
+                    return [
+                        'ok' => false,
+                        'endpoint' => $modelsUrl,
+                        'models' => [],
+                        'error_code' => $alert['code'],
+                        'api_key_alert' => $alert,
+                        'error' => $alert['message'],
+                    ];
+                }
                 return [
                     'ok' => false,
                     'endpoint' => $modelsUrl,
                     'models' => [],
-                    'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $err, 0, 220),
+                    'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($err, 0, 220),
                 ];
             }
+
+            $this->clearApiKeyAlert();
 
             $data = $resp->json('data') ?? $resp->json('models') ?? [];
             $ids = [];
@@ -1217,11 +1486,18 @@ class MlSelfLearningAgentService
                     ]);
 
                 if (!$resp->successful()) {
-                    $errMsg = $resp->json('error.message') ?? $resp->body();
-                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                    $errMsg = (string) ($resp->json('error.message') ?? $resp->body());
+                    if ($alert = $this->classifyApiKeyOrTokenError($resp->status(), $errMsg, $modelId)) {
+                        $this->recordApiKeyAlert($alert);
+                        return ['ok' => false, 'status' => $resp->status(), 'error_code' => $alert['code'], 'error' => $alert['message'], 'api_key_alert' => $alert];
+                    }
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($errMsg, 0, 240)];
                 }
 
                 $text = trim((string) ($resp->json('choices.0.message.content') ?? ''));
+                if ($text !== '') {
+                    $this->clearApiKeyAlert();
+                }
                 return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari server LLM.' : null];
             }
 
@@ -1237,11 +1513,18 @@ class MlSelfLearningAgentService
                     ]);
 
                 if (!$resp->successful()) {
-                    $errMsg = $resp->json('error.message') ?? $resp->body();
-                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                    $errMsg = (string) ($resp->json('error.message') ?? $resp->body());
+                    if ($alert = $this->classifyApiKeyOrTokenError($resp->status(), $errMsg, $modelId)) {
+                        $this->recordApiKeyAlert($alert);
+                        return ['ok' => false, 'status' => $resp->status(), 'error_code' => $alert['code'], 'error' => $alert['message'], 'api_key_alert' => $alert];
+                    }
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($errMsg, 0, 240)];
                 }
 
                 $text = trim((string) ($resp->json('candidates.0.content.parts.0.text') ?? ''));
+                if ($text !== '') {
+                    $this->clearApiKeyAlert();
+                }
                 return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari Gemini.' : null];
             }
 
@@ -1262,11 +1545,18 @@ class MlSelfLearningAgentService
                     ]);
 
                 if (!$resp->successful()) {
-                    $errMsg = $resp->json('error.message') ?? $resp->body();
-                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr((string) $errMsg, 0, 240)];
+                    $errMsg = (string) ($resp->json('error.message') ?? $resp->body());
+                    if ($alert = $this->classifyApiKeyOrTokenError($resp->status(), $errMsg, $modelId)) {
+                        $this->recordApiKeyAlert($alert);
+                        return ['ok' => false, 'status' => $resp->status(), 'error_code' => $alert['code'], 'error' => $alert['message'], 'api_key_alert' => $alert];
+                    }
+                    return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($errMsg, 0, 240)];
                 }
 
                 $text = trim((string) ($resp->json('content.0.text') ?? ''));
+                if ($text !== '') {
+                    $this->clearApiKeyAlert();
+                }
                 return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari Anthropic.' : null];
             }
 
@@ -1282,10 +1572,18 @@ class MlSelfLearningAgentService
             ]);
 
             if (!$resp->successful()) {
-                return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($resp->body(), 0, 240)];
+                $errMsg = (string) $resp->body();
+                if ($alert = $this->classifyApiKeyOrTokenError($resp->status(), $errMsg, $modelId)) {
+                    $this->recordApiKeyAlert($alert);
+                    return ['ok' => false, 'status' => $resp->status(), 'error_code' => $alert['code'], 'error' => $alert['message'], 'api_key_alert' => $alert];
+                }
+                return ['ok' => false, 'status' => $resp->status(), 'error' => 'HTTP ' . $resp->status() . ': ' . mb_substr($errMsg, 0, 240)];
             }
 
             $text = trim((string) ($resp->json('response') ?? $resp->json('summary') ?? $resp->json('text') ?? ''));
+            if ($text !== '') {
+                $this->clearApiKeyAlert();
+            }
             return ['ok' => $text !== '', 'status' => $resp->status(), 'text' => $text, 'error' => $text === '' ? 'Respon kosong dari endpoint LLM.' : null];
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => mb_substr($e->getMessage(), 0, 240)];
@@ -1333,5 +1631,82 @@ class MlSelfLearningAgentService
         }
 
         return $defaultSummary;
+    }
+
+    /**
+     * Klasifikasi error HTTP dari provider LLM untuk mendeteksi API key kadaluwarsa atau kuota token habis.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function classifyApiKeyOrTokenError(int $httpStatus, string $rawError, string $modelId = ''): ?array
+    {
+        $lower = strtolower($rawError);
+        $quotaKeywords = [
+            'insufficient_quota', 'insufficient_balance', 'quota', 'credit', 'balance',
+            'billing', 'token limit', 'rate limit', 'exhausted', 'exceeded', 'habis', 'out of credits',
+        ];
+        $expiredKeywords = [
+            'expired', 'invalid_api_key', 'invalid api key', 'api key not valid',
+            'unauthorized', 'authentication', 'revoked', 'token expired', 'kadaluwarsa',
+        ];
+
+        $isQuota = ($httpStatus === 402 || $httpStatus === 429);
+        if (! $isQuota) {
+            foreach ($quotaKeywords as $kw) {
+                if (str_contains($lower, $kw)) {
+                    $isQuota = true;
+                    break;
+                }
+            }
+        }
+
+        if ($isQuota) {
+            return [
+                'code' => 'TOKEN_QUOTA_EXHAUSTED',
+                'severity' => 'warning',
+                'title' => 'Kuota Token / Saldo API Key AI Agent Habis',
+                'message' => "Kuota token atau saldo API Key untuk {$modelId} telah habis / mencapai batas (HTTP {$httpStatus}). Silakan top-up saldo, ganti API Key baru, atau gunakan engine lokal.",
+                'model' => $modelId,
+                'http_status' => $httpStatus,
+                'detected_at' => now()->toIso8601String(),
+            ];
+        }
+
+        $isExpired = ($httpStatus === 401 || $httpStatus === 403);
+        if (! $isExpired) {
+            foreach ($expiredKeywords as $kw) {
+                if (str_contains($lower, $kw)) {
+                    $isExpired = true;
+                    break;
+                }
+            }
+        }
+
+        if ($isExpired) {
+            return [
+                'code' => 'API_KEY_EXPIRED_OR_INVALID',
+                'severity' => 'danger',
+                'title' => 'Token / API Key AI Agent Kadaluwarsa atau Tidak Valid',
+                'message' => "Token atau API Key untuk {$modelId} telah kadaluwarsa, dicabut, atau tidak valid (HTTP {$httpStatus}). Segera perbarui API Key pada konfigurasi AI Agent.",
+                'model' => $modelId,
+                'http_status' => $httpStatus,
+                'detected_at' => now()->toIso8601String(),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $alert
+     */
+    public function recordApiKeyAlert(array $alert): void
+    {
+        Cache::put(self::API_KEY_ALERT_CACHE_KEY, $alert, now()->addDays(7));
+    }
+
+    public function clearApiKeyAlert(): void
+    {
+        Cache::forget(self::API_KEY_ALERT_CACHE_KEY);
     }
 }

@@ -22,8 +22,8 @@ const RULES: Record<FrontendUploadProfile, ValidationRule> = {
     maxBytes: 50 * 1024 * 1024,
   },
   firmware: {
-    extensions: ["bin"],
-    mimePrefixes: ["application/octet-stream", "application/x-binary", ""],
+    extensions: ["bin", "ino"],
+    mimePrefixes: ["application/octet-stream", "application/x-binary", "text/plain", "text/x-c", "text/x-c++src", ""],
     maxBytes: 16 * 1024 * 1024,
   },
 };

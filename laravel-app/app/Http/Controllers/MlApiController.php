@@ -339,7 +339,12 @@ class MlApiController extends Controller
             $agentModelId = null;
         }
 
-        $run = $this->agentService->runCycle('evaluate', false, 'MANUAL', $agentModelId);
+        $modelFormat = $request->input('model_format');
+        if ($modelFormat !== null && !in_array($modelFormat, MlSelfLearningAgentService::SUPPORTED_MODEL_FORMATS, true)) {
+            $modelFormat = '.joblib';
+        }
+
+        $run = $this->agentService->runCycle('evaluate', false, 'MANUAL', $agentModelId, $modelFormat);
 
         return response()->json([
             'success' => true,
@@ -359,16 +364,18 @@ class MlApiController extends Controller
         $validated = $request->validate([
             'force_retrain' => ['nullable', 'boolean'],
             'agent_model_id' => ['nullable', 'string', 'max:80', 'regex:/^[a-zA-Z0-9._:\/-]+$/'],
+            'model_format' => ['nullable', 'string', 'in:.joblib,.pkl,.h5,.onnx,.pt,.tflite'],
         ]);
 
         $force = (bool) ($validated['force_retrain'] ?? false);
         $agentModelId = $validated['agent_model_id'] ?? null;
+        $modelFormat = $validated['model_format'] ?? '.joblib';
 
         if ($agentModelId) {
             MlAgentConfig::current()->update(['agent_model_id' => $agentModelId]);
         }
 
-        $run = $this->agentService->runCycle('self_learn', $force, 'MANUAL', $agentModelId);
+        $run = $this->agentService->runCycle('self_learn', $force, 'MANUAL', $agentModelId, $modelFormat);
 
         return response()->json([
             'success' => true,
@@ -428,6 +435,10 @@ class MlApiController extends Controller
 
         $config->update($updatePayload);
 
+        if (!empty($validated['agent_api_key']) || !empty($validated['clear_api_key']) || $agentModelId === 'rf-autonomous-local') {
+            $this->agentService->clearApiKeyAlert();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Konfigurasi kebijakan & model AI Self-Learning Agent berhasil disimpan.',
@@ -468,6 +479,8 @@ class MlApiController extends Controller
         return response()->json([
             'success' => (bool) ($result['ok'] ?? false),
             'result' => $result,
+            'error_code' => $result['error_code'] ?? null,
+            'api_key_alert' => $result['api_key_alert'] ?? null,
             'message' => !empty($result['ok'])
                 ? "Koneksi ke {$result['model']} berhasil ({$result['latency_ms']} ms)."
                 : ($result['error'] ?? 'Gagal menghubungi endpoint AI Agent.'),
@@ -505,6 +518,8 @@ class MlApiController extends Controller
             'success' => (bool) ($result['ok'] ?? false),
             'models' => $result['models'] ?? [],
             'endpoint' => $result['endpoint'] ?? null,
+            'error_code' => $result['error_code'] ?? null,
+            'api_key_alert' => $result['api_key_alert'] ?? null,
             'message' => !empty($result['ok'])
                 ? 'Berhasil memuat ' . count($result['models'] ?? []) . ' model dari provider.'
                 : ($result['error'] ?? 'Gagal memuat daftar model.'),

@@ -272,6 +272,10 @@ class FileSecurityInspector
             case 'bin':
                 $this->verifyFirmwareBinaryHeader($head);
                 break;
+
+            case 'ino':
+                $this->verifyArduinoSourceHeader($head, $filePath);
+                break;
         }
     }
 
@@ -304,6 +308,36 @@ class FileSecurityInspector
                 'INVALID_ESP32_MAGIC',
                 'Header firmware ESP32 wajib diawali magic byte 0xE9.'
             );
+        }
+    }
+
+    private function verifyArduinoSourceHeader(string $head, string $filePath): void
+    {
+        if (str_contains($head, "\x00")) {
+            throw new FileValidationException('MAGIC_BYTES_MISMATCH', 'File .ino mengandung byte biner null.');
+        }
+        if (str_starts_with($head, "\x7FELF") || str_starts_with($head, 'MZ')) {
+            throw new FileValidationException('FORBIDDEN_EXECUTABLE_BINARY', 'Binary executable menyamar sebagai .ino ditolak.');
+        }
+        if (
+            str_starts_with($head, "\xFE\xED\xFA\xCE")
+            || str_starts_with($head, "\xFE\xED\xFA\xCF")
+            || str_starts_with($head, "\xCA\xFE\xBA\xBE")
+        ) {
+            throw new FileValidationException('FORBIDDEN_EXECUTABLE_BINARY', 'Binary Mach-O executable menyamar sebagai .ino ditolak.');
+        }
+        if (str_starts_with($head, '#!')) {
+            throw new FileValidationException('FORBIDDEN_SCRIPT_PAYLOAD', 'Skrip shell shebang ditolak pada file .ino.');
+        }
+
+        $trimmed = ltrim($head);
+        if (preg_match('/^(<\?php|<\?=|<svg|<html|<!doctype|<script)/i', $trimmed)) {
+            throw new FileValidationException('FORBIDDEN_SCRIPT_PAYLOAD', 'Payload skrip/markup menyamar sebagai .ino ditolak.');
+        }
+
+        $sample = @file_get_contents($filePath, false, null, 0, 16384);
+        if (is_string($sample) && str_contains($sample, "\x00")) {
+            throw new FileValidationException('MAGIC_BYTES_MISMATCH', 'File sumber .ino mengandung byte biner ilegal.');
         }
     }
 

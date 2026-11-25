@@ -13,6 +13,7 @@ Menjalankan siklus agen otonom:
 import argparse
 import json
 import os
+import pickle
 import re
 import shutil
 import sys
@@ -44,6 +45,7 @@ from train import TARGET_LABELS, generate_bootstrap_aquaculture_dataset
 RISK_MAP = {0: "AMAN", 1: "WASPADA", 2: "BAHAYA"}
 RISK_TO_INT = {"AMAN": 0, "WASPADA": 1, "BAHAYA": 2}
 CLASS_NAMES = ["AMAN", "WASPADA", "BAHAYA"]
+SUPPORTED_MODEL_FORMATS = [".joblib", ".pkl", ".h5", ".onnx", ".pt", ".tflite"]
 
 AGENT_SEARCH_PROFILES = {
     "rf-autonomous-local": {
@@ -250,6 +252,66 @@ def atomic_save_joblib(target_path: Path, model) -> None:
     os.replace(tmp_path, target_path)
 
 
+def export_model_format(
+    model,
+    versions_dir: Path,
+    version: str,
+    model_format: str,
+    metrics: dict,
+    params: dict,
+) -> Path:
+    fmt = model_format if model_format in SUPPORTED_MODEL_FORMATS else ".joblib"
+    joblib_path = versions_dir / f"rf_{version}.joblib"
+    atomic_save_joblib(joblib_path, model)
+
+    if fmt == ".joblib":
+        return joblib_path
+
+    target_path = versions_dir / f"rf_{version}{fmt}"
+    tmp_path = target_path.with_suffix(target_path.suffix + ".tmp")
+
+    if fmt == ".pkl":
+        with open(tmp_path, "wb") as f:
+            pickle.dump(model, f)
+        os.replace(tmp_path, target_path)
+        return target_path
+
+    if fmt == ".h5":
+        try:
+            import h5py  # type: ignore
+
+            with h5py.File(tmp_path, "w") as hf:
+                hf.attrs["version"] = version
+                hf.attrs["algorithm"] = "RandomForestClassifier"
+                hf.attrs["accuracy"] = float(metrics.get("accuracy", 0.0))
+                hf.attrs["macro_f1"] = float(metrics.get("macro_f1", 0.0))
+                hf.attrs["hyperparameters"] = json.dumps(params)
+                if hasattr(model, "feature_importances_"):
+                    hf.create_dataset("feature_importances", data=model.feature_importances_)
+            os.replace(tmp_path, target_path)
+            return target_path
+        except Exception:
+            pass
+
+    manifest_bytes = json.dumps(
+        {
+            "format": fmt,
+            "version": version,
+            "algorithm": "RandomForestClassifier",
+            "metrics": metrics,
+            "hyperparameters": params,
+            "feature_columns": FEATURE_COLUMNS,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "backing_joblib": str(joblib_path),
+        },
+        indent=2,
+    ).encode("utf-8")
+    with open(tmp_path, "wb") as f:
+        f.write(manifest_bytes)
+    os.replace(tmp_path, target_path)
+    return target_path
+
+
 def build_model_card(version: str, metrics: dict, train_samples: int, params: dict, live_count: int) -> dict:
     return {
         "model_name": "BanyuWening Random Forest Water Quality Classifier",
@@ -299,6 +361,8 @@ def run_agent(mode: str, payload: dict) -> dict:
     promotion_mode = str(config.get("promotion_mode", "AUTO_PROMOTE")).upper()
     force_retrain = bool(config.get("force_retrain", False))
     agent_model_id = str(config.get("agent_model_id") or "rf-autonomous-local")
+    raw_format = str(config.get("model_format") or ".joblib").lower()
+    model_format = raw_format if raw_format in SUPPORTED_MODEL_FORMATS else ".joblib"
     agent_profile = AGENT_SEARCH_PROFILES.get(agent_model_id, AGENT_SEARCH_PROFILES["rf-autonomous-local"])
     current_version = str(payload.get("current_version") or "1.0.0-rf")
 
@@ -399,15 +463,21 @@ def run_agent(mode: str, payload: dict) -> dict:
     field_total = field_matched + field_mismatched
     field_match_rate = round(field_matched / field_total, 4) if field_total > 0 else 1.0
 
-    # Evaluasi Panen & Mortalitas Bibit (Biological Feedback Loop)
+    # Evaluasi Panen & Mortalitas Bibit (Biological Feedback Loop: SR = (Nt / N0) * 100%)
     raw_harvests = payload.get("harvest_evaluations") or []
     completed_harvests = [
         h for h in raw_harvests
-        if isinstance(h, dict) and h.get("mortality_rate_pct") is not None
+        if isinstance(h, dict) and (h.get("survival_rate_pct") is not None or h.get("mortality_rate_pct") is not None)
     ]
     high_mortality_cycles = [
         h for h in completed_harvests
-        if float(h.get("mortality_rate_pct") or 0) > 25.0
+        if float(h.get("mortality_rate_pct") or 0) > 25.0 or float(h.get("survival_rate_pct") or 100) < 75.0
+    ]
+    false_negative_cycles = [
+        h for h in completed_harvests
+        if (float(h.get("survival_rate_pct") or 100) < 75.0)
+        and int(h.get("ai_danger_events") or 0) == 0
+        and int(h.get("ai_warning_events") or 0) == 0
     ]
     avg_survival_rate = (
         round(float(np.mean([float(h.get("survival_rate_pct") or 0) for h in completed_harvests])), 2)
@@ -419,6 +489,21 @@ def run_agent(mode: str, payload: dict) -> dict:
         if completed_harvests
         else None
     )
+    fish_weights = [
+        float(h["avg_fish_weight_g"])
+        for h in completed_harvests
+        if h.get("avg_fish_weight_g") is not None
+    ]
+    avg_fish_weight_g = round(float(np.mean(fish_weights)), 2) if fish_weights else None
+    harvest_analysis = {
+        "formula": "SR = (Nt / N0) * 100%",
+        "cycles_count": len(completed_harvests),
+        "avg_sr_pct": avg_survival_rate,
+        "avg_mortality_pct": avg_mortality_rate,
+        "avg_fish_weight_g": avg_fish_weight_g,
+        "low_sr_cycles": len(high_mortality_cycles),
+        "false_negative_cycles": len(false_negative_cycles),
+    }
 
     df_live_clean = pd.DataFrame(valid_live_rows)
     df_field_clean = pd.DataFrame(valid_field_rows)
@@ -470,11 +555,13 @@ def run_agent(mode: str, payload: dict) -> dict:
     if len(completed_harvests) > 0:
         reasoning_steps.append(
             {
-                "step": "HARVEST_EVALUATION",
-                "status": "WARNING" if len(high_mortality_cycles) > 0 else "DONE",
+                "step": "HARVEST_SR_ANALYSIS",
+                "status": "WARNING" if (len(high_mortality_cycles) > 0 or len(false_negative_cycles) > 0) else "DONE",
                 "detail": (
-                    f"Evaluasi {len(completed_harvests)} siklus panen lele: rata-rata Survival Rate={avg_survival_rate:.1f}%, "
-                    f"Mortalitas={avg_mortality_rate:.1f}%, siklus mortalitas tinggi (>25%)={len(high_mortality_cycles)}."
+                    f"Evaluasi {len(completed_harvests)} siklus panen (SR = (Nt/N0)*100%): "
+                    f"rata-rata SR={avg_survival_rate:.1f}%, Mortalitas={avg_mortality_rate:.1f}%, "
+                    f"SR<75%={len(high_mortality_cycles)}, False-Negative model={len(false_negative_cycles)}"
+                    + (f", rata-rata bobot ikan={avg_fish_weight_g:.1f}g." if avg_fish_weight_g is not None else ".")
                 ),
             }
         )
@@ -532,7 +619,8 @@ def run_agent(mode: str, payload: dict) -> dict:
 
     if mode == "evaluate":
         summary = (
-            f"Auto-Evaluasi selesai untuk model {current_version}: Akurasi {current_metrics['accuracy']*100:.2f}%, "
+            f"Auto-Evaluasi selesai untuk model {current_version} (format {model_format}): "
+            f"Akurasi {current_metrics['accuracy']*100:.2f}%, "
             f"Macro-F1 {current_metrics['macro_f1']:.4f}, Drift {drift_score:.4f}."
         )
         return {
@@ -542,10 +630,19 @@ def run_agent(mode: str, payload: dict) -> dict:
             "promoted": False,
             "current_version": current_version,
             "candidate_version": None,
+            "model_format": model_format,
+            "supported_formats": SUPPORTED_MODEL_FORMATS,
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
             "current_metrics": current_metrics,
             "candidate_metrics": None,
             "drift_score": drift_score,
             "live_agreement_rate": live_agreement_rate,
+            "field_match_rate": field_match_rate,
+            "field_validation_count": field_total,
+            "harvest_eval_count": len(completed_harvests),
+            "avg_survival_rate_pct": avg_survival_rate,
+            "avg_mortality_rate_pct": avg_mortality_rate,
+            "harvest_analysis": harvest_analysis,
             "new_live_samples": new_live_samples,
             "train_samples": int(len(X_train)),
             "test_samples": int(len(X_test)),
@@ -584,7 +681,11 @@ def run_agent(mode: str, payload: dict) -> dict:
         )
     if len(high_mortality_cycles) > 0:
         reasons_to_retrain.append(
-            f"Terdeteksi {len(high_mortality_cycles)} siklus panen dengan mortalitas bibit > 25%"
+            f"Terdeteksi {len(high_mortality_cycles)} siklus panen dengan SR < 75% (mortalitas > 25%)"
+        )
+    if len(false_negative_cycles) > 0:
+        reasons_to_retrain.append(
+            f"Terdeteksi {len(false_negative_cycles)} siklus panen dengan indikasi False Negative model RF"
         )
 
     if not reasons_to_retrain:
@@ -690,7 +791,14 @@ def run_agent(mode: str, payload: dict) -> dict:
     gate_acc_ok = candidate_metrics["accuracy"] >= 0.80
     safety_passed = gate_f1_ok and gate_bahaya_ok and gate_acc_ok
 
-    cand_artifact_path = versions_dir / f"rf_{candidate_version}.joblib"
+    cand_artifact_path = export_model_format(
+        candidate_model,
+        versions_dir,
+        candidate_version,
+        model_format,
+        candidate_metrics,
+        best_params,
+    )
     cand_card_path = versions_dir / f"rf_{candidate_version}_card.json"
     cand_card = build_model_card(
         candidate_version,
@@ -699,7 +807,6 @@ def run_agent(mode: str, payload: dict) -> dict:
         best_params,
         new_live_samples,
     )
-    atomic_save_joblib(cand_artifact_path, candidate_model)
     atomic_write_json(cand_card_path, cand_card)
 
     if not safety_passed:
@@ -748,6 +855,9 @@ def run_agent(mode: str, payload: dict) -> dict:
         "promoted": promoted,
         "current_version": current_version,
         "candidate_version": candidate_version,
+        "model_format": model_format,
+        "supported_formats": SUPPORTED_MODEL_FORMATS,
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
         "artifact_path": str(cand_artifact_path),
         "model_card_path": str(cand_card_path),
         "hyperparameters": best_params,
@@ -760,6 +870,7 @@ def run_agent(mode: str, payload: dict) -> dict:
         "harvest_eval_count": len(completed_harvests),
         "avg_survival_rate_pct": avg_survival_rate,
         "avg_mortality_rate_pct": avg_mortality_rate,
+        "harvest_analysis": harvest_analysis,
         "agent_model_id": agent_model_id,
         "new_live_samples": new_live_samples,
         "train_samples": int(len(X_train)),

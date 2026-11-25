@@ -12,6 +12,7 @@ class MlModelVersion extends Model
     protected $fillable = [
         'version',
         'algorithm',
+        'model_format',
         'artifact_path',
         'model_card_path',
         'status',

@@ -313,13 +313,13 @@ export function SuperAdminOtaProtocolPanel({
     e.preventDefault();
     if (busyKey === "upload") return;
     if (!version.trim() || !binaryFile) {
-      setNotice({ type: "err", text: "Isi versi firmware dan pilih file .bin terlebih dahulu." });
+      setNotice({ type: "err", text: "Isi versi firmware dan pilih file .bin atau .ino terlebih dahulu." });
       return;
     }
 
     const check = await validateUploadFile(binaryFile, "firmware", 1);
     if (!check.ok) {
-      setNotice({ type: "err", text: check.error || "File firmware .bin tidak valid." });
+      setNotice({ type: "err", text: check.error || "File firmware (.bin / .ino) tidak valid." });
       return;
     }
 
@@ -1610,10 +1610,10 @@ curl -X POST ${origin}/api/http/ota/status \\
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4 text-brand" />
             <h3 className="text-[15px] font-semibold text-ink">
-              Unggah Binary Firmware ESP32 (.bin) &amp; Tentukan Alat Penerima
+              Unggah Binary Firmware (.bin) atau Sketch Arduino (.ino) &amp; Tentukan Alat Penerima
             </h3>
           </div>
-          <span className="text-[11px] text-muted">Maks. 16 MB · SHA-256 &amp; HMAC otomatis</span>
+          <span className="text-[11px] text-muted">Maks. 16 MB · Auto-Compile .ino → .bin oleh AI Agent + SHA-256 &amp; HMAC</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -1677,11 +1677,11 @@ curl -X POST ${origin}/api/http/ota/status \\
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-muted mb-1">
-              File Binary (.bin)
+              File Firmware (.bin / .ino)
             </label>
             <input
               type="file"
-              accept=".bin,application/octet-stream"
+              accept=".bin,.ino,application/octet-stream,text/plain"
               onChange={async (e) => {
                 const selected = e.target.files?.[0] || null;
                 if (selected) {
@@ -1697,6 +1697,13 @@ curl -X POST ${origin}/api/http/ota/status \\
               }}
               className="w-full text-xs text-ink file:mr-3 file:py-1.5 file:px-3 file:rounded-[4px] file:border file:border-line file:text-xs file:font-semibold file:bg-surface-2 file:text-ink"
             />
+            {binaryFile && binaryFile.name.toLowerCase().endsWith(".ino") && (
+              <div className="mt-1.5 p-2 rounded bg-brand/10 border border-brand/25 text-[11px] text-ink">
+                <strong className="text-brand">Mode Auto-Compile AI Agent:</strong> File{" "}
+                <code>{binaryFile.name}</code> akan diaudit &amp; dikompilasi otomatis menjadi{" "}
+                <code>.bin</code> bertanda tangan SHA-256/HMAC untuk OTA.
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-muted mb-1">
@@ -1846,13 +1853,23 @@ curl -X POST ${origin}/api/http/ota/status \\
               {releases.map((r) => (
                 <tr key={r.id} className="hover:bg-surface-2/40">
                   <td className="px-4 py-3">
-                    <div className="font-mono font-semibold text-ink">
-                      {r.version}{" "}
-                      <span className="ml-1 px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] uppercase">
+                    <div className="font-mono font-semibold text-ink flex items-center gap-1.5 flex-wrap">
+                      <span>{r.version}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] uppercase">
                         {r.channel}
                       </span>
+                      {r.source_type === "ino" && (
+                        <span className="px-1.5 py-0.5 rounded bg-brand/10 text-brand text-[10px] font-bold">
+                          .INO → .BIN ({r.compile_status || "COMPILED"})
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-brand mt-0.5">{r.target_hardware}</div>
+                    {r.source_type === "ino" && r.compile_log?.ai_notes && (
+                      <div className="text-[10.5px] text-muted mt-0.5 max-w-xs truncate" title={String(r.compile_log.ai_notes)}>
+                        AI Compiler ({r.compile_log.fqbn || "esp32"}): {String(r.compile_log.ai_notes)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-mono text-[11px] text-ink">
                     {(r.allowed_device_ids || []).length} / {devices.length} node

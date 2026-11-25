@@ -4,16 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\PondHarvestCycle;
-use App\Models\Prediction;
-use App\Models\SensorReading;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Services\HarvestAiEvaluatorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class HarvestCycleController extends Controller
 {
+    public function __construct(
+        private readonly HarvestAiEvaluatorService $evaluator
+    ) {
+    }
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -44,11 +46,13 @@ class HarvestCycleController extends Controller
             'seed_size_cm' => ['nullable', 'string', 'max:32'],
             'harvest_weight_kg' => ['nullable', 'numeric', 'min:0.1', 'max:1000000'],
             'fish_per_kg' => ['nullable', 'numeric', 'min:0.5', 'max:500'],
+            'harvest_fish_count' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'harvest_size_cm' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $device = $this->resolveAuthorizedDevice($user, $validated['device_id'] ?? null);
-        $metrics = $this->computeEvaluationMetrics($validated, $device);
+        $metrics = $this->evaluator->evaluate($validated, $device);
 
         $cycle = PondHarvestCycle::create(array_merge([
             'device_id' => $device?->id,
@@ -62,6 +66,7 @@ class HarvestCycleController extends Controller
             'seed_size_cm' => $validated['seed_size_cm'] ?? null,
             'harvest_weight_kg' => isset($validated['harvest_weight_kg']) ? (float) $validated['harvest_weight_kg'] : null,
             'fish_per_kg' => isset($validated['fish_per_kg']) ? (float) $validated['fish_per_kg'] : null,
+            'harvest_size_cm' => $validated['harvest_size_cm'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'recorded_by' => $user->name . ' (' . $user->role . ')',
         ], $metrics));
@@ -89,11 +94,13 @@ class HarvestCycleController extends Controller
             'seed_size_cm' => ['nullable', 'string', 'max:32'],
             'harvest_weight_kg' => ['nullable', 'numeric', 'min:0.1', 'max:1000000'],
             'fish_per_kg' => ['nullable', 'numeric', 'min:0.5', 'max:500'],
+            'harvest_fish_count' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'harvest_size_cm' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $device = $this->resolveAuthorizedDevice($user, $validated['device_id'] ?? $cycle->device_id);
-        $metrics = $this->computeEvaluationMetrics($validated, $device);
+        $metrics = $this->evaluator->evaluate($validated, $device);
 
         $cycle->update(array_merge([
             'device_id' => $device?->id,
@@ -107,12 +114,40 @@ class HarvestCycleController extends Controller
             'seed_size_cm' => $validated['seed_size_cm'] ?? null,
             'harvest_weight_kg' => isset($validated['harvest_weight_kg']) ? (float) $validated['harvest_weight_kg'] : null,
             'fish_per_kg' => isset($validated['fish_per_kg']) ? (float) $validated['fish_per_kg'] : null,
+            'harvest_size_cm' => $validated['harvest_size_cm'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ], $metrics));
 
         return response()->json([
             'success' => true,
             'message' => 'Data siklus bibit & panen berhasil diperbarui.',
+            'cycle' => self::serialize($cycle->fresh()),
+        ]);
+    }
+
+    public function reanalyzeAi(PondHarvestCycle $cycle): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $this->authorizeCycleAccess($user, $cycle);
+
+        $device = $cycle->device_id ? Device::find($cycle->device_id) : null;
+        $metrics = $this->evaluator->evaluate([
+            'stocking_date' => $cycle->stocking_date?->format('Y-m-d') ?? now()->toDateString(),
+            'harvest_date' => $cycle->harvest_date?->format('Y-m-d'),
+            'seed_count' => $cycle->seed_count,
+            'seed_size_cm' => $cycle->seed_size_cm,
+            'harvest_weight_kg' => $cycle->harvest_weight_kg,
+            'fish_per_kg' => $cycle->fish_per_kg,
+            'harvest_fish_count' => $cycle->harvest_fish_count ?? $cycle->estimated_harvest_count,
+            'harvest_size_cm' => $cycle->harvest_size_cm,
+        ], $device);
+
+        $cycle->update($metrics);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Diagnosis Agent AI untuk siklus panen & SR berhasil diperbarui.',
             'cycle' => self::serialize($cycle->fresh()),
         ]);
     }
@@ -146,6 +181,8 @@ class HarvestCycleController extends Controller
             'seed_size_cm' => $c->seed_size_cm,
             'harvest_weight_kg' => $c->harvest_weight_kg !== null ? (float) $c->harvest_weight_kg : null,
             'fish_per_kg' => $c->fish_per_kg !== null ? (float) $c->fish_per_kg : null,
+            'harvest_fish_count' => $c->harvest_fish_count !== null ? (int) $c->harvest_fish_count : ($c->estimated_harvest_count !== null ? (int) $c->estimated_harvest_count : null),
+            'harvest_size_cm' => $c->harvest_size_cm,
             'avg_fish_weight_g' => $c->avg_fish_weight_g !== null ? (float) $c->avg_fish_weight_g : null,
             'estimated_harvest_count' => $c->estimated_harvest_count !== null ? (int) $c->estimated_harvest_count : null,
             'estimated_mortality_count' => $c->estimated_mortality_count !== null ? (int) $c->estimated_mortality_count : null,
@@ -157,6 +194,7 @@ class HarvestCycleController extends Controller
             'avg_ph_cycle' => $c->avg_ph_cycle !== null ? (float) $c->avg_ph_cycle : null,
             'avg_temp_cycle' => $c->avg_temp_cycle !== null ? (float) $c->avg_temp_cycle : null,
             'ai_evaluation_note' => $c->ai_evaluation_note,
+            'ai_diagnosis' => $c->ai_diagnosis,
             'notes' => $c->notes,
             'recorded_by' => $c->recorded_by,
             'created_at' => $c->created_at?->toIso8601String(),
@@ -206,87 +244,5 @@ class HarvestCycleController extends Controller
         if ($user->tenant_code && strtoupper((string) $cycle->tenant_code) !== strtoupper((string) $user->tenant_code)) {
             abort(403, 'Anda tidak memiliki akses ke catatan panen tenant lain.');
         }
-    }
-
-    /**
-     * Hitung Survival Rate, Mortalitas Bibit, serta korelasi kualitas air & prediksi AI selama siklus.
-     *
-     * @return array<string, mixed>
-     */
-    private function computeEvaluationMetrics(array $data, ?Device $device): array
-    {
-        $seedCount = (int) $data['seed_count'];
-        $harvestKg = isset($data['harvest_weight_kg']) && $data['harvest_weight_kg'] !== '' ? (float) $data['harvest_weight_kg'] : null;
-        $fishPerKg = isset($data['fish_per_kg']) && $data['fish_per_kg'] !== '' ? (float) $data['fish_per_kg'] : null;
-
-        // Korelasi telemetri & prediksi AI pada rentang waktu siklus
-        $startAt = Carbon::parse($data['stocking_date'])->startOfDay();
-        $endAt = !empty($data['harvest_date'])
-            ? Carbon::parse($data['harvest_date'])->endOfDay()
-            : now();
-
-        $readingQuery = SensorReading::whereBetween('recorded_at', [$startAt, $endAt]);
-        $predQuery = Prediction::whereBetween('predicted_at', [$startAt, $endAt]);
-
-        if ($device) {
-            $readingQuery->where('device_id', $device->id);
-            $predQuery->whereHas('sensorReading', fn ($q) => $q->where('device_id', $device->id));
-        }
-
-        $avgPh = $readingQuery->avg('ph');
-        $avgTemp = $readingQuery->avg('temperature_c');
-        $dangerEvents = (clone $predQuery)->where('risk', 'BAHAYA')->count();
-        $warningEvents = (clone $predQuery)->where('risk', 'WASPADA')->count();
-
-        if ($harvestKg === null || $fishPerKg === null) {
-            return [
-                'avg_fish_weight_g' => null,
-                'estimated_harvest_count' => null,
-                'estimated_mortality_count' => null,
-                'survival_rate_pct' => null,
-                'mortality_rate_pct' => null,
-                'mortality_status' => 'BERJALAN',
-                'ai_danger_events' => $dangerEvents,
-                'ai_warning_events' => $warningEvents,
-                'avg_ph_cycle' => $avgPh !== null ? round((float) $avgPh, 2) : null,
-                'avg_temp_cycle' => $avgTemp !== null ? round((float) $avgTemp, 2) : null,
-                'ai_evaluation_note' => 'Siklus masih berjalan. Lengkapi berat panen (KG) dan ukuran rata-rata (ekor/kg) saat panen untuk evaluasi mortalitas AI.',
-            ];
-        }
-
-        $avgWeightG = round(1000.0 / max(0.1, $fishPerKg), 2);
-        $estHarvestCount = (int) round($harvestKg * $fishPerKg);
-        $estMortalityCount = max(0, $seedCount - $estHarvestCount);
-        $survivalRate = round(min(100.0, ($estHarvestCount / max(1, $seedCount)) * 100.0), 2);
-        $mortalityRate = round(max(0.0, 100.0 - $survivalRate), 2);
-
-        if ($mortalityRate <= 10.0) {
-            $status = 'BAIK';
-            $evalNote = "Mortalitas rendah ({$mortalityRate}%, SR {$survivalRate}%). Manajemen kualitas air optimal; tercatat {$dangerEvents} kejadian BAHAYA & {$warningEvents} WASPADA selama siklus.";
-        } elseif ($mortalityRate <= 25.0) {
-            $status = 'PERLU_EVALUASI';
-            $evalNote = "Mortalitas moderat ({$mortalityRate}%, ±{$estMortalityCount} ekor mati). Tercatat {$dangerEvents} BAHAYA & {$warningEvents} WASPADA — disarankan cek konsistensi prediksi AI & pola pakan.";
-        } else {
-            $status = 'TINGGI';
-            if ($dangerEvents === 0 && $warningEvents === 0) {
-                $evalNote = "Mortalitas TINGGI ({$mortalityRate}%, ±{$estMortalityCount} ekor mati) namun AI mencatat 0 kejadian BAHAYA/WASPADA. Indikasi potensi false negative sensor/model — wajib lakukan validasi lapangan & generate ulang model RF!";
-            } else {
-                $evalNote = "Mortalitas TINGGI ({$mortalityRate}%, ±{$estMortalityCount} ekor mati) berkorelasi dengan {$dangerEvents} kejadian BAHAYA & {$warningEvents} WASPADA. Data ini ditandai ke AI Self-Learning Agent untuk kalibrasi ulang.";
-            }
-        }
-
-        return [
-            'avg_fish_weight_g' => $avgWeightG,
-            'estimated_harvest_count' => $estHarvestCount,
-            'estimated_mortality_count' => $estMortalityCount,
-            'survival_rate_pct' => $survivalRate,
-            'mortality_rate_pct' => $mortalityRate,
-            'mortality_status' => $status,
-            'ai_danger_events' => $dangerEvents,
-            'ai_warning_events' => $warningEvents,
-            'avg_ph_cycle' => $avgPh !== null ? round((float) $avgPh, 2) : null,
-            'avg_temp_cycle' => $avgTemp !== null ? round((float) $avgTemp, 2) : null,
-            'ai_evaluation_note' => $evalNote,
-        ];
     }
 }

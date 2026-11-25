@@ -473,7 +473,8 @@ class SecureFileUploadService
 
         if ($upload->profile === 'firmware') {
             $ver = preg_replace('/[^A-Za-z0-9._-]/', '_', (string) ($upload->metadata['version'] ?? 'fw')) ?: 'fw';
-            $filename = $ver.'_'.substr($upload->uuid, 0, 8).'.bin';
+            $fwExt = in_array($ext, ['bin', 'ino'], true) ? $ext : 'bin';
+            $filename = $ver.'_'.substr($upload->uuid, 0, 8).'.'.$fwExt;
 
             return $prefix !== '' ? "{$prefix}/{$filename}" : $filename;
         }

@@ -66,7 +66,10 @@ export function HarvestEvaluationPanel({
   const [harvestDate, setHarvestDate] = useState<string>(today);
   const [harvestWeightKg, setHarvestWeightKg] = useState<string>("");
   const [fishPerKg, setFishPerKg] = useState<string>("8");
+  const [harvestFishCount, setHarvestFishCount] = useState<string>("");
+  const [harvestSizeCm, setHarvestSizeCm] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
 
   const resetForm = () => {
     setEditingId(null);
@@ -80,6 +83,8 @@ export function HarvestEvaluationPanel({
     setHarvestDate(today);
     setHarvestWeightKg("");
     setFishPerKg("8");
+    setHarvestFishCount("");
+    setHarvestSizeCm("");
     setNotes("");
   };
 
@@ -96,6 +101,12 @@ export function HarvestEvaluationPanel({
     setHarvestDate(item.harvest_date || today);
     setHarvestWeightKg(item.harvest_weight_kg !== null ? String(item.harvest_weight_kg) : "");
     setFishPerKg(item.fish_per_kg !== null ? String(item.fish_per_kg) : "8");
+    setHarvestFishCount(
+      item.harvest_fish_count !== null && item.harvest_fish_count !== undefined
+        ? String(item.harvest_fish_count)
+        : ""
+    );
+    setHarvestSizeCm(item.harvest_size_cm || "");
     setNotes(item.notes || "");
     setNotice(null);
     if (typeof window !== "undefined") {
@@ -103,22 +114,31 @@ export function HarvestEvaluationPanel({
     }
   };
 
-  // Live preview perhitungan Survival Rate & Mortalitas sebelum simpan
+  // Live preview perhitungan Survival Rate: SR = (Nt / N0) × 100%
   const livePreview = useMemo(() => {
-    const seeds = Number(seedCount);
+    const n0 = Number(seedCount);
     const kg = Number(harvestWeightKg);
     const perKg = Number(fishPerKg);
-    if (!hasHarvested || !seeds || seeds <= 0 || !kg || kg <= 0 || !perKg || perKg <= 0) {
+    const explicitNt = harvestFishCount !== "" ? Number(harvestFishCount) : null;
+    if (!hasHarvested || !n0 || n0 <= 0) {
       return null;
     }
-    const avgWeightG = Math.round((1000 / perKg) * 10) / 10;
-    const estHarvestCount = Math.round(kg * perKg);
-    const estMortalityCount = Math.max(0, seeds - estHarvestCount);
-    const sr = Math.min(100, Math.round((estHarvestCount / seeds) * 1000) / 10);
+    const nt =
+      explicitNt !== null && explicitNt >= 0
+        ? Math.round(explicitNt)
+        : kg > 0 && perKg > 0
+        ? Math.round(kg * perKg)
+        : null;
+    if (nt === null) {
+      return null;
+    }
+    const avgWeightG = perKg > 0 ? Math.round((1000 / perKg) * 10) / 10 : kg > 0 && nt > 0 ? Math.round(((kg * 1000) / nt) * 10) / 10 : 0;
+    const estMortalityCount = Math.max(0, n0 - nt);
+    const sr = Math.min(100, Math.round((nt / n0) * 1000) / 10);
     const mort = Math.max(0, Math.round((100 - sr) * 10) / 10);
     const status = mort <= 10 ? "BAIK" : mort <= 25 ? "PERLU_EVALUASI" : "TINGGI";
-    return { avgWeightG, estHarvestCount, estMortalityCount, sr, mort, status };
-  }, [hasHarvested, seedCount, harvestWeightKg, fishPerKg]);
+    return { avgWeightG, estHarvestCount: nt, estMortalityCount, sr, mort, status, n0, nt };
+  }, [hasHarvested, seedCount, harvestWeightKg, fishPerKg, harvestFishCount]);
 
   // Filter tampilan sesuai scope tenant/device aktif
   const visibleCycles = useMemo(() => {
@@ -172,14 +192,18 @@ export function HarvestEvaluationPanel({
       notes: notes.trim() || null,
     };
 
-    if (hasHarvested && harvestWeightKg !== "" && fishPerKg !== "") {
+    if (hasHarvested && (harvestFishCount !== "" || (harvestWeightKg !== "" && fishPerKg !== ""))) {
       payload.harvest_date = harvestDate || stockingDate;
-      payload.harvest_weight_kg = Number(harvestWeightKg);
-      payload.fish_per_kg = Number(fishPerKg);
+      payload.harvest_weight_kg = harvestWeightKg !== "" ? Number(harvestWeightKg) : null;
+      payload.fish_per_kg = fishPerKg !== "" ? Number(fishPerKg) : null;
+      payload.harvest_fish_count = harvestFishCount !== "" ? Number(harvestFishCount) : null;
+      payload.harvest_size_cm = harvestSizeCm.trim() || null;
     } else {
       payload.harvest_date = null;
       payload.harvest_weight_kg = null;
       payload.fish_per_kg = null;
+      payload.harvest_fish_count = null;
+      payload.harvest_size_cm = null;
     }
 
     try {
@@ -210,6 +234,32 @@ export function HarvestEvaluationPanel({
       setNotice({ type: "err", text: err?.message || "Kesalahan jaringan saat menyimpan." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReanalyzeAi = async (item: PondHarvestCycleItem) => {
+    setReanalyzingId(item.id);
+    setNotice(null);
+    try {
+      const res = await fetch(`/dashboard/harvest-cycles/${item.id}/analyze-ai`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": getCsrfToken(),
+        },
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotice({ type: "err", text: json?.message || "Gagal menjalankan analisis ulang AI." });
+      } else {
+        const updated: PondHarvestCycleItem = json.cycle;
+        setCycles((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        setNotice({ type: "ok", text: json.message });
+      }
+    } catch (err: any) {
+      setNotice({ type: "err", text: err?.message || "Kesalahan jaringan." });
+    } finally {
+      setReanalyzingId(null);
     }
   };
 
@@ -286,9 +336,12 @@ export function HarvestEvaluationPanel({
             Pencatatan Bibit Masuk, Hasil Panen &amp; Evaluasi Mortalitas Lele
           </h1>
           <p className="text-[13px] text-muted mt-1 max-w-3xl">
-            Catat jumlah bibit lele masuk, berat panen (KG), serta ukuran rata-rata ikan (isi ekor/kg) untuk
-            menghitung tingkat kelulusan hidup (<em>Survival Rate</em>) dan kematian bibit. Data ini otomatis
-            menjadi bahan evaluasi AI Agent agar model Random Forest mendeteksi risiko lebih akurat.
+            Catat jumlah bibit lele masuk (<strong>N0</strong>), jumlah ikan hidup saat panen (<strong>Nt</strong>), berat panen (KG),
+            serta ukuran ikan untuk menghitung Survival Rate menggunakan rumus{" "}
+            <code className="px-1.5 py-0.5 rounded bg-surface-2 border border-line font-mono text-ink">
+              SR = (Nt / N0) × 100%
+            </code>
+            . Agent AI akan mendiagnosis apa yang salah pada model maupun hasil panen lalu mengirimnya ke <strong>AI Self-Learning</strong>.
           </p>
         </div>
       </div>
@@ -422,7 +475,7 @@ export function HarvestEvaluationPanel({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1">Jumlah Bibit Masuk (ekor) *</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1">Jumlah Bibit Masuk / N0 (ekor) *</label>
             <input
               type="number"
               required
@@ -461,7 +514,7 @@ export function HarvestEvaluationPanel({
 
         {hasHarvested && (
           <div className="p-4 bg-surface-2/60 border border-line rounded-[6px] space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
               <div>
                 <label className="block text-[11px] font-semibold text-muted mb-1">Tanggal Panen</label>
                 <input
@@ -474,13 +527,28 @@ export function HarvestEvaluationPanel({
 
               <div>
                 <label className="block text-[11px] font-semibold text-muted mb-1">
-                  Total Berat Panen (KG) *
+                  Ikan Hidup Panen / Nt (ekor)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={10000000}
+                  placeholder="Otomatis dari kg × isi/kg"
+                  value={harvestFishCount}
+                  onChange={(e) => setHarvestFishCount(e.target.value)}
+                  className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs tnum text-ink"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted mb-1">
+                  Total Berat Panen (KG)
                 </label>
                 <input
                   type="number"
                   step="0.1"
                   min={0.1}
-                  required={hasHarvested}
+                  required={hasHarvested && harvestFishCount === ""}
                   placeholder="Contoh: 520.5"
                   value={harvestWeightKg}
                   onChange={(e) => setHarvestWeightKg(e.target.value)}
@@ -490,17 +558,30 @@ export function HarvestEvaluationPanel({
 
               <div>
                 <label className="block text-[11px] font-semibold text-muted mb-1">
-                  Ukuran Rata-Rata Lele (Isi Ekor / KG) *
+                  Ukuran Rata-Rata (Isi Ekor / KG)
                 </label>
                 <input
                   type="number"
                   step="0.5"
                   min={0.5}
-                  required={hasHarvested}
-                  placeholder="Contoh: 8 (berarti isi 8 ekor per kg)"
+                  required={hasHarvested && harvestFishCount === ""}
+                  placeholder="Contoh: 8"
                   value={fishPerKg}
                   onChange={(e) => setFishPerKg(e.target.value)}
                   className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs tnum text-ink"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted mb-1">
+                  Ukuran Ikan Panen (cm, opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 22-26 cm"
+                  value={harvestSizeCm}
+                  onChange={(e) => setHarvestSizeCm(e.target.value)}
+                  className="w-full h-9 px-2.5 rounded-[6px] bg-surface border border-line text-xs text-ink"
                 />
               </div>
             </div>
@@ -545,9 +626,9 @@ export function HarvestEvaluationPanel({
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-muted">Survival Rate / Mati</div>
+                  <div className="text-[10px] text-muted">SR = (Nt / N0) × 100%</div>
                   <div className="font-mono font-bold text-ink tnum">
-                    {livePreview.sr}% / {livePreview.mort}%
+                    {livePreview.sr}% ({livePreview.nt}/{livePreview.n0})
                   </div>
                 </div>
                 <div className="flex items-center">
@@ -738,9 +819,39 @@ export function HarvestEvaluationPanel({
                         {c.ai_evaluation_note && (
                           <p className="text-[11px] text-muted leading-relaxed">{c.ai_evaluation_note}</p>
                         )}
+                        {c.ai_diagnosis && (
+                          <div className="p-2 rounded bg-surface-2/70 border border-line text-[10.5px] space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-semibold text-brand">Diagnosis Agent AI</span>
+                              <span className="px-1.5 py-0.2 rounded bg-surface border border-line font-mono text-[9.5px]">
+                                {c.ai_diagnosis.fed_to_self_learning ? "Self-Learning ✓" : `Prioritas: ${c.ai_diagnosis.self_learning_priority}`}
+                              </span>
+                            </div>
+                            {c.ai_diagnosis.model_issues?.[0] && (
+                              <div className="text-ink">
+                                <strong>Model:</strong> {c.ai_diagnosis.model_issues[0]}
+                              </div>
+                            )}
+                            {c.ai_diagnosis.harvest_issues?.[0] && (
+                              <div className="text-ink">
+                                <strong>Panen/Ukuran:</strong> {c.ai_diagnosis.harvest_issues[0]}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={reanalyzingId === c.id}
+                            onClick={() => handleReanalyzeAi(c)}
+                            className="h-7 px-2 bg-surface-2 hover:bg-brand/10 border border-line text-ink rounded-[4px] text-[10.5px] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            title="Olah ulang evaluasi panen oleh Agent AI"
+                          >
+                            <Bot className="w-3 h-3 text-brand" />
+                            <span>{reanalyzingId === c.id ? "..." : "AI Eval"}</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleEdit(c)}

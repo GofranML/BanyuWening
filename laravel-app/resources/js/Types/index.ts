@@ -522,6 +522,9 @@ export interface FirmwareReleaseItem {
   id: number;
   version: string;
   channel: "stable" | "beta" | "canary" | string;
+  source_type?: "bin" | "ino" | string;
+  compile_status?: string;
+  compile_log?: Record<string, any> | null;
   target_hardware: string;
   allowed_device_ids: number[];
   file_name: string;
@@ -616,6 +619,7 @@ export interface MlModelVersionItem {
   id: number;
   version: string;
   algorithm: string;
+  model_format?: string | null;
   status: string;
   is_active: boolean;
   accuracy: number;
@@ -632,6 +636,8 @@ export interface MlModelVersionItem {
   notes: string | null;
   trained_at: string | null;
   promoted_at: string | null;
+  evaluated_at?: string | null;
+  ai_commentary?: MlAiCommentary | null;
 }
 
 export interface MlAgentReasoningStep {
@@ -703,7 +709,25 @@ export interface MlHarvestEvaluationSummary {
   total_harvest_kg: number;
   avg_survival_rate_pct: number | null;
   avg_mortality_rate_pct: number | null;
+  avg_fish_weight_g?: number | null;
   high_mortality_cycles: number;
+  false_negative_cycles?: number;
+  fed_to_self_learning_count?: number;
+}
+
+export interface HarvestAiDiagnosis {
+  formula: string;
+  n0: number;
+  nt: number | null;
+  sr_pct: number | null;
+  mortality_pct: number | null;
+  culture_days?: number;
+  model_issues: string[];
+  harvest_issues: string[];
+  recommendations: string[];
+  self_learning_priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | string;
+  fed_to_self_learning: boolean;
+  analyzed_at?: string | null;
 }
 
 export interface PondHarvestCycleItem {
@@ -719,6 +743,8 @@ export interface PondHarvestCycleItem {
   seed_size_cm: string | null;
   harvest_weight_kg: number | null;
   fish_per_kg: number | null;
+  harvest_fish_count: number | null;
+  harvest_size_cm: string | null;
   avg_fish_weight_g: number | null;
   estimated_harvest_count: number | null;
   estimated_mortality_count: number | null;
@@ -730,9 +756,32 @@ export interface PondHarvestCycleItem {
   avg_ph_cycle: number | null;
   avg_temp_cycle: number | null;
   ai_evaluation_note: string | null;
+  ai_diagnosis?: HarvestAiDiagnosis | null;
   notes: string | null;
   recorded_by: string | null;
   created_at: string | null;
+}
+
+export interface MlApiKeyAlert {
+  code: "API_KEY_EXPIRED_OR_INVALID" | "TOKEN_QUOTA_EXHAUSTED" | string;
+  severity: "danger" | "warning" | string;
+  title: string;
+  message: string;
+  model?: string | null;
+  http_status?: number | null;
+  detected_at?: string | null;
+}
+
+export interface MlAiCommentary {
+  evaluated_at: string;
+  agent_model_id?: string;
+  model_version: string;
+  model_format: string;
+  compared_with_version: string;
+  comment: string;
+  pros: string[];
+  cons: string[];
+  harvest_feedback_summary?: string | null;
 }
 
 export interface MlAgentRunItem {
@@ -740,6 +789,7 @@ export interface MlAgentRunItem {
   run_type: string;
   trigger_source: string;
   agent_model_id?: string | null;
+  model_format?: string | null;
   status: string;
   decision: string | null;
   active_model_version: string | null;
@@ -756,6 +806,7 @@ export interface MlAgentRunItem {
   duration_ms: number | null;
   reasoning_steps: MlAgentReasoningStep[];
   summary: string | null;
+  ai_commentary?: MlAiCommentary | null;
   error_message: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -803,6 +854,7 @@ export interface MlPerformanceOverview {
   kpi: {
     active_version: string;
     algorithm: string;
+    model_format?: string;
     accuracy: number;
     macro_f1: number;
     weighted_f1: number;
@@ -829,6 +881,8 @@ export interface MlPerformanceOverview {
   per_class_metrics: Record<string, { precision: number; recall: number; f1: number; support: number }> | null;
   model_versions: MlModelVersionItem[];
   agent_runs: MlAgentRunItem[];
+  supported_model_formats?: string[];
+  api_key_alert?: MlApiKeyAlert | null;
   agent_config: MlAgentConfigItem;
   available_agent_models?: MlAgentModelOption[];
   field_validations?: MlFieldValidationItem[];

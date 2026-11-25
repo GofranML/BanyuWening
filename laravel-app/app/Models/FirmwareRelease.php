@@ -15,9 +15,11 @@ class FirmwareRelease extends Model
         'secure_upload_id',
         'version',
         'channel',
+        'source_type',
         'target_hardware',
         'allowed_device_ids',
         'file_path',
+        'source_file_path',
         'file_name',
         'file_size_bytes',
         'sha256_checksum',
@@ -27,6 +29,8 @@ class FirmwareRelease extends Model
         'changelog',
         'is_active',
         'scan_status',
+        'compile_status',
+        'compile_log',
         'is_mandatory',
         'uploaded_by',
         'released_at',
@@ -36,6 +40,7 @@ class FirmwareRelease extends Model
     {
         return [
             'allowed_device_ids' => 'array',
+            'compile_log' => 'array',
             'file_size_bytes' => 'integer',
             'rollback_timeout_s' => 'integer',
             'is_active' => 'boolean',

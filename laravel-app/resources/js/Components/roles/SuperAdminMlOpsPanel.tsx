@@ -35,6 +35,7 @@ import type {
   ManagedDevice,
   MlAgentConfigItem,
   MlAgentModelOption,
+  MlApiKeyAlert,
   MlModelVersionItem,
   MlPerformanceOverview,
   MlRecentPredictionForValidation,
@@ -88,9 +89,14 @@ export function SuperAdminMlOpsPanel({
     latency_ms?: number;
     reply?: string;
     error?: string;
+    error_code?: string | null;
+    api_key_alert?: MlApiKeyAlert | null;
   } | null>(null);
   const [remoteModels, setRemoteModels] = useState<{ id: string; name: string; owned_by?: string }[]>([]);
   const [forceRetrain, setForceRetrain] = useState(true);
+  const [selectedModelFormat, setSelectedModelFormat] = useState<string>(
+    initialOverview?.kpi?.model_format || ".joblib"
+  );
 
   // Field Validation (Cek Kesesuaian Lapangan) state
   const [fvDeviceId, setFvDeviceId] = useState<string>("");
@@ -165,8 +171,8 @@ export function SuperAdminMlOpsPanel({
         },
         body: JSON.stringify(
           mode === "self_learn"
-            ? { force_retrain: useForce, agent_model_id: selectedAgentModel }
-            : { agent_model_id: selectedAgentModel }
+            ? { force_retrain: useForce, agent_model_id: selectedAgentModel, model_format: selectedModelFormat }
+            : { agent_model_id: selectedAgentModel, model_format: selectedModelFormat }
         ),
       });
       const json = await res.json();
@@ -250,8 +256,12 @@ export function SuperAdminMlOpsPanel({
       });
       const json = await res.json();
       if (!res.ok) {
+        if (json?.api_key_alert) {
+          setOverview((prev) => (prev ? { ...prev, api_key_alert: json.api_key_alert } : prev));
+        }
         setNotice({ type: "err", text: json?.message || "Gagal memuat daftar model dari provider." });
       } else {
+        setOverview((prev) => (prev ? { ...prev, api_key_alert: null } : prev));
         const list = Array.isArray(json.models) ? json.models : [];
         setRemoteModels(list);
         const deepseekMatch = list.find((m: any) => String(m.id).toLowerCase().includes("deepseek"));
@@ -294,8 +304,15 @@ export function SuperAdminMlOpsPanel({
         json.result || {
           ok: res.ok,
           error: json.message || "Gagal menguji koneksi AI Agent.",
+          error_code: json.error_code || null,
+          api_key_alert: json.api_key_alert || null,
         }
       );
+      if (json.api_key_alert) {
+        setOverview((prev) => (prev ? { ...prev, api_key_alert: json.api_key_alert } : prev));
+      } else if (res.ok && json.success) {
+        setOverview((prev) => (prev ? { ...prev, api_key_alert: null } : prev));
+      }
       setNotice({
         type: res.ok && json.success ? "ok" : "err",
         text: json.message || (res.ok ? "Koneksi berhasil." : "Koneksi gagal."),
@@ -488,6 +505,25 @@ export function SuperAdminMlOpsPanel({
   );
   const models = overview?.model_versions || [];
   const runs = overview?.agent_runs || [];
+  const supportedFormats = overview?.supported_model_formats || [".joblib", ".pkl", ".h5", ".onnx", ".pt", ".tflite"];
+  const latestCommentary =
+    runs.find((r) => Boolean(r.ai_commentary))?.ai_commentary ||
+    models.find((m) => Boolean(m.ai_commentary))?.ai_commentary ||
+    null;
+  const formatEvalDate = (iso?: string | null) => {
+    if (!iso) return "-";
+    try {
+      return new Date(iso).toLocaleString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  };
   const agentModels: MlAgentModelOption[] = overview?.available_agent_models || [
     {
       id: "rf-autonomous-local",
@@ -573,6 +609,33 @@ export function SuperAdminMlOpsPanel({
           }`}
         >
           {notice.text}
+        </div>
+      )}
+
+      {overview?.api_key_alert && (
+        <div
+          role="alert"
+          className={`p-4 rounded-[6px] border flex items-start gap-3 text-xs ${
+            overview.api_key_alert.severity === "warning"
+              ? "bg-waspada-bg border-waspada/40 text-waspada-text"
+              : "bg-bahaya-bg border-bahaya/40 text-bahaya-text"
+          }`}
+        >
+          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <strong className="text-[13px] font-semibold">{overview.api_key_alert.title}</strong>
+              <span className="px-2 py-0.5 rounded bg-surface/80 border border-line font-mono text-[10px]">
+                {overview.api_key_alert.code}
+                {overview.api_key_alert.http_status ? ` · HTTP ${overview.api_key_alert.http_status}` : ""}
+              </span>
+            </div>
+            <p className="leading-relaxed">{overview.api_key_alert.message}</p>
+            <div className="text-[10.5px] font-mono opacity-85">
+              Model: {overview.api_key_alert.model || "-"} · Terdeteksi:{" "}
+              {formatEvalDate(overview.api_key_alert.detected_at)}
+            </div>
+          </div>
         </div>
       )}
 
@@ -838,7 +901,19 @@ export function SuperAdminMlOpsPanel({
             </h3>
           </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <select
+              value={selectedModelFormat}
+              onChange={(e) => setSelectedModelFormat(e.target.value)}
+              title="Format artefak model evaluasi & export"
+              className="h-9 px-2.5 rounded-[6px] bg-surface-2 border border-line text-xs font-mono font-semibold text-ink cursor-pointer"
+            >
+              {supportedFormats.map((fmt) => (
+                <option key={fmt} value={fmt}>
+                  Format: {fmt}
+                </option>
+              ))}
+            </select>
             <label
               className="h-9 px-2.5 rounded-[6px] bg-surface-2/70 border border-line inline-flex items-center gap-1.5 text-xs font-medium text-ink whitespace-nowrap cursor-pointer select-none"
               title="Paksa pelatihan ulang meskipun ambang drift/F1 masih sehat"
@@ -873,6 +948,62 @@ export function SuperAdminMlOpsPanel({
             </button>
           </div>
         </div>
+
+        {/* Komentar Evaluasi Agent AI & Perbandingan Kelebihan/Kekurangan Model Terbaru vs Lama */}
+        {latestCommentary && (
+          <div className="p-4 bg-brand/5 border border-brand/25 rounded-[6px] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+                <Bot className="w-4 h-4 text-brand shrink-0" />
+                <span>Komentar Evaluasi Agent AI Terbaru</span>
+                <span className="px-2 py-0.5 rounded bg-brand text-brand-ink font-mono text-[10px] font-bold">
+                  {latestCommentary.model_format}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-surface border border-line font-mono text-[10px] text-ink">
+                  {latestCommentary.model_version}
+                </span>
+              </div>
+              <div className="text-[11px] font-mono text-muted">
+                Tanggal Evaluasi: <strong className="text-ink">{formatEvalDate(latestCommentary.evaluated_at)}</strong>
+                {" · "}vs <span className="text-ink">{latestCommentary.compared_with_version}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-ink leading-relaxed">{latestCommentary.comment}</p>
+
+            {latestCommentary.harvest_feedback_summary && (
+              <div className="p-2.5 rounded bg-surface border border-line text-[11px] text-ink">
+                <strong className="text-brand">Umpan Balik Panen &amp; SR:</strong>{" "}
+                {latestCommentary.harvest_feedback_summary}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-[6px] bg-aman-bg/40 border border-aman/25 space-y-1.5">
+                <div className="font-semibold text-aman-text flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Kelebihan Model Terbaru vs {latestCommentary.compared_with_version}</span>
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
+                  {(latestCommentary.pros || []).map((p, idx) => (
+                    <li key={idx}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-3 rounded-[6px] bg-waspada-bg/40 border border-waspada/25 space-y-1.5">
+                <div className="font-semibold text-waspada-text flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                  <span>Kekurangan &amp; Catatan Risiko vs Model Lama</span>
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
+                  {(latestCommentary.cons || []).map((c, idx) => (
+                    <li key={idx}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pemilih Model AI Agent untuk Generate Ulang Model RF */}
         <div className="p-4 bg-surface-2/60 border border-line rounded-[6px] space-y-3">
@@ -1149,8 +1280,15 @@ export function SuperAdminMlOpsPanel({
               <div key={`m-mod-${m.id}`} className="p-4 space-y-2 text-xs">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-mono font-bold text-ink text-[13px]">{m.version}</div>
-                    <div className="text-[10.5px] text-muted">{m.trained_by}</div>
+                    <div className="font-mono font-bold text-ink text-[13px] flex items-center gap-1.5 flex-wrap">
+                      <span>{m.version}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-brand/10 text-brand text-[10px]">
+                        {m.model_format || ".joblib"}
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-muted">
+                      {m.trained_by} · {formatEvalDate(m.trained_at || m.evaluated_at)}
+                    </div>
                   </div>
                   <span
                     className={`inline-flex px-2 py-0.5 rounded-[4px] font-mono text-[10px] font-semibold shrink-0 ${
@@ -1180,6 +1318,20 @@ export function SuperAdminMlOpsPanel({
                     </div>
                   </div>
                 </div>
+                {m.ai_commentary && (
+                  <div className="p-2.5 rounded bg-surface-2/70 border border-line space-y-1 text-[11px]">
+                    <div className="font-semibold text-brand">
+                      Komentar AI vs {m.ai_commentary.compared_with_version}
+                    </div>
+                    <p className="text-ink leading-snug">{m.ai_commentary.comment}</p>
+                    {m.ai_commentary.pros?.[0] && (
+                      <div className="text-aman-text">+ {m.ai_commentary.pros[0]}</div>
+                    )}
+                    {m.ai_commentary.cons?.[0] && (
+                      <div className="text-waspada-text">- {m.ai_commentary.cons[0]}</div>
+                    )}
+                  </div>
+                )}
                 {!m.is_active && (
                   <button
                     type="button"
@@ -1200,21 +1352,31 @@ export function SuperAdminMlOpsPanel({
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-2/60 border-b border-line text-muted uppercase text-[10px] font-semibold">
                 <tr>
-                  <th className="px-4 py-2">Versi</th>
+                  <th className="px-4 py-2">Versi &amp; Format</th>
+                  <th className="px-4 py-2">Tanggal Evaluasi</th>
                   <th className="px-4 py-2">Status</th>
                   <th className="px-4 py-2">Akurasi</th>
                   <th className="px-4 py-2">Macro-F1</th>
                   <th className="px-4 py-2">Recall BAHAYA</th>
                   <th className="px-4 py-2">Sampel Train/Live</th>
+                  <th className="px-4 py-2">Komentar AI (Kelebihan &amp; Kekurangan vs Model Lama)</th>
                   <th className="px-4 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {models.map((m) => (
-                  <tr key={m.id} className="hover:bg-surface-2/40">
+                  <tr key={m.id} className="hover:bg-surface-2/40 align-top">
                     <td className="px-4 py-2.5">
-                      <div className="font-mono font-semibold text-ink">{m.version}</div>
+                      <div className="font-mono font-semibold text-ink flex items-center gap-1.5 flex-wrap">
+                        <span>{m.version}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-brand/10 text-brand text-[10px]">
+                          {m.model_format || ".joblib"}
+                        </span>
+                      </div>
                       <div className="text-[10px] text-muted">{m.trained_by}</div>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-muted whitespace-nowrap">
+                      {formatEvalDate(m.trained_at || m.evaluated_at)}
                     </td>
                     <td className="px-4 py-2.5">
                       <span
@@ -1236,6 +1398,27 @@ export function SuperAdminMlOpsPanel({
                     </td>
                     <td className="px-4 py-2.5 font-mono tnum text-muted">
                       {m.train_samples} / +{m.live_samples_included}
+                    </td>
+                    <td className="px-4 py-2.5 max-w-xs space-y-1 text-[11px]">
+                      {m.ai_commentary ? (
+                        <>
+                          <div className="font-medium text-ink leading-snug">
+                            {m.ai_commentary.comment}
+                          </div>
+                          {m.ai_commentary.pros?.[0] && (
+                            <div className="text-aman-text leading-snug">
+                              <strong>+ Kelebihan:</strong> {m.ai_commentary.pros[0]}
+                            </div>
+                          )}
+                          {m.ai_commentary.cons?.[0] && (
+                            <div className="text-waspada-text leading-snug">
+                              <strong>- Kekurangan:</strong> {m.ai_commentary.cons[0]}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       {m.is_active ? (
@@ -1278,8 +1461,11 @@ export function SuperAdminMlOpsPanel({
                         {run.agent_model_id}
                       </span>
                     )}
+                    <span className="px-2 py-0.5 rounded-[4px] bg-surface border border-line font-mono text-[10px] font-semibold text-ink">
+                      {run.model_format || ".joblib"}
+                    </span>
                     <span className="text-[11px] text-muted">
-                      ({run.trigger_source} · {run.duration_ms ?? 0} ms
+                      ({formatEvalDate(run.finished_at || run.started_at)} · {run.trigger_source} · {run.duration_ms ?? 0} ms
                       {(run.field_validation_count ?? 0) > 0 ? ` · ${run.field_validation_count} cek lapangan` : ""}
                       {(run.harvest_eval_count ?? 0) > 0 ? ` · ${run.harvest_eval_count} panen` : ""})
                     </span>
@@ -1291,6 +1477,23 @@ export function SuperAdminMlOpsPanel({
                   </div>
                 </div>
                 {run.summary && <p className="text-xs text-ink">{run.summary}</p>}
+                {run.ai_commentary && (
+                  <div className="p-2.5 rounded bg-surface border border-line text-[11px] space-y-1">
+                    <div className="font-semibold text-brand">
+                      Komentar AI ({run.ai_commentary.model_format}) vs {run.ai_commentary.compared_with_version}:
+                    </div>
+                    <div className="text-ink">
+                      <span className="text-aman-text font-semibold">Kelebihan:</span>{" "}
+                      {(run.ai_commentary.pros || []).slice(0, 2).join(" ")}
+                    </div>
+                    {(run.ai_commentary.cons || []).length > 0 && (
+                      <div className="text-ink">
+                        <span className="text-waspada-text font-semibold">Kekurangan:</span>{" "}
+                        {run.ai_commentary.cons.slice(0, 2).join(" ")}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {run.reasoning_steps && run.reasoning_steps.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 pt-1">
                     {run.reasoning_steps.map((st, idx) => (

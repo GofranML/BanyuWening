@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\UploadStatus;
 use App\Models\Device;
 use App\Models\FirmwareRelease;
+use App\Services\FirmwareInoCompilerService;
 use App\Services\FirmwareOtaService;
 use App\Services\Upload\Exceptions\FileValidationException;
 use App\Services\Upload\SecureFileUploadService;
@@ -162,9 +163,13 @@ class OtaController extends Controller
     }
 
     /**
-     * Super Admin: Unggah binary firmware .bin ESP32 baru melalui Secure Upload Pipeline dan buat signed manifest.
+     * Super Admin: Unggah binary firmware .bin atau sketch .ino ESP32 baru melalui Secure Upload Pipeline & AI Compiler.
      */
-    public function storeRelease(Request $request, SecureFileUploadService $uploadService): JsonResponse
+    public function storeRelease(
+        Request $request,
+        SecureFileUploadService $uploadService,
+        FirmwareInoCompilerService $compilerService
+    ): JsonResponse
     {
         $admin = $this->authorizeAdmin();
 
@@ -216,13 +221,32 @@ class OtaController extends Controller
         }
 
         $isAsyncPending = $upload->status === UploadStatus::PENDING_SCAN || $upload->status === UploadStatus::SCANNING;
+        $isInoUpload = strtolower((string) $upload->detected_extension) === 'ino';
+
+        $compileResult = null;
+        if (! $isAsyncPending && $isInoUpload) {
+            try {
+                $compileResult = $compilerService->compileFromSecureUpload(
+                    $upload,
+                    $validated['version'],
+                    (string) ($validated['target_hardware'] ?? 'ESP32-WROOM-CoreHub-v2')
+                );
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'INO_COMPILE_FAILED',
+                    'message' => 'AI Agent gagal mengompilasi file .ino menjadi binary: ' . $e->getMessage(),
+                ], 422);
+            }
+        }
 
         $release = $this->otaService->createReleaseFromSecureUpload(
             $validated,
             $upload,
             $admin->name . ' (' . $admin->role . ')',
             !$isAsyncPending,
-            $isAsyncPending ? 'PENDING_SCAN' : 'CLEAN'
+            $isAsyncPending ? 'PENDING_SCAN' : 'CLEAN',
+            $compileResult
         );
 
         if ($isAsyncPending) {
@@ -243,7 +267,9 @@ class OtaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Rilis firmware {$release->version} berhasil diunggah dengan SHA-256 & tanda tangan HMAC.",
+            'message' => $isInoUpload
+                ? "Sketch .ino {$release->version} berhasil diaudit & dikompilasi AI Agent menjadi .bin dengan SHA-256 & tanda tangan HMAC."
+                : "Rilis firmware {$release->version} berhasil diunggah dengan SHA-256 & tanda tangan HMAC.",
             'upload_id' => $upload->uuid,
             'scan_status' => 'CLEAN',
             'release' => $release,
