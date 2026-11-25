@@ -29,6 +29,7 @@ import {
   Sparkles,
   Terminal,
   Trash2,
+  X,
   XCircle,
 } from "lucide-react";
 import type {
@@ -97,6 +98,7 @@ export function SuperAdminMlOpsPanel({
   const [selectedModelFormat, setSelectedModelFormat] = useState<string>(
     initialOverview?.kpi?.model_format || ".joblib"
   );
+  const [selectedCommentaryModel, setSelectedCommentaryModel] = useState<MlModelVersionItem | null>(null);
 
   // Field Validation (Cek Kesesuaian Lapangan) state
   const [fvDeviceId, setFvDeviceId] = useState<string>("");
@@ -1259,18 +1261,14 @@ export function SuperAdminMlOpsPanel({
                   </div>
                 </div>
                 {m.ai_commentary && (
-                  <div className="p-2.5 rounded bg-surface-2/70 border border-line space-y-1 text-[11px]">
-                    <div className="font-semibold text-brand">
-                      Komentar AI vs {m.ai_commentary.compared_with_version}
-                    </div>
-                    <p className="text-ink leading-snug">{m.ai_commentary.comment}</p>
-                    {m.ai_commentary.pros?.[0] && (
-                      <div className="text-aman-text">+ {m.ai_commentary.pros[0]}</div>
-                    )}
-                    {m.ai_commentary.cons?.[0] && (
-                      <div className="text-waspada-text">- {m.ai_commentary.cons[0]}</div>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCommentaryModel(m)}
+                    className="w-full min-h-[36px] px-3 bg-surface-2 hover:bg-brand/10 border border-line text-ink rounded-[6px] text-[11.5px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Bot className="w-3.5 h-3.5 text-brand" />
+                    <span>Lihat Komentar AI</span>
+                  </button>
                 )}
                 {!m.is_active && (
                   <button
@@ -1299,13 +1297,13 @@ export function SuperAdminMlOpsPanel({
                   <th className="px-4 py-2">Macro-F1</th>
                   <th className="px-4 py-2">Recall BAHAYA</th>
                   <th className="px-4 py-2">Sampel Train/Live</th>
-                  <th className="px-4 py-2">Komentar AI (Kelebihan &amp; Kekurangan vs Model Lama)</th>
+                  <th className="px-4 py-2">Komentar AI</th>
                   <th className="px-4 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {models.map((m) => (
-                  <tr key={m.id} className="hover:bg-surface-2/40 align-top">
+                  <tr key={m.id} className="hover:bg-surface-2/40">
                     <td className="px-4 py-2.5">
                       <div className="font-mono font-semibold text-ink flex items-center gap-1.5 flex-wrap">
                         <span>{m.version}</span>
@@ -1339,23 +1337,16 @@ export function SuperAdminMlOpsPanel({
                     <td className="px-4 py-2.5 font-mono tnum text-muted">
                       {m.train_samples} / +{m.live_samples_included}
                     </td>
-                    <td className="px-4 py-2.5 max-w-xs space-y-1 text-[11px]">
+                    <td className="px-4 py-2.5 whitespace-nowrap">
                       {m.ai_commentary ? (
-                        <>
-                          <div className="font-medium text-ink leading-snug">
-                            {m.ai_commentary.comment}
-                          </div>
-                          {m.ai_commentary.pros?.[0] && (
-                            <div className="text-aman-text leading-snug">
-                              <strong>+ Kelebihan:</strong> {m.ai_commentary.pros[0]}
-                            </div>
-                          )}
-                          {m.ai_commentary.cons?.[0] && (
-                            <div className="text-waspada-text leading-snug">
-                              <strong>- Kekurangan:</strong> {m.ai_commentary.cons[0]}
-                            </div>
-                          )}
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCommentaryModel(m)}
+                          className="h-7 px-2.5 bg-surface-2 hover:bg-brand/10 border border-line text-ink rounded-[4px] text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-brand" />
+                          <span>Lihat Komentar AI</span>
+                        </button>
                       ) : (
                         <span className="text-muted">-</span>
                       )}
@@ -1381,6 +1372,100 @@ export function SuperAdminMlOpsPanel({
             </table>
           </div>
         </div>
+
+        {/* Modal Detail Komentar AI (Kelebihan & Kekurangan Model Terbaru vs Lama) */}
+        {selectedCommentaryModel?.ai_commentary && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setSelectedCommentaryModel(null)}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] flex items-center justify-center p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-surface border border-line rounded-[8px] shadow-xl overflow-hidden animate-fadeIn"
+            >
+              <div className="px-5 py-3.5 bg-surface-2 border-b border-line flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <Bot className="w-4 h-4 text-brand shrink-0" />
+                  <span className="text-sm font-semibold text-ink">Komentar Evaluasi Agent AI</span>
+                  <span className="px-2 py-0.5 rounded bg-brand text-brand-ink font-mono text-[10px] font-bold">
+                    {selectedCommentaryModel.ai_commentary.model_format}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-surface border border-line font-mono text-[10px] text-ink">
+                    {selectedCommentaryModel.version}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCommentaryModel(null)}
+                  className="p-1 rounded hover:bg-surface text-muted hover:text-ink cursor-pointer"
+                  aria-label="Tutup komentar AI"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-muted">
+                  <span>
+                    Tanggal Evaluasi:{" "}
+                    <strong className="text-ink">
+                      {formatEvalDate(selectedCommentaryModel.ai_commentary.evaluated_at || selectedCommentaryModel.trained_at)}
+                    </strong>
+                  </span>
+                  <span>
+                    Dibandingkan vs:{" "}
+                    <strong className="text-ink">{selectedCommentaryModel.ai_commentary.compared_with_version}</strong>
+                  </span>
+                </div>
+
+                <p className="text-ink leading-relaxed bg-surface-2/60 p-3 rounded-[6px] border border-line">
+                  {selectedCommentaryModel.ai_commentary.comment}
+                </p>
+
+                {selectedCommentaryModel.ai_commentary.harvest_feedback_summary && (
+                  <div className="p-2.5 rounded-[6px] bg-brand/5 border border-brand/20 text-[11px] text-ink">
+                    <strong className="text-brand">Umpan Balik Panen &amp; SR:</strong>{" "}
+                    {selectedCommentaryModel.ai_commentary.harvest_feedback_summary}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-[6px] bg-aman-bg/40 border border-aman/25 space-y-2">
+                    <div className="font-semibold text-aman-text flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>Kelebihan vs {selectedCommentaryModel.ai_commentary.compared_with_version}</span>
+                    </div>
+                    <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
+                      {(selectedCommentaryModel.ai_commentary.pros || []).map((p, idx) => (
+                        <li key={idx}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-[6px] bg-waspada-bg/40 border border-waspada/25 space-y-2">
+                    <div className="font-semibold text-waspada-text flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 shrink-0" />
+                      <span>Kekurangan &amp; Catatan Risiko</span>
+                    </div>
+                    {(selectedCommentaryModel.ai_commentary.cons || []).length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
+                        {selectedCommentaryModel.ai_commentary.cons.map((c, idx) => (
+                          <li key={idx}>{c}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-muted">
+                        Tidak ada kekurangan signifikan terdeteksi dibanding model sebelumnya.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Audit Trail Penalaran Agent AI */}
         <div className="space-y-2.5">
