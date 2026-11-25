@@ -506,10 +506,6 @@ export function SuperAdminMlOpsPanel({
   const models = overview?.model_versions || [];
   const runs = overview?.agent_runs || [];
   const supportedFormats = overview?.supported_model_formats || [".joblib", ".pkl", ".h5", ".onnx", ".pt", ".tflite"];
-  const latestCommentary =
-    runs.find((r) => Boolean(r.ai_commentary))?.ai_commentary ||
-    models.find((m) => Boolean(m.ai_commentary))?.ai_commentary ||
-    null;
   const formatEvalDate = (iso?: string | null) => {
     if (!iso) return "-";
     try {
@@ -948,62 +944,6 @@ export function SuperAdminMlOpsPanel({
             </button>
           </div>
         </div>
-
-        {/* Komentar Evaluasi Agent AI & Perbandingan Kelebihan/Kekurangan Model Terbaru vs Lama */}
-        {latestCommentary && (
-          <div className="p-4 bg-brand/5 border border-brand/25 rounded-[6px] space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-ink">
-                <Bot className="w-4 h-4 text-brand shrink-0" />
-                <span>Komentar Evaluasi Agent AI Terbaru</span>
-                <span className="px-2 py-0.5 rounded bg-brand text-brand-ink font-mono text-[10px] font-bold">
-                  {latestCommentary.model_format}
-                </span>
-                <span className="px-2 py-0.5 rounded bg-surface border border-line font-mono text-[10px] text-ink">
-                  {latestCommentary.model_version}
-                </span>
-              </div>
-              <div className="text-[11px] font-mono text-muted">
-                Tanggal Evaluasi: <strong className="text-ink">{formatEvalDate(latestCommentary.evaluated_at)}</strong>
-                {" · "}vs <span className="text-ink">{latestCommentary.compared_with_version}</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-ink leading-relaxed">{latestCommentary.comment}</p>
-
-            {latestCommentary.harvest_feedback_summary && (
-              <div className="p-2.5 rounded bg-surface border border-line text-[11px] text-ink">
-                <strong className="text-brand">Umpan Balik Panen &amp; SR:</strong>{" "}
-                {latestCommentary.harvest_feedback_summary}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-[6px] bg-aman-bg/40 border border-aman/25 space-y-1.5">
-                <div className="font-semibold text-aman-text flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Kelebihan Model Terbaru vs {latestCommentary.compared_with_version}</span>
-                </div>
-                <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
-                  {(latestCommentary.pros || []).map((p, idx) => (
-                    <li key={idx}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-3 rounded-[6px] bg-waspada-bg/40 border border-waspada/25 space-y-1.5">
-                <div className="font-semibold text-waspada-text flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                  <span>Kekurangan &amp; Catatan Risiko vs Model Lama</span>
-                </div>
-                <ul className="list-disc pl-4 space-y-1 text-[11px] text-ink">
-                  {(latestCommentary.cons || []).map((c, idx) => (
-                    <li key={idx}>{c}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Pemilih Model AI Agent untuk Generate Ulang Model RF */}
         <div className="p-4 bg-surface-2/60 border border-line rounded-[6px] space-y-3">
