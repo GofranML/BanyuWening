@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'device.token' => \App\Http\Middleware\AuthenticateDeviceToken::class,
+            'upload.limits' => \App\Http\Middleware\EnforceUploadRequestLimits::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

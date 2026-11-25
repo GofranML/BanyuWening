@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('ml:self-learn --trigger=SCHEDULER')
     ->hourly()
     ->withoutOverlapping();
+
+Schedule::command('uploads:cleanup-quarantine')
+    ->hourly()
+    ->withoutOverlapping();

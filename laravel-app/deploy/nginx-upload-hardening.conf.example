@@ -1,0 +1,24 @@
+# Reference Nginx Upload Hardening Configuration for BanyuWening
+# Do NOT deploy blindly without matching upstream PHP-FPM / supervisor limits.
+
+# 1. Request size & timeout limits
+client_max_body_size 55M;
+client_body_timeout 60s;
+send_timeout 60s;
+
+# 2. Prevent script execution inside public/uploads
+location ^~ /uploads/ {
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Content-Security-Policy "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'none'; script-src 'none';" always;
+    location ~* \.(php|phtml|phar|shtml|html?|svgz?|js|cgi|pl|py|sh)$ {
+        deny all;
+        return 403;
+    }
+    try_files $uri =404;
+}
+
+# 3. Block direct web access to private storage paths if ever misconfigured
+location ~* ^/storage/app/private/ {
+    deny all;
+    return 403;
+}

@@ -47,6 +47,39 @@ return [
             'report' => false,
         ],
 
+        'quarantine' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/quarantine'),
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
+        'private_uploads' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/uploads'),
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
+        'landing_public' => [
+            'driver' => 'local',
+            'root' => public_path('uploads'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/uploads',
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
+        'firmware_private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/firmware'),
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

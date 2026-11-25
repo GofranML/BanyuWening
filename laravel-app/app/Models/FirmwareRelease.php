@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FirmwareRelease extends Model
@@ -11,6 +12,7 @@ class FirmwareRelease extends Model
     use HasFactory;
 
     protected $fillable = [
+        'secure_upload_id',
         'version',
         'channel',
         'target_hardware',
@@ -24,6 +26,7 @@ class FirmwareRelease extends Model
         'rollback_timeout_s',
         'changelog',
         'is_active',
+        'scan_status',
         'is_mandatory',
         'uploaded_by',
         'released_at',
@@ -63,6 +66,16 @@ class FirmwareRelease extends Model
         ]);
 
         return hash_hmac('sha256', $canonical, (string) config('app.key', 'banyuwening-ota-signing-key'));
+    }
+
+    public function secureUpload(): BelongsTo
+    {
+        return $this->belongsTo(SecureUpload::class, 'secure_upload_id');
+    }
+
+    public function isScanApproved(): bool
+    {
+        return strtoupper((string) ($this->scan_status ?: 'CLEAN')) === 'CLEAN';
     }
 
     public function rollouts(): HasMany

@@ -11,17 +11,23 @@ use App\Models\Device;
 use App\Models\SensorReading;
 use App\Models\Prediction;
 use App\Http\Controllers\HarvestCycleController;
+use App\Enums\UploadStatus;
 use App\Models\Alert;
 use App\Models\PondHarvestCycle;
 use App\Models\RelayLog;
 use App\Models\DispatchLog;
 use App\Models\LandingContent;
+use App\Models\SecureUpload;
+use App\Models\SecureUploadAuditLog;
 use App\Services\NotificationService;
 use App\Services\FirmwareOtaService;
 use App\Services\MachineLearningService;
 use App\Services\MlSelfLearningAgentService;
 use App\Services\RealtimeBroadcaster;
 use App\Services\TwoFactorService;
+use App\Services\Upload\Contracts\MalwareScannerInterface;
+use App\Services\Upload\Exceptions\FileValidationException;
+use App\Services\Upload\SecureFileUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -394,6 +400,8 @@ class DashboardController extends Controller
                 }
             }
 
+            $scannerHealth = app(MalwareScannerInterface::class)->health();
+
             $securityStats = [
                 'total_users' => User::count(),
                 'users_with_2fa' => User::where('two_factor_enabled', true)->count(),
@@ -408,6 +416,39 @@ class DashboardController extends Controller
                 'failsafe_hardware' => 'Aktif (ESP32 Deterministic GPIO)',
                 'last_backup' => count($backups) > 0 ? $backups[0]['created_at'] : 'Belum pernah',
                 'csrf_protection' => 'Aktif (Token Validasi Per-Request)',
+                'upload_pipeline' => [
+                    'scanner_driver' => (string) ($scannerHealth['driver'] ?? config('uploads.scanner.driver', 'clamav')),
+                    'scanner_available' => (bool) ($scannerHealth['available'] ?? false),
+                    'scanner_version' => $scannerHealth['version'] ?? null,
+                    'scanner_mode' => (string) ($scannerHealth['mode'] ?? 'auto'),
+                    'async_scan' => (bool) config('uploads.async_scan', false),
+                    'fail_closed' => true,
+                    'rate_limit_per_minute' => (int) config('uploads.rate_limit_per_minute', 30),
+                    'quarantine_ttl_minutes' => (int) config('uploads.quarantine.ttl_minutes', 60),
+                    'pending_count' => SecureUpload::whereIn('status', [UploadStatus::PENDING_SCAN->value, UploadStatus::SCANNING->value])->count(),
+                    'clean_count' => SecureUpload::where('status', UploadStatus::CLEAN->value)->count(),
+                    'quarantined_count' => SecureUpload::where('status', UploadStatus::QUARANTINED->value)->count(),
+                    'rejected_count' => SecureUpload::where('status', UploadStatus::REJECTED->value)->count(),
+                    'scan_failed_count' => SecureUpload::where('status', UploadStatus::SCAN_FAILED->value)->count(),
+                    'recent_audit_logs' => SecureUploadAuditLog::latest('id')
+                        ->take(10)
+                        ->get()
+                        ->map(fn (SecureUploadAuditLog $log) => [
+                            'id' => $log->id,
+                            'upload_uuid' => $log->upload_uuid,
+                            'tenant_code' => $log->tenant_code,
+                            'event' => $log->event,
+                            'status_to' => $log->status_to,
+                            'detected_mime' => $log->detected_mime,
+                            'file_size_bytes' => $log->file_size_bytes,
+                            'scan_result' => $log->scan_result,
+                            'rejection_reason' => $log->rejection_reason,
+                            'promotion_result' => $log->promotion_result,
+                            'created_at' => $log->created_at?->format('Y-m-d H:i:s') . ' WIB',
+                        ])
+                        ->values()
+                        ->all(),
+                ],
             ];
         }
 
@@ -1262,94 +1303,64 @@ class DashboardController extends Controller
         return back()->with('success', 'Riwayat log audit pengiriman telah dibersihkan.');
     }
 
-    public function uploadLandingMedia(Request $request)
+    public function uploadLandingMedia(Request $request, SecureFileUploadService $uploadService)
     {
         $user = Auth::user();
         if (!$user || !$user->isAdmin()) {
             return response()->json(['error' => 'Akses terbatas untuk Super Administrator.'], 403);
         }
 
-        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'ogg'];
-
         $request->validate([
-            'file' => ['required', 'file', 'max:51200', 'mimes:jpg,jpeg,png,webp,gif,mp4,webm,ogg'],
+            'file' => ['required', 'file'],
         ]);
 
-        $file = $request->file('file');
-        $extension = strtolower((string) ($file->guessExtension() ?: ''));
-        if (!in_array($extension, $allowedExtensions, true)) {
+        try {
+            $upload = $uploadService->ingest($request->file('file'), 'landing_media', $user);
+        } catch (FileValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Format file media tidak diizinkan (SVG dan skrip diblokir).',
-            ], 422);
+                'error' => $e->errorCode(),
+                'message' => $e->getMessage(),
+            ], $e->httpStatus());
         }
 
-        // Konten-sniffing: menolak polyglot (contoh GIF89a + PHP/SVG script) yang disebarkan
-        // dengan ekstensi gambar sekadar simulasi upload. Server-side menurunkan ekstensi
-        // yang dibutuhkan tipe media beneran seperti jpg/png/webp/mp4.
-        $head = $this->readUploadHead($file);
-        foreach (['<?php', '<?=', '<svg', '<script', 'javascript:'] as $needle) {
-            if (stripos($head, $needle) !== false) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Format file media tidak diizinkan (SVG dan skrip diblokir).',
-                ], 422);
-            }
+        if ($upload->status === UploadStatus::PENDING_SCAN || $upload->status === UploadStatus::SCANNING) {
+            return response()->json([
+                'success' => true,
+                'pending' => true,
+                'url' => null,
+                'upload_id' => $upload->uuid,
+                'status' => $upload->status->value,
+                'status_url' => route('dashboard.uploads.show', $upload->uuid),
+            ], 202);
         }
 
-        $uploadDir = public_path('uploads/landing');
-        if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        if ($upload->status === UploadStatus::CLEAN && $upload->public_url) {
+            return response()->json([
+                'success' => true,
+                'url' => $upload->public_url,
+                'filename' => basename((string) $upload->permanent_path),
+                'upload_id' => $upload->uuid,
+                'status' => $upload->status->value,
+                'sha256' => $upload->sha256_hash,
+            ]);
         }
 
-        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $slug = \Illuminate\Support\Str::slug($originalName) ?: 'media';
-        $filename = time() . '_' . $slug . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
-
-        $file->move($uploadDir, $filename);
-
-        $url = '/uploads/landing/' . $filename;
+        if ($upload->status === UploadStatus::SCAN_FAILED) {
+            return response()->json([
+                'success' => false,
+                'error' => 'SCAN_FAILED',
+                'message' => $upload->rejection_reason ?: 'Pemindaian keamanan gagal; media tidak dipublikasikan.',
+                'upload_id' => $upload->uuid,
+            ], 503);
+        }
 
         return response()->json([
-            'success' => true,
-            'url' => $url,
-            'filename' => $filename,
-        ]);
-    }
-
-    /**
-     * Membaca awalan (8 KB) konten upload untuk sniffing konten.
-     *
-     * Untuk upload sejati nilai diambil dari deskriptor file; untuk file tiruan tes
-     * (Illuminate\Http\Testing\File) membaca via property stream yang terlindungi.
-     */
-    private function readUploadHead($file): string
-    {
-        $realPath = method_exists($file, 'getRealPath') ? $file->getRealPath() : null;
-        if (is_string($realPath) && is_file($realPath)) {
-            $contents = @file_get_contents($realPath);
-            if (is_string($contents)) {
-                return strtolower($contents);
-            }
-        }
-
-        if ($file instanceof \Illuminate\Http\Testing\File) {
-            try {
-                $prop = new \ReflectionProperty(\Illuminate\Http\Testing\File::class, 'tempFile');
-                $resource = $prop->getValue($file);
-                if (is_resource($resource)) {
-                    $pos = ftell($resource);
-                    fseek($resource, 0);
-                    $head = strtolower((string) fread($resource, 8192));
-                    fseek($resource, max(0, $pos ?: 0)); // pulihkan pointer agar move() tetap berjalan
-                    return $head;
-                }
-            } catch (\Throwable) {
-                // Jika stream tidak bisa dibaca, sniffing dilewati.
-            }
-        }
-
-        return '';
+            'success' => false,
+            'error' => $upload->status->value,
+            'message' => $upload->rejection_reason ?: 'Format file media tidak diizinkan (SVG dan skrip diblokir).',
+            'upload_id' => $upload->uuid,
+        ], 422);
     }
 
     public function saveLandingContent(Request $request)

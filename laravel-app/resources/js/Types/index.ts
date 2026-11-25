@@ -470,6 +470,37 @@ export interface BackupItem {
   type: string;
 }
 
+export interface UploadAuditLogItem {
+  id: number;
+  upload_uuid: string | null;
+  tenant_code: string | null;
+  event: string;
+  status_to: string | null;
+  detected_mime: string | null;
+  file_size_bytes: number | null;
+  scan_result: string | null;
+  rejection_reason: string | null;
+  promotion_result: string | null;
+  created_at: string;
+}
+
+export interface UploadPipelineStats {
+  scanner_driver: string;
+  scanner_available: boolean;
+  scanner_version: string | null;
+  scanner_mode: string;
+  async_scan: boolean;
+  fail_closed: boolean;
+  rate_limit_per_minute: number;
+  quarantine_ttl_minutes: number;
+  pending_count: number;
+  clean_count: number;
+  quarantined_count: number;
+  rejected_count: number;
+  scan_failed_count: number;
+  recent_audit_logs: UploadAuditLogItem[];
+}
+
 export interface SecurityStats {
   total_users: number;
   users_with_2fa: number;
@@ -484,6 +515,7 @@ export interface SecurityStats {
   admins_without_2fa?: number;
   login_throttle?: string;
   security_headers?: string;
+  upload_pipeline?: UploadPipelineStats;
 }
 
 export interface FirmwareReleaseItem {

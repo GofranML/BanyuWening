@@ -1,0 +1,12 @@
+; Reference PHP Upload Hardening Configuration (php-fpm / cli)
+; Aligns PHP limits with config/uploads.php (max_request_bytes = 55 MB, max file = 50 MB)
+
+file_uploads = On
+upload_max_filesize = 50M
+post_max_size = 55M
+max_file_uploads = 5
+max_input_time = 60
+max_execution_time = 60
+memory_limit = 256M
+; Ensure upload_tmp_dir is outside public webroot and owned by the PHP-FPM user
+; upload_tmp_dir = /var/www/banyuwening/laravel-app/storage/app/private/tmp

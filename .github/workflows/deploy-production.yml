@@ -1,0 +1,83 @@
+name: Auto Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify Build & Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: laravel-app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, sqlite3, pdo_sqlite, curl, gd, fileinfo
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: laravel-app/package-lock.json
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare environment & run tests
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan test --filter="TenantManagementFeatureTest|SecureFileUploadPipelineTest"
+
+      - name: Install NPM dependencies & build Vite assets
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    name: Deploy to Production Server
+    needs: verify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Execute remote deployment over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "Error: GitHub Secrets SSH_HOST, SSH_USER, dan SSH_PRIVATE_KEY wajib diisi terlebih dahulu."
+            exit 1
+          fi
+
+          PORT="${SSH_PORT:-22}"
+          TARGET_DIR="${DEPLOY_PATH:-/var/www/banyuwening}"
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_ROOT='$TARGET_DIR' bash -s" < laravel-app/deploy/deploy.sh

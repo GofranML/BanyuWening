@@ -16,6 +16,8 @@ import {
   KeyRound,
   Layers,
   ArrowRight,
+  FileCheck2,
+  ShieldAlert,
 } from "lucide-react";
 import type { BackupItem, SecurityStats } from "@/Types";
 
@@ -235,12 +237,12 @@ export function SuperAdminSecurityBackup({
           </div>
           <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
             <span className="font-semibold text-ink block mb-1">
-              Unggahan & URL Eksternal
+              Pipeline Unggahan & URL Eksternal
             </span>
             <p className="text-muted text-[12px] leading-relaxed">
-              Media landing divalidasi ekstensi dan isi berkas (SVG/skrip
-              ditolak). URL agen AI dan webhook diperiksa agar tidak menembus
-              jaringan internal (SSRF).
+              Seluruh unggahan (media, firmware, dokumen tenant) melewati karantina
+              privat (0600), inspeksi magic bytes/struktur/polyglot, dan scanner
+              fail-closed. URL agen AI &amp; webhook diperiksa terhadap SSRF.
             </p>
           </div>
           <div className="p-3 bg-surface-2 rounded-[6px] border border-line">
@@ -256,6 +258,147 @@ export function SuperAdminSecurityBackup({
           </div>
         </div>
       </div>
+
+      {/* Pipeline Unggahan Aman (Secure File Upload Pipeline) */}
+      {securityStats?.upload_pipeline && (
+        <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[16px] font-semibold text-ink flex items-center gap-2">
+                <FileCheck2 className="w-5 h-5 text-brand" />
+                <span>Pipeline Unggahan Aman (Defense-in-Depth)</span>
+              </h2>
+              <p className="text-[12px] text-muted mt-0.5">
+                Karantina privat{" "}
+                <code className="text-brand">storage/app/private/quarantine/</code>,
+                inspeksi struktur &amp; polyglot, approval gate, dan audit log bebas rahasia.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+              <span
+                className={`px-2.5 py-1 rounded-[4px] font-semibold inline-flex items-center gap-1.5 ${
+                  securityStats.upload_pipeline.scanner_available
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-amber-500/10 text-amber-600"
+                }`}
+              >
+                {securityStats.upload_pipeline.scanner_available ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  Scanner: {securityStats.upload_pipeline.scanner_driver.toUpperCase()} (
+                  {securityStats.upload_pipeline.scanner_available
+                    ? securityStats.upload_pipeline.scanner_version || "Aktif"
+                    : "Tidak Aktif · Fail-Closed"}
+                  )
+                </span>
+              </span>
+              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
+                Fail-Closed
+              </span>
+              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
+                Rate Limit {securityStats.upload_pipeline.rate_limit_per_minute}/mnt
+              </span>
+              <span className="px-2.5 py-1 rounded-[4px] bg-surface-2 border border-line text-muted">
+                TTL {securityStats.upload_pipeline.quarantine_ttl_minutes} mnt
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                CLEAN
+              </span>
+              <span className="text-[18px] font-bold font-mono text-emerald-600">
+                {securityStats.upload_pipeline.clean_count}
+              </span>
+            </div>
+            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                PENDING_SCAN
+              </span>
+              <span className="text-[18px] font-bold font-mono text-ink">
+                {securityStats.upload_pipeline.pending_count}
+              </span>
+            </div>
+            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                QUARANTINED
+              </span>
+              <span className="text-[18px] font-bold font-mono text-bahaya">
+                {securityStats.upload_pipeline.quarantined_count}
+              </span>
+            </div>
+            <div className="p-3 rounded-[6px] bg-surface-2 border border-line">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                REJECTED
+              </span>
+              <span className="text-[18px] font-bold font-mono text-amber-600">
+                {securityStats.upload_pipeline.rejected_count}
+              </span>
+            </div>
+            <div className="p-3 rounded-[6px] bg-surface-2 border border-line col-span-2 sm:col-span-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
+                SCAN_FAILED
+              </span>
+              <span className="text-[18px] font-bold font-mono text-bahaya">
+                {securityStats.upload_pipeline.scan_failed_count}
+              </span>
+            </div>
+          </div>
+
+          {securityStats.upload_pipeline.recent_audit_logs.length === 0 ? (
+            <div className="text-center py-6 border border-dashed border-line rounded-[6px] bg-surface-2/40 text-xs text-muted">
+              Belum ada aktivitas unggahan tercatat di audit log keamanan.
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-line rounded-[6px]">
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-surface-2 border-b border-line text-muted uppercase text-[10.5px] font-semibold tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2.5">Waktu</th>
+                    <th className="px-3 py-2.5">Event</th>
+                    <th className="px-3 py-2.5">Status</th>
+                    <th className="px-3 py-2.5">Tenant</th>
+                    <th className="px-3 py-2.5">MIME / Hasil</th>
+                    <th className="px-3 py-2.5">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {securityStats.upload_pipeline.recent_audit_logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-surface-2/40">
+                      <td className="px-3 py-2 font-mono text-[11px] text-muted whitespace-nowrap">
+                        {log.created_at}
+                      </td>
+                      <td className="px-3 py-2 font-mono font-semibold text-ink">
+                        {log.event}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px]">
+                        <span className="px-2 py-0.5 rounded-[4px] bg-surface-2 border border-line text-ink">
+                          {log.status_to || "-"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-muted">
+                        {log.tenant_code || "GLOBAL"}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-muted">
+                        {log.detected_mime || "-"} {log.scan_result ? `(${log.scan_result})` : ""}
+                      </td>
+                      <td className="px-3 py-2 text-muted max-w-xs truncate">
+                        {log.rejection_reason || log.promotion_result || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabel File Backup */}
       <div className="p-6 bg-surface rounded-[6px] border border-line">

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UploadStatus;
 use App\Models\Device;
 use App\Models\FirmwareRelease;
 use App\Services\FirmwareOtaService;
+use App\Services\Upload\Exceptions\FileValidationException;
+use App\Services\Upload\SecureFileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,6 +51,14 @@ class OtaController extends Controller
                 'error' => 'FIRMWARE_NOT_FOUND',
                 'message' => "Rilis firmware '{$version}' tidak ditemukan atau sudah dinonaktifkan.",
             ], 404);
+        }
+
+        if (!$release->isScanApproved()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'FIRMWARE_NOT_VERIFIED',
+                'message' => "Rilis firmware '{$version}' belum lolos pemindaian keamanan.",
+            ], 403);
         }
 
         $compat = $this->otaService->evaluateCompatibility($device, $release);
@@ -151,9 +162,9 @@ class OtaController extends Controller
     }
 
     /**
-     * Super Admin: Unggah binary firmware .bin ESP32 baru dan buat signed manifest.
+     * Super Admin: Unggah binary firmware .bin ESP32 baru melalui Secure Upload Pipeline dan buat signed manifest.
      */
-    public function storeRelease(Request $request): JsonResponse
+    public function storeRelease(Request $request, SecureFileUploadService $uploadService): JsonResponse
     {
         $admin = $this->authorizeAdmin();
 
@@ -170,24 +181,71 @@ class OtaController extends Controller
             'firmware_file' => ['required', 'file', 'max:16384'],
         ]);
 
-        $file = $request->file('firmware_file');
-        $ext = strtolower((string) $file->getClientOriginalExtension());
-        if ($ext !== '' && $ext !== 'bin') {
+        try {
+            $upload = $uploadService->ingest(
+                $request->file('firmware_file'),
+                'firmware',
+                $admin,
+                null,
+                ['version' => $validated['version']]
+            );
+        } catch (FileValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'File firmware wajib berformat binary (.bin).',
+                'error' => $e->errorCode(),
+                'message' => $e->getMessage(),
+            ], $e->httpStatus());
+        }
+
+        if ($upload->status === UploadStatus::SCAN_FAILED) {
+            return response()->json([
+                'success' => false,
+                'error' => 'SCAN_FAILED',
+                'message' => $upload->rejection_reason ?: 'Pemindaian malware firmware gagal; rilis tidak dibuat.',
+                'upload_id' => $upload->uuid,
+            ], 503);
+        }
+
+        if ($upload->status === UploadStatus::QUARANTINED || $upload->status === UploadStatus::REJECTED) {
+            return response()->json([
+                'success' => false,
+                'error' => $upload->status->value,
+                'message' => $upload->rejection_reason ?: 'File firmware ditolak oleh pemeriksaan keamanan.',
+                'upload_id' => $upload->uuid,
             ], 422);
         }
 
-        $release = $this->otaService->createRelease(
+        $isAsyncPending = $upload->status === UploadStatus::PENDING_SCAN || $upload->status === UploadStatus::SCANNING;
+
+        $release = $this->otaService->createReleaseFromSecureUpload(
             $validated,
-            $file,
-            $admin->name . ' (' . $admin->role . ')'
+            $upload,
+            $admin->name . ' (' . $admin->role . ')',
+            !$isAsyncPending,
+            $isAsyncPending ? 'PENDING_SCAN' : 'CLEAN'
         );
+
+        if ($isAsyncPending) {
+            $meta = is_array($upload->metadata) ? $upload->metadata : [];
+            $meta['firmware_release_id'] = $release->id;
+            $upload->forceFill(['metadata' => $meta])->save();
+
+            return response()->json([
+                'success' => true,
+                'pending' => true,
+                'message' => "Firmware {$release->version} masuk karantina untuk pemindaian keamanan sebelum diaktifkan.",
+                'upload_id' => $upload->uuid,
+                'scan_status' => 'PENDING_SCAN',
+                'release' => $release,
+                'overview' => $this->otaService->getOverview(),
+            ], 202);
+        }
 
         return response()->json([
             'success' => true,
             'message' => "Rilis firmware {$release->version} berhasil diunggah dengan SHA-256 & tanda tangan HMAC.",
+            'upload_id' => $upload->uuid,
+            'scan_status' => 'CLEAN',
             'release' => $release,
             'overview' => $this->otaService->getOverview(),
         ], 201);
@@ -306,10 +364,11 @@ class OtaController extends Controller
         }
 
         $release = FirmwareRelease::findOrFail($validated['release_id']);
-        if (!$release->is_active) {
+        if (!$release->is_active || !$release->isScanApproved()) {
             return response()->json([
                 'success' => false,
-                'message' => "Rilis {$release->version} sedang dinonaktifkan.",
+                'error' => !$release->isScanApproved() ? 'FIRMWARE_NOT_VERIFIED' : 'FIRMWARE_INACTIVE',
+                'message' => "Rilis {$release->version} sedang dinonaktifkan atau belum lolos pemindaian keamanan.",
             ], 422);
         }
 
@@ -428,8 +487,8 @@ class OtaController extends Controller
     private function authorizeAdmin()
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->hasPermission('view_docs_api'))) {
-            abort(403, 'Akses terbatas untuk Super Administrator atau pengguna dengan izin Dokumentasi & API.');
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses terbatas untuk Super Administrator.');
         }
         return $user;
     }

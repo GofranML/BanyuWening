@@ -22,7 +22,9 @@ import {
   Film,
   Eye,
   Check,
+  AlertTriangle,
 } from "lucide-react";
+import { validateUploadFile } from "@/lib/upload-validation";
 import type { LandingContentSettings, LandingCapability, LandingFaq } from "@/Types";
 
 interface SuperAdminContentManagementProps {
@@ -280,6 +282,7 @@ export function SuperAdminContentManagement({
   const [footerBgImage, setFooterBgImage] = useState(
     initialContent?.footer_bg_image || "/pics/takeran.jpg"
   );
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -290,21 +293,63 @@ export function SuperAdminContentManagement({
   const triggerUpload = (
     fieldKey: string,
     setter: (val: string) => void,
-    acceptType = "image/*"
+    acceptType = ".jpg,.jpeg,.png,.webp,.gif"
   ) => {
+    if (uploadingField) return;
+    const normalizedAccept =
+      acceptType === "image/*"
+        ? ".jpg,.jpeg,.png,.webp,.gif"
+        : acceptType === "video/*"
+        ? ".mp4,.webm,.ogg"
+        : acceptType;
     currentUploadTargetRef.current = { fieldKey, setter };
     if (fileInputRef.current) {
-      fileInputRef.current.accept = acceptType;
+      fileInputRef.current.accept = normalizedAccept;
       fileInputRef.current.value = "";
       fileInputRef.current.click();
     }
   };
 
+  const pollPendingUpload = async (
+    statusUrl: string,
+    setter: (val: string) => void,
+    originalName: string
+  ) => {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const res = await fetch(statusUrl, { headers: { Accept: "application/json" } });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const st = json?.upload?.status;
+      if (st === "CLEAN" && json?.upload?.public_url) {
+        setter(json.upload.public_url);
+        showToast(`Media ${originalName} lolos pemindaian & berhasil dipublikasikan.`);
+        return;
+      }
+      if (st === "REJECTED" || st === "QUARANTINED" || st === "SCAN_FAILED") {
+        setUploadError(json?.upload?.rejection_reason || `Unggahan ditolak (${st}).`);
+        return;
+      }
+    }
+    setUploadError("Pemindaian keamanan masih berlangsung. Periksa kembali beberapa saat lagi.");
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    if (uploadingField) return;
+    const files = e.target.files;
+    const file = files?.[0];
     if (!file || !currentUploadTargetRef.current) return;
 
     const { fieldKey, setter } = currentUploadTargetRef.current;
+    const profile = fieldKey === "video" ? "landing_video" : "landing_image";
+
+    setUploadError(null);
+    const check = await validateUploadFile(file, profile, files?.length || 1);
+    if (!check.ok) {
+      setUploadError(check.error || "File tidak memenuhi syarat keamanan.");
+      return;
+    }
+
     setUploadingField(fieldKey);
 
     const formData = new FormData();
@@ -325,18 +370,22 @@ export function SuperAdminContentManagement({
       });
 
       const data = await res.json();
-      if (res.ok && data.success && data.url) {
+      if (res.status === 202 && data.pending && data.status_url) {
+        showToast(`Media ${file.name} dikarantina untuk pemindaian keamanan...`);
+        await pollPendingUpload(data.status_url, setter, file.name);
+      } else if (res.ok && data.success && data.url) {
         setter(data.url);
         showToast(`Media ${file.name} berhasil diunggah!`);
       } else {
-        alert(
-          data.error ||
+        setUploadError(
+          data.message ||
+            data.error ||
             "Gagal mengunggah file. Pastikan format file sesuai dan ukuran maksimal 50MB."
         );
       }
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Terjadi kesalahan jaringan saat mengunggah media.");
+      setUploadError("Terjadi kesalahan jaringan saat mengunggah media.");
     } finally {
       setUploadingField(null);
     }
@@ -511,6 +560,23 @@ export function SuperAdminContentManagement({
         <div className="p-4 bg-aman/15 border border-aman text-ink rounded-[6px] flex items-center gap-2.5 text-[13px] animate-fadeIn">
           <CheckCircle2 className="w-5 h-5 text-aman shrink-0" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Upload Security Error Banner */}
+      {uploadError && (
+        <div className="p-4 bg-bahaya-bg/40 border border-bahaya/40 text-ink rounded-[6px] flex items-center justify-between gap-2.5 text-[13px]">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-bahaya shrink-0" />
+            <span>{uploadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            className="text-xs font-semibold text-muted hover:text-ink cursor-pointer"
+          >
+            Tutup
+          </button>
         </div>
       )}
 

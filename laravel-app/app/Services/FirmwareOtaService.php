@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Device;
 use App\Models\FirmwareRelease;
 use App\Models\FirmwareRollout;
+use App\Models\SecureUpload;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class FirmwareOtaService
 {
@@ -18,12 +20,68 @@ class FirmwareOtaService
 
     public function firmwareStorageDir(): string
     {
-        return storage_path('app/private/firmware');
+        return Storage::disk('firmware_private')->path('');
     }
 
     public function absoluteBinaryPath(FirmwareRelease $release): string
     {
-        return storage_path('app/private/' . ltrim($release->file_path, '/'));
+        $relative = preg_replace('/^firmware\//', '', ltrim((string) $release->file_path, '/')) ?: '';
+
+        return Storage::disk('firmware_private')->path($relative);
+    }
+
+    /**
+     * Buat rilis firmware dari hasil Secure Upload Pipeline (karantina + validasi + malware scan).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function createReleaseFromSecureUpload(
+        array $data,
+        SecureUpload $upload,
+        string $actor,
+        bool $isActive = true,
+        string $scanStatus = 'CLEAN',
+    ): FirmwareRelease {
+        $version = trim((string) $data['version']);
+        $minPrev = !empty($data['min_previous_version']) ? trim((string) $data['min_previous_version']) : null;
+        $targetHw = (string) ($data['target_hardware'] ?? 'ESP32-WROOM-CoreHub-v2');
+
+        $storedRel = $upload->permanent_path
+            ? 'firmware/' . ltrim((string) $upload->permanent_path, '/')
+            : 'quarantine/' . ltrim((string) ($upload->quarantine_path ?? $upload->uuid . '.bin'), '/');
+
+        $sha256 = strtolower((string) $upload->sha256_hash);
+        $sizeBytes = (int) $upload->file_size_bytes;
+        $hmac = FirmwareRelease::computeSignature($version, $sha256, $sizeBytes, $minPrev);
+
+        $allowedIds = $this->resolveInitialAllowedDeviceIds(
+            $data['allowed_device_ids'] ?? null,
+            $targetHw,
+            $minPrev
+        );
+
+        $safeBase = preg_replace('/[^A-Za-z0-9._-]/', '_', $version) ?: ('fw_' . time());
+
+        return FirmwareRelease::create([
+            'secure_upload_id' => $upload->id,
+            'version' => $version,
+            'channel' => strtolower((string) ($data['channel'] ?? 'stable')),
+            'target_hardware' => $targetHw,
+            'allowed_device_ids' => $allowedIds,
+            'file_path' => $storedRel,
+            'file_name' => $safeBase . '.bin',
+            'file_size_bytes' => $sizeBytes,
+            'sha256_checksum' => $sha256,
+            'hmac_signature' => $hmac,
+            'min_previous_version' => $minPrev,
+            'rollback_timeout_s' => (int) ($data['rollback_timeout_s'] ?? 60),
+            'changelog' => $data['changelog'] ?? null,
+            'is_active' => $isActive,
+            'scan_status' => $scanStatus,
+            'is_mandatory' => (bool) ($data['is_mandatory'] ?? false),
+            'uploaded_by' => $actor,
+            'released_at' => now(),
+        ]);
     }
 
     /**
@@ -371,7 +429,7 @@ class FirmwareOtaService
         $rollout = FirmwareRollout::with('release')
             ->where('device_id', $device->id)
             ->whereIn('status', ['QUEUED', 'NOTIFIED', 'DOWNLOADING', 'VERIFYING', 'FLASHING', 'REBOOTING', 'HEALTH_CHECK'])
-            ->whereHas('release', fn ($q) => $q->where('is_active', true))
+            ->whereHas('release', fn ($q) => $q->where('is_active', true)->where('scan_status', 'CLEAN'))
             ->latest('id')
             ->first();
 
@@ -411,6 +469,7 @@ class FirmwareOtaService
 
         // Jika belum ada rollout manual, cek rilis aktif terbaru yang memang mengizinkan token alat & kompatibel
         $authorizedRelease = FirmwareRelease::where('is_active', true)
+            ->where('scan_status', 'CLEAN')
             ->latest('id')
             ->get()
             ->first(function (FirmwareRelease $r) use ($device) {

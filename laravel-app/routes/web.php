@@ -8,6 +8,7 @@ use App\Http\Controllers\ApiController;
 use App\Http\Controllers\HarvestCycleController;
 use App\Http\Controllers\MlApiController;
 use App\Http\Controllers\OtaController;
+use App\Http\Controllers\SecureUploadController;
 use App\Http\Controllers\SwaggerController;
 
 /*
@@ -55,7 +56,23 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/notifications/test', [DashboardController::class, 'testNotification'])->name('dashboard.notifications.test');
     Route::post('/dashboard/notifications/logs/clear', [DashboardController::class, 'clearDispatchLogs'])->name('dashboard.notifications.logs.clear');
     Route::post('/dashboard/landing-content', [DashboardController::class, 'saveLandingContent'])->name('dashboard.landing.save');
-    Route::post('/dashboard/landing-media/upload', [DashboardController::class, 'uploadLandingMedia'])->name('dashboard.landing.upload');
+    Route::post('/dashboard/landing-media/upload', [DashboardController::class, 'uploadLandingMedia'])
+        ->middleware(['upload.limits', 'throttle:upload'])
+        ->name('dashboard.landing.upload');
+
+    // Secure File Upload Pipeline (Tenant-Scoped Documents & Lifecycle)
+    Route::post('/dashboard/uploads', [SecureUploadController::class, 'store'])
+        ->middleware(['upload.limits', 'throttle:upload'])
+        ->name('dashboard.uploads.store');
+    Route::get('/dashboard/uploads/{upload}', [SecureUploadController::class, 'show'])
+        ->name('dashboard.uploads.show');
+    Route::get('/dashboard/uploads/{upload}/download', [SecureUploadController::class, 'download'])
+        ->name('dashboard.uploads.download');
+    Route::post('/dashboard/uploads/{upload}/replace', [SecureUploadController::class, 'replace'])
+        ->middleware(['upload.limits', 'throttle:upload'])
+        ->name('dashboard.uploads.replace');
+    Route::delete('/dashboard/uploads/{upload}', [SecureUploadController::class, 'destroy'])
+        ->name('dashboard.uploads.destroy');
     Route::post('/dashboard/backups/create', [DashboardController::class, 'createBackup'])->name('dashboard.backups.create');
     Route::get('/dashboard/backups/{filename}/download', [DashboardController::class, 'downloadBackup'])->name('dashboard.backups.download');
     Route::delete('/dashboard/backups/{filename}', [DashboardController::class, 'deleteBackup'])->name('dashboard.backups.delete');
@@ -70,7 +87,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Super Admin: Manajemen Protokol Firmware Dual-OTA ESP32 (Per Alat & Simulasi)
     Route::get('/dashboard/ota/overview', [OtaController::class, 'overview'])->name('dashboard.ota.overview');
-    Route::post('/dashboard/ota/releases', [OtaController::class, 'storeRelease'])->name('dashboard.ota.releases.store');
+    Route::post('/dashboard/ota/releases', [OtaController::class, 'storeRelease'])
+        ->middleware(['upload.limits', 'throttle:upload'])
+        ->name('dashboard.ota.releases.store');
     Route::post('/dashboard/ota/releases/sample', [OtaController::class, 'storeSampleRelease'])->name('dashboard.ota.releases.sample');
     Route::post('/dashboard/ota/releases/{release}/access', [OtaController::class, 'updateReleaseAccess'])->name('dashboard.ota.releases.access');
     Route::post('/dashboard/ota/devices/{device}/profile', [OtaController::class, 'updateDeviceOtaProfile'])->name('dashboard.ota.devices.profile');

@@ -28,6 +28,7 @@ import {
   Plus,
   Building2,
 } from "lucide-react";
+import { validateUploadFile } from "@/lib/upload-validation";
 import type {
   OtaOverview,
   OtaOverviewDevice,
@@ -310,8 +311,15 @@ export function SuperAdminOtaProtocolPanel({
 
   const handleUploadRelease = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busyKey === "upload") return;
     if (!version.trim() || !binaryFile) {
       setNotice({ type: "err", text: "Isi versi firmware dan pilih file .bin terlebih dahulu." });
+      return;
+    }
+
+    const check = await validateUploadFile(binaryFile, "firmware", 1);
+    if (!check.ok) {
+      setNotice({ type: "err", text: check.error || "File firmware .bin tidak valid." });
       return;
     }
 
@@ -1674,7 +1682,19 @@ curl -X POST ${origin}/api/http/ota/status \\
             <input
               type="file"
               accept=".bin,application/octet-stream"
-              onChange={(e) => setBinaryFile(e.target.files?.[0] || null)}
+              onChange={async (e) => {
+                const selected = e.target.files?.[0] || null;
+                if (selected) {
+                  const check = await validateUploadFile(selected, "firmware", e.target.files?.length || 1);
+                  if (!check.ok) {
+                    setNotice({ type: "err", text: check.error || "File firmware tidak valid." });
+                    e.target.value = "";
+                    setBinaryFile(null);
+                    return;
+                  }
+                }
+                setBinaryFile(selected);
+              }}
               className="w-full text-xs text-ink file:mr-3 file:py-1.5 file:px-3 file:rounded-[4px] file:border file:border-line file:text-xs file:font-semibold file:bg-surface-2 file:text-ink"
             />
           </div>

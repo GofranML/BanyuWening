@@ -185,8 +185,9 @@ class BanyuWeningMigrationTest extends TestCase
     {
         $admin = User::where('email', 'admin@banyuwening.id')->first();
 
-        \Illuminate\Support\Facades\Storage::fake('public');
-        $file = \Illuminate\Http\UploadedFile::fake()->create('test_pond.jpg', 100, 'image/jpeg');
+        \Illuminate\Support\Facades\Storage::fake('quarantine');
+        \Illuminate\Support\Facades\Storage::fake('landing_public');
+        $file = \Illuminate\Http\UploadedFile::fake()->image('test_pond.jpg', 120, 120);
 
         $response = $this->actingAs($admin)->postJson('/dashboard/landing-media/upload', [
             'file' => $file,
