@@ -422,25 +422,112 @@ export type LandingFaq = {
   a: string;
 };
 
+export type LandingPassageBeat = {
+  num: string;
+  title: string;
+  desc: string;
+};
+
+export type LandingIntroStat = {
+  val: string;
+  label: string;
+};
+
+export type LandingDiurnalPhase = {
+  time: string;
+  title: string;
+  detail: string;
+};
+
+export type LandingPipelineStep = {
+  num: string;
+  verb: string;
+  title: string;
+  detail: string;
+  spec: string;
+  img: string;
+};
+
+export type LandingArchPhase = {
+  phase: 0 | 1 | 2 | 3;
+  num: string;
+  short_name: string;
+  label: string;
+  summary: string;
+  specs: string;
+};
+
+export type LandingPackageItem = {
+  num: string;
+  badge: string;
+  name: string;
+  config: string;
+  price: string;
+  saas: string;
+  highlights: string[];
+  featured?: boolean;
+};
+
+export type LandingDeveloperMember = {
+  name: string;
+  url: string;
+};
+
 export interface LandingContentSettings {
   hero_tag: string;
+  hero_right_tag?: string;
   hero_title: string;
+  hero_headline_1?: string;
+  hero_headline_2?: string;
   hero_subtitle: string;
+  hero_stage2_kicker?: string;
+  hero_stage2_title_1?: string;
+  hero_stage2_title_2?: string;
+  hero_stage2_desc?: string;
+  hero_passage_beats?: LandingPassageBeat[];
+  hero_stage3_kicker?: string;
+  hero_stage3_title_1?: string;
+  hero_stage3_title_2?: string;
+  hero_stage3_desc?: string;
+
   intro_statement_1: string;
   intro_statement_2: string;
   intro_statement_3: string;
   intro_statement_4: string;
   intro_statement_5: string;
+  intro_principle_kicker?: string;
+  intro_principle_title?: string;
   intro_desc: string;
+  intro_stats?: LandingIntroStat[];
+  video_section_title?: string;
+  diurnal_phases?: LandingDiurnalPhase[];
+
+  pipeline_heading?: string;
+  pipeline_steps?: LandingPipelineStep[];
+
+  arch_heading_1?: string;
+  arch_heading_2?: string;
+  arch_aside?: string;
+  arch_phases?: LandingArchPhase[];
+
+  packages_heading?: string;
+  packages_subtitle?: string;
+  packages?: LandingPackageItem[];
+
+  faq_heading?: string;
+  faqs: LandingFaq[];
+
+  footer_kicker?: string;
+  footer_heading?: string;
+  developer_team?: LandingDeveloperMember[];
   contact_email: string;
   contact_phone: string;
   institution_name: string;
   institution_url?: string;
-  cta_text: string;
+  cta_text?: string;
   cta_button_text: string;
   copyright_text: string;
-  capabilities: LandingCapability[];
-  faqs: LandingFaq[];
+  capabilities?: LandingCapability[];
 
   // Optional Pitch Deck Metadata
   pitch_deck_version?: string;

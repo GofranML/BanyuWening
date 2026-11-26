@@ -357,6 +357,80 @@ class BanyuWeningMigrationTest extends TestCase
         );
     }
 
+    public function test_admin_can_update_v2_landing_sections_and_xss_is_neutralised(): void
+    {
+        $admin = User::where('email', 'admin@banyuwening.id')->first();
+
+        $payload = [
+            'contact_email' => 'v2@banyuwening.id',
+            'hero_headline_1' => 'Jaga kualitas air',
+            'hero_headline_2' => 'kolam tanpa cemas',
+            'diurnal_phases' => [
+                [
+                    'time' => '06:00 Pagi',
+                    'title' => 'Aerasi Pagi <script>alert(1)</script>',
+                    'detail' => 'Penyesuaian suhu pagi hari.',
+                ],
+            ],
+            'pipeline_steps' => [
+                [
+                    'num' => '01',
+                    'verb' => 'Ukur',
+                    'title' => 'Sensor Akurat v2',
+                    'detail' => 'Detail v2 terukur.',
+                    'spec' => 'ADS1115 16-bit',
+                    'img' => '/pics/takeran.jpg',
+                ],
+            ],
+            'arch_phases' => [
+                [
+                    'phase' => 0,
+                    'num' => '01',
+                    'short_name' => 'Topologi v2',
+                    'label' => 'Modular 1:4 Kolam',
+                    'summary' => 'Ringkasan arsitektur v2.',
+                    'specs' => 'GX16 IP65',
+                ],
+            ],
+            'packages' => [
+                [
+                    'num' => '01',
+                    'badge' => 'Populer',
+                    'name' => 'Paket Hemat 2K',
+                    'config' => '1 Core Hub + 2 Modul',
+                    'price' => 'Rp2.450.000',
+                    'saas' => 'Rp150rb / 3 bln',
+                    'highlights' => ['Edge Fuzzy Lokal', 'Offline-Plus Rp0'],
+                    'featured' => true,
+                ],
+            ],
+            'developer_team' => [
+                [
+                    'name' => 'Gofran Muttaqi Likhan',
+                    'url' => 'https://portofolio-gofran.vercel.app',
+                ],
+            ],
+            'footer_heading' => 'Kolaborasi kolam presisi.',
+        ];
+
+        $response = $this->actingAs($admin)->post('/dashboard/landing-content', $payload);
+        $response->assertSessionHas('success');
+
+        $landing = $this->get('/');
+        $landing->assertStatus(200);
+        $landing->assertInertia(fn ($page) => $page
+            ->component('Home')
+            ->where('landingContent.hero_headline_1', 'Jaga kualitas air')
+            ->where('landingContent.step_1_img', '/pics/takeran.jpg')
+            ->where('landingContent.pipeline_steps.0.title', 'Sensor Akurat v2')
+            ->where('landingContent.arch_phases.0.short_name', 'Topologi v2')
+            ->where('landingContent.packages.0.name', 'Paket Hemat 2K')
+            ->where('landingContent.developer_team.0.name', 'Gofran Muttaqi Likhan')
+            ->where('landingContent.footer_heading', 'Kolaborasi kolam presisi.')
+            ->where('landingContent.diurnal_phases.0.title', 'Aerasi Pagi alert(1)')
+        );
+    }
+
     public function test_admin_can_create_download_and_delete_backup(): void
     {
         $admin = User::where('email', 'admin@banyuwening.id')->first();

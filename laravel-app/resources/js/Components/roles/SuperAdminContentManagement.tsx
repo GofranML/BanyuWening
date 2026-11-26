@@ -20,141 +20,440 @@ import {
   Video,
   Upload,
   Film,
-  Eye,
-  Check,
+  Box,
+  Package,
+  Users,
+  Clock,
   AlertTriangle,
 } from "lucide-react";
 import { validateUploadFile } from "@/lib/upload-validation";
-import type { LandingContentSettings, LandingCapability, LandingFaq } from "@/Types";
+import type {
+  LandingArchPhase,
+  LandingContentSettings,
+  LandingDeveloperMember,
+  LandingDiurnalPhase,
+  LandingFaq,
+  LandingIntroStat,
+  LandingPackageItem,
+  LandingPassageBeat,
+  LandingPipelineStep,
+} from "@/Types";
 
 interface SuperAdminContentManagementProps {
   landingContent?: LandingContentSettings;
 }
 
-type SubTabId = "kontak" | "media" | "hero" | "intro" | "faq" | "cta";
+type SubTabId =
+  | "hero"
+  | "siklus"
+  | "otomasi"
+  | "arsitektur"
+  | "paket"
+  | "faq"
+  | "kontak";
 
 const PRESET_IMAGES = [
-  { label: "Aerasi Kolam", path: "/pics/aerasi.jpg" },
-  { label: "Kolam Takeran", path: "/pics/takeran.jpg" },
   { label: "Probe pH & Kekeruhan", path: "/pics/ph-meter.jpg" },
   { label: "Mikrokontroler ESP32", path: "/pics/esp32.jpg" },
   { label: "Benih Lele 01", path: "/pics/lele-1.jpg" },
-  { label: "Benih Lele 02", path: "/pics/lele-2.jpg" },
+  { label: "Aerasi Kolam", path: "/pics/aerasi.jpg" },
   { label: "Kolam Tjipanas", path: "/pics/tjipanas.jpg" },
+  { label: "Kolam Takeran", path: "/pics/takeran.jpg" },
+  { label: "Benih Lele 02", path: "/pics/lele-2.jpg" },
   { label: "Kolam Lembang", path: "/pics/lembang.jpg" },
   { label: "Kolam Andir", path: "/pics/andir.jpg" },
   { label: "Aquaculture Underwater", path: "/pics/aquaculture-underwater.jpg" },
   { label: "Permukaan Air", path: "/pics/water-surface.jpg" },
 ];
 
-const PRESET_VIDEOS = [
-  { label: "Time-lapse Kolam WebM", path: "/pics/kolam-timelapse.webm" },
-];
-
 const V2_DEFAULTS = {
   hero_tag: "SMART AQUACULTURE STUDIO",
+  hero_right_tag: "EDGE FUZZY & IOT HARDWARE",
   hero_title: "BANYUWENING",
+  hero_headline_1: "Buat kualitas air",
+  hero_headline_2: "kolam selalu terkendali",
   hero_subtitle:
     "Platform IoT akuakultur presisi dengan kecerdasan Edge Fuzzy lokal dan kontrol pompa otomatis untuk menjaga kualitas air kolam lele 24 jam penuh.",
+  hero_stage2_kicker: "02 / LORONG TOPOLOGI CORE HUB",
+  hero_stage2_title_1: "Satu inti hardware",
+  hero_stage2_title_2: "menyatukan empat kolam",
+  hero_stage2_desc:
+    "Jalur kabel shielded GX16 mengisolasi pembacaan ADC 16-bit tiap kolam sekaligus mempertahankan efisiensi instalasi petambak UMKM.",
+  hero_passage_beats: [
+    {
+      num: "01 UKUR",
+      title: "Multi-ADC 16-bit",
+      desc: "Isolasi pH, suhu, TDS, dan kekeruhan lewat 2-3x ADS1115 & MOSFET.",
+    },
+    {
+      num: "02 ISOLASI",
+      title: "Watchdog & LittleFS",
+      desc: "Menahan anomali probe & menyimpan telemetri 72 jam tanpa WiFi.",
+    },
+    {
+      num: "03 AKTUASI",
+      title: "Edge Fuzzy <15 ms",
+      desc: "Menyalakan aerator & pompa kolam secara otonom di Core Hub.",
+    },
+  ] as LandingPassageBeat[],
+  hero_stage3_kicker: "03 / OTONOMI PENUH PINGGIR KOLAM",
+  hero_stage3_title_1: "Dibuat untuk eksplorasi.",
+  hero_stage3_title_2: "Siap bekerja otomatis.",
+  hero_stage3_desc:
+    "Tetap menjaga pH, suhu, kekeruhan, dan pompa aerasi walaupun WiFi kolam terputus melalui Edge Fuzzy & Mode Offline-Plus Rp0.",
+
   intro_statement_1: "Satu Core Hub pintar",
   intro_statement_2: "menjaga hingga 4 kolam lele,",
   intro_statement_3: "saat WiFi kolam terputus,",
   intro_statement_4: "atau cuaca buruk tengah malam.",
   intro_statement_5: "Tanpa mengunci alat petambak.",
+  intro_principle_kicker: "PRINSIP DESAIN",
+  intro_principle_title: "Anti-Bricking & Otomasi Lokal",
   intro_desc:
     "Arsitektur 1 Core Hub untuk 1-4 Modul Kolam dengan Edge Fuzzy + LittleFS Store-and-Forward, Sensor Health Watchdog, dan WeningBot WhatsApp-First. Mode Offline-Plus Rp0 aktif permanen.",
-  contact_email: "banyuwening@example.id",
-  contact_phone: "+62 8566-9548-964",
-  institution_name: "Institut Teknologi dan Bisnis PalComTech",
-  institution_url: "https://palcomtech.ac.id/",
-  cta_text:
-    "Uji langsung respons Edge Fuzzy multi-kolam, Sensor Health Watchdog, dan simulasi pemantauan kualitas air kolam lele secara real-time.",
-  cta_button_text: "Buka Versi Demo",
-  copyright_text:
-    "© 2026 BanyuWening · Smart Aquaculture for a Sustainable Future.",
-  capabilities: [
+  intro_stats: [
+    { val: "<15 ms", label: "Inferensi Edge Fuzzy" },
+    { val: "72 Jam", label: "Log LittleFS Offline" },
+    { val: "Rp0", label: "Mode Offline-Plus" },
+  ] as LandingIntroStat[],
+  video_section_title: "Siklus 24 jam kolam terpal",
+  video_url: "/pics/kolam-timelapse.webm",
+  video_poster: "/pics/kolam-timelapse-poster.jpg",
+  diurnal_phases: [
     {
-      title: "Arsitektur 1 Core Hub : 1-4 Kolam",
-      desc: "Satu Core Hub (ESP32-WROOM, 2-3x ADS1115 16-bit, MCP23017, Box IP65) memantau hingga 4 kolam berdempetan milik satu pemilik via kabel shielded maksimal 3-5 m dan soket GX16.",
-      tag: "Modular Multi-Kolam",
+      time: "06:00 Pagi",
+      title: "Stabilitas Suhu & Aerasi Pagi",
+      detail:
+        "DS18B20 mendeteksi penurunan suhu malam; Edge Fuzzy menyesuaikan durasi aerasi tanpa boros listrik.",
     },
     {
-      title: "Edge Fuzzy & Anti-Bricking Rp0",
-      desc: "Saat WiFi kolam terputus, Edge Fuzzy, RTC DS3231, dan LittleFS Store-and-Forward tetap menggerakkan aerator atau pompa. Mode Offline-Plus aktif permanen Rp0 walau SaaS dijeda.",
-      tag: "Offline-Plus",
+      time: "13:00 Siang",
+      title: "Puncak Radiasi & Fluktuasi pH",
+      detail:
+        "Fotosintesis fitoplankton menaikkan pH permukaan; ADS1115 16-bit mengawal ambang aman 6,5-8,5.",
     },
     {
-      title: "Edge Watchdog & Auto-Resume",
-      desc: "Watchdog perangkat keras menjaga siklus pemantauan tetap konsisten, menyimpan log sementara di memori LittleFS 72 jam saat koneksi terputus, dan mengirim notifikasi ke WhatsApp ketika daya maupun jaringan pulih.",
-      tag: "Edge Autonomy",
+      time: "19:00 Malam",
+      title: "Evaluasi Sisa Pakan & TDS",
+      detail:
+        "MOSFET switch menyalakan elektroda TDS sesaat agar terhindar dari korosi sambil membaca lonjakan organik.",
     },
     {
-      title: "Sensor Health Watchdog & Stilling Well",
-      desc: "Mendeteksi nilai flatline atau lensa turbidity jenuh lumut (SATURATED/FAULT), mengisolasi parameter rusak otomatis, serta melindungi probe dalam pipa PVC dengan MOSFET power-switch TDS.",
-      tag: "Ketahanan Lumpur",
+      time: "02:00 Dini Hari",
+      title: "Siaga Oksigen Terlarut Menurun",
+      detail:
+        "Fase paling kritis kolam terpal dijaga penuh Edge Fuzzy lokal + LittleFS Store-and-Forward 72 jam.",
+    },
+  ] as LandingDiurnalPhase[],
+
+  pipeline_heading: "Lima tahap otomasi",
+  pipeline_steps: [
+    {
+      num: "01",
+      verb: "Ukur",
+      title: "Multi-ADC 16-bit & Stilling Well",
+      detail:
+        "Sensor pH, DS18B20, TDS dengan MOSFET power-switch anti-korosi, Turbidity potting epoxy dalam stilling well PVC, serta Float Switch membaca 1-4 kolam melalui 2-3x ADS1115 dan kabel shielded maks 3-5 m.",
+      spec: "2-3x ADS1115 (8-12 kanal ADC) + MCP23017 + Filter EMI",
+      img: "/pics/ph-meter.jpg",
     },
     {
-      title: "Cloud Random Forest & HITL Safety Gate",
-      desc: "EMQX TLS, FastAPI Always-On, dan Supabase Pro memprediksi risiko air 1-3 jam ke depan. Setiap usulan JSON AI maupun Dual-OTA rollback 60 detik wajib lolos Human-in-the-Loop Engineer Gate.",
-      tag: "Always-On AI",
+      num: "02",
+      verb: "Isolasi",
+      title: "Sensor Health Watchdog",
+      detail:
+        "Watchdog mendeteksi nilai flatline atau lensa turbidity jenuh lumut (SATURATED/FAULT) agar tidak memicu alarm palsu, sementara LittleFS + RTC DS3231 menyimpan log lokal hingga 72 jam saat WiFi kolam terputus.",
+      spec: "Graceful degradation otomatis + LittleFS 72 Jam + Auto-Resume",
+      img: "/pics/esp32.jpg",
     },
     {
-      title: "WeningBot WhatsApp-First & Paket Panen",
-      desc: "Entry Rp1,65 jt, Starter 2K Rp2,45 jt, Juragan 4K Rp4,15 jt (PO DP 50% + Lunas 50%). SaaS Smart Guard Rp150rb/Rp225rb per siklus 3 bulan; >90% bot WA memakai Rule-Based Engine Rp0 LLM.",
-      tag: "Ekonomi UMKM",
+      num: "03",
+      verb: "Prediksi",
+      title: "Cold-Start & Random Forest",
+      detail:
+        "Dataset kalibrasi kolam budidaya memakai DO Meter Portabel dan Test Kit Amonia/Nitrit guna mengatasi bias organ labirin ikan lele sebelum model Random Forest memproyeksi risiko 1-3 jam ke depan.",
+      spec: "EMQX TLS + FastAPI Always-On + Supabase Pro per pond_id",
+      img: "/pics/lele-1.jpg",
     },
-  ] as LandingCapability[],
+    {
+      num: "04",
+      verb: "Aktuasi",
+      title: "Edge Fuzzy & Relay Aman",
+      detail:
+        "Relay 4-Ch/8-Ch menggerakkan aerator dan pompa AC 220V secara lokal saat WiFi terputus (Offline-Plus Rp0). Pembaruan parameter JSON AI dan Dual-OTA rollback 60 detik wajib lolos HITL Engineer Gate.",
+      spec: "Hard Safety Bounds + Duty-Cycle Clamp + Zero Autonomous Push",
+      img: "/pics/aerasi.jpg",
+    },
+    {
+      num: "05",
+      verb: "Kabari WA",
+      title: "WeningBot WhatsApp-First",
+      detail:
+        "Peringatan kritis kualitas air, notifikasi pemulihan Edge Watchdog, pengingat bilas probe mingguan 1-klik, dan ringkasan kondisi kolam dikirim langsung ke WhatsApp petambak.",
+      spec: ">90% Rule-Based Engine Rp0 LLM + Telegram & Dashboard Web",
+      img: "/pics/tjipanas.jpg",
+    },
+  ] as LandingPipelineStep[],
+
+  arch_heading_1: "Fungsional.",
+  arch_heading_2: "Dari desain.",
+  arch_aside:
+    "Empat lapisan sistem BanyuWening dari kolam hingga cloud. Gulir halaman atau klik salah satu lapisan untuk memutar dan membedah model 3D secara interaktif.",
+  arch_phases: [
+    {
+      phase: 0,
+      num: "01",
+      short_name: "Topologi",
+      label: "Topologi Modular 1 Core Hub : 1-4 Modul Kolam",
+      summary:
+        "Satu Core Hub melayani hingga 4 kolam terpal berdempetan milik satu petambak via soket kedap air GX16 dan kabel shielded maksimal 3-5 meter guna menjaga kejernihan sinyal ADC dan kestabilan kelistrikan.",
+      specs: "4 Port GX16 Shielded · 1-4 Stilling Well PVC · Jangkauan 3-5 meter",
+    },
+    {
+      phase: 1,
+      num: "02",
+      short_name: "Susunan PCB",
+      label: "Susunan PCB Berlapis & Pemisahan Jalur Daya",
+      summary:
+        "Carrier PCB menggabungkan ESP32-WROOM, 2-3x ADS1115 16-bit (8-12 kanal ADC), MCP23017, Level Shifter 3.3V/5V, MOSFET power-switch TDS anti-korosi, serta Relay 4-Ch / 8-Ch Optocoupler dengan filter EMI terisolasi.",
+      specs: "ESP32-WROOM · Multi-ADS1115 16-bit · Relay Optocoupler 4/8-Ch",
+    },
+    {
+      phase: 2,
+      num: "03",
+      short_name: "Anti-Lumpur",
+      label: "Ketahanan Lumpur & Sensor Health Watchdog",
+      summary:
+        "Probe ditempatkan di dalam stilling well PVC pelindung tubrukan ikan. Sensor Health Watchdog otomatis mengisolasi nilai flatline atau lensa turbidity jenuh lumut (SATURATED/FAULT) dan mengirim pengingat bilas ke WhatsApp.",
+      specs: "Stilling Well PVC · Isolasi SATURATED/FAULT · Garansi Hub IP65 12 Bln",
+    },
+    {
+      phase: 3,
+      num: "04",
+      short_name: "Hybrid Cloud",
+      label: "Always-On Cloud & HITL AI Safety Gate",
+      summary:
+        "Broker EMQX TLS Port 8883, FastAPI Always-On, dan Supabase Pro memproses proyeksi Random Forest 1-3 jam per pond_id. Pembaruan parameter JSON wajib melalui Human-in-the-Loop Engineer Gate + Dual-OTA 60s rollback.",
+      specs: "EMQX TLS 8883 · Random Forest 1-3 Jam · WeningBot WhatsApp-First",
+    },
+  ] as LandingArchPhase[],
+
+  packages_heading: "Skala modular sesuai kebutuhan kolam",
+  packages_subtitle:
+    "Perangkat dibeli penuh petambak, dilindungi Mode Offline-Plus Rp0 permanen.",
+  packages: [
+    {
+      num: "01",
+      badge: "Skala Uji Awal",
+      name: "Paket Entry 1K",
+      config: "1 Core Hub + 1 Modul Kolam",
+      price: "Rp1.650.000",
+      saas: "Opsional Smart Guard Rp150rb / 3 bln",
+      highlights: [
+        "2x ADS1115 (8-Ch ADC 16-bit)",
+        "Relay 4-Ch Optocoupler + Stilling Well PVC",
+        "Edge Fuzzy & Mode Offline-Plus Rp0 permanen",
+      ],
+      featured: false,
+    },
+    {
+      num: "02",
+      badge: "Paling Populer UMKM",
+      name: "Paket Starter 2K",
+      config: "1 Core Hub + 2 Modul Kolam",
+      price: "Rp2.450.000",
+      saas: "Smart Guard Rp150rb / siklus 3 bln",
+      highlights: [
+        "Dual-Kolam sinkron via soket GX16 IP65",
+        "Sensor Health Watchdog & WeningBot WhatsApp",
+        "Siap ekspansi tambah hingga 4 Modul Kolam",
+      ],
+      featured: true,
+    },
+    {
+      num: "03",
+      badge: "Klaster Produktif",
+      name: "Paket Juragan 4K",
+      config: "1 Core Hub + 4 Modul Kolam",
+      price: "Rp4.150.000",
+      saas: "Smart Guard Rp225rb / siklus 3 bln",
+      highlights: [
+        "3x ADS1115 (12-Ch ADC) + MCP23017",
+        "Relay 8-Ch (aerator + pompa sirkulasi / kolam)",
+        "Prediksi Random Forest 1-3 jam per pond_id",
+      ],
+      featured: false,
+    },
+  ] as LandingPackageItem[],
+
+  faq_heading: "Pertanyaan teknis & operasional",
   faqs: [
     {
       q: "Mengapa tidak menyertakan sensor DO dan Amonia di paket Rp2,45 juta, serta bagaimana mengatasi organ labirin ikan lele?",
-      a: "Sensor DO optik/galvanik industri beserta probe amonia (NH3) menambah biaya di atas Rp2-4 juta dan menuntut perawatan membran rumit bagi UMKM. Untuk keterjangkauan, kami memakai proxy multivariat (suhu, turbiditas, TDS, pH, siklus diurnal) dengan Sensor Health Watchdog dan menyediakan slot ekspansi I2C/GX16 untuk add-on Modul DO Pro. Khusus bias perilaku naik ke permukaan akibat organ labirin lele, kalibrasi dilakukan dengan alat ukur DO Portabel dan Test Kit Amonia/Nitrit.",
+      a: "Sensor DO optik/galvanik industri beserta probe amonia (NH3) menambah biaya di atas Rp2-4 juta dan menuntut perawatan membran rumit bagi UMKM. Untuk keterjangkauan, kami memakai proxy multivariat (suhu, turbiditas, TDS, pH, siklus diurnal) dengan Sensor Health Watchdog dan menyediakan slot ekspansi I2C/GX16 untuk add-on Modul DO Pro. Khusus bias perilaku naik ke permukaan akibat organ labirin lele, kalibrasi dilakukan memakai DO Meter Portabel dan Test Kit Amonia/Nitrit.",
     },
     {
       q: "Bagaimana ketahanan sistem jika WiFi kolam atau jaringan internet terputus tengah malam?",
-      a: "Core Hub menjalankan inferensi Edge Fuzzy langsung di mikrokontroler lokal bersama RTC DS3231 dan penyimpanan LittleFS Store-and-Forward. Saat WiFi terputus, log pembacaan tetap terekam hingga ribuan entri sementara relay aerator maupun pompa tetap dikendalikan secara lokal dengan batas pengaman duty-cycle (Mode Offline-Plus Rp0 permanen).",
+      a: "Core Hub menjalankan inferensi Edge Fuzzy langsung pada mikrokontroler ESP32-WROOM bersama RTC DS3231 dan penyimpanan LittleFS Store-and-Forward 72 jam. Saat WiFi terputus, log pembacaan tetap tersimpan lokal sementara relay aerator maupun pompa tetap dikendalikan dengan batas aman duty-cycle secara permanen tanpa ketergantungan cloud (Mode Offline-Plus Rp0).",
     },
     {
       q: "Bagaimana pemisahan garansi perangkat keras dan probe kaca pH di lapangan?",
       a: "Kami memisahkan secara tegas antara garansi elektronik Core Hub dan modul kering IP65 selama 12 bulan dengan probe kaca pH (PH-4502C) dan elektroda TDS sebagai komponen habis pakai (consumable). Umur pakai riil probe di air budidaya adalah 4-6 bulan dengan garansi DOA 30 hari, sedangkan probe pengganti resmi tersedia secara transparan Rp195.000/probe.",
     },
     {
-      q: "Apa jaminan arsitektur agar perangkat petambak tidak pernah terkunci?",
-      a: "Perangkat keras BanyuWening dibeli penuh oleh petambak dan berjalan dengan kebijakan Anti-Bricking: mode Offline-Plus Rp0 permanen memastikan pembacaan sensor lokal, relay keselamatan aerator, dan kontrol pompa tetap aktif walaupun langganan SaaS Smart Guard dijeda.",
+      q: "Apa jaminan arsitektur agar perangkat petambak tidak pernah terkunci saat langganan berakhir?",
+      a: "Perangkat keras BanyuWening dibeli penuh oleh petambak dengan kebijakan Anti-Bricking: Mode Offline-Plus Rp0 permanen memastikan pembacaan sensor lokal, layar diagnostik kolam, relay keselamatan aerator, dan kontrol pompa tetap aktif walaupun langganan SaaS Smart Guard dijeda.",
     },
     {
-      q: "Bagaimana biaya infrastruktur cloud & WeningBot WhatsApp tetap efisien untuk banyak kolam?",
-      a: "Lebih dari 90% interaksi harian WeningBot WhatsApp memakai Rule-Based Engine lokal tanpa beban biaya LLM tambahan, dipadukan dengan broker EMQX TLS dan FastAPI yang hanya mengirim ringkasan telemetri dan peringatan kritis langsung ke WhatsApp petambak.",
+      q: "Bagaimana efisiensi layanan cloud dan notifikasi WeningBot WhatsApp untuk banyak kolam?",
+      a: "Lebih dari 90% interaksi harian WeningBot WhatsApp memakai Rule-Based Engine lokal yang cepat dan hemat biaya tanpa pemborosan kueri AI. Broker EMQX TLS dan FastAPI hanya mengirimkan peringatan kritis serta ringkasan kondisi kualitas air langsung ke nomor WhatsApp petambak.",
     },
   ] as LandingFaq[],
+
+  footer_kicker: "Sistem Monitoring & Otomasi Kolam Ikan BanyuWening",
+  footer_heading: "Mari bangun kolam presisi bersama.",
+  developer_team: [
+    { name: "Gofran Muttaqi Likhan", url: "https://portofolio-gofran.vercel.app" },
+    {
+      name: "M. Ilham Nandari",
+      url: "https://www.instagram.com/muhammadilhamnandari?jplx=dm5hcXBsZDY5bWdx",
+    },
+    {
+      name: "Monika Lisbet Lase",
+      url: "https://www.instagram.com/monciii_19?jplx=MjBtZDJzeDA2cDFk",
+    },
+  ] as LandingDeveloperMember[],
+  contact_email: "banyuwening@example.id",
+  contact_phone: "+62 8566-9548-964",
+  institution_name: "Institut Teknologi dan Bisnis PalComTech",
+  institution_url: "https://palcomtech.ac.id/",
+  cta_button_text: "Buka Versi Demo",
+  copyright_text: "© 2026 BanyuWening · Smart Aquaculture for a Sustainable Future.",
 };
+
+function mergePipelineSteps(initial?: LandingContentSettings): LandingPipelineStep[] {
+  const legacyImgs = [
+    initial?.step_1_img,
+    initial?.step_2_img,
+    initial?.step_3_img,
+    initial?.step_4_img,
+    initial?.step_5_img,
+  ];
+  return V2_DEFAULTS.pipeline_steps.map((def, idx) => {
+    const src = initial?.pipeline_steps?.[idx];
+    return {
+      num: src?.num || def.num,
+      verb: src?.verb || def.verb,
+      title: src?.title || def.title,
+      detail: src?.detail || def.detail,
+      spec: src?.spec || def.spec,
+      img: src?.img || legacyImgs[idx] || def.img,
+    };
+  });
+}
+
+function mergeArchPhases(initial?: LandingContentSettings): LandingArchPhase[] {
+  return V2_DEFAULTS.arch_phases.map((def, idx) => {
+    const src = initial?.arch_phases?.[idx];
+    return {
+      phase: def.phase,
+      num: src?.num || def.num,
+      short_name: src?.short_name || def.short_name,
+      label: src?.label || def.label,
+      summary: src?.summary || def.summary,
+      specs: src?.specs || def.specs,
+    };
+  });
+}
+
+function mergePassageBeats(initial?: LandingContentSettings): LandingPassageBeat[] {
+  return V2_DEFAULTS.hero_passage_beats.map((def, idx) => {
+    const src = initial?.hero_passage_beats?.[idx];
+    return {
+      num: src?.num || def.num,
+      title: src?.title || def.title,
+      desc: src?.desc || def.desc,
+    };
+  });
+}
 
 export function SuperAdminContentManagement({
   landingContent: initialContent,
 }: SuperAdminContentManagementProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTabId>("media");
+  const [activeSubTab, setActiveSubTab] = useState<SubTabId>("hero");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-  // Hidden File Input Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUploadTargetRef = useRef<{
     fieldKey: string;
     setter: (val: string) => void;
   } | null>(null);
 
-  // Form State : Teks Hero
-  const [heroTag, setHeroTag] = useState(
-    initialContent?.hero_tag || V2_DEFAULTS.hero_tag
+  const formatWhatsAppNumber = (val: string): string => {
+    if (!val || val.trim() === "") return "+62 ";
+    let digits = val.replace(/\D/g, "");
+    if (digits.startsWith("62")) digits = digits.slice(2);
+    else if (digits.startsWith("0")) digits = digits.slice(1);
+    digits = digits.slice(0, 13);
+    if (digits.length === 0) return "+62 ";
+    const chunks: string[] = [];
+    for (let i = 0; i < digits.length; i += 4) {
+      chunks.push(digits.slice(i, i + 4));
+    }
+    return `+62 ${chunks.join("-")}`;
+  };
+
+  // Tab 1: Hero 3D (Stage 01, 02, 03)
+  const [heroTag, setHeroTag] = useState(initialContent?.hero_tag || V2_DEFAULTS.hero_tag);
+  const [heroRightTag, setHeroRightTag] = useState(
+    initialContent?.hero_right_tag || V2_DEFAULTS.hero_right_tag
   );
-  const [heroTitle, setHeroTitle] = useState(
-    initialContent?.hero_title || V2_DEFAULTS.hero_title
+  const [heroTitle, setHeroTitle] = useState(initialContent?.hero_title || V2_DEFAULTS.hero_title);
+  const [heroHeadline1, setHeroHeadline1] = useState(
+    initialContent?.hero_headline_1 || V2_DEFAULTS.hero_headline_1
+  );
+  const [heroHeadline2, setHeroHeadline2] = useState(
+    initialContent?.hero_headline_2 || V2_DEFAULTS.hero_headline_2
   );
   const [heroSubtitle, setHeroSubtitle] = useState(
     initialContent?.hero_subtitle || V2_DEFAULTS.hero_subtitle
   );
+  const [ctaButtonText, setCtaButtonText] = useState(
+    initialContent?.cta_button_text || V2_DEFAULTS.cta_button_text
+  );
+  const [heroStage2Kicker, setHeroStage2Kicker] = useState(
+    initialContent?.hero_stage2_kicker || V2_DEFAULTS.hero_stage2_kicker
+  );
+  const [heroStage2Title1, setHeroStage2Title1] = useState(
+    initialContent?.hero_stage2_title_1 || V2_DEFAULTS.hero_stage2_title_1
+  );
+  const [heroStage2Title2, setHeroStage2Title2] = useState(
+    initialContent?.hero_stage2_title_2 || V2_DEFAULTS.hero_stage2_title_2
+  );
+  const [heroStage2Desc, setHeroStage2Desc] = useState(
+    initialContent?.hero_stage2_desc || V2_DEFAULTS.hero_stage2_desc
+  );
+  const [heroPassageBeats, setHeroPassageBeats] = useState<LandingPassageBeat[]>(() =>
+    mergePassageBeats(initialContent)
+  );
+  const [heroStage3Kicker, setHeroStage3Kicker] = useState(
+    initialContent?.hero_stage3_kicker || V2_DEFAULTS.hero_stage3_kicker
+  );
+  const [heroStage3Title1, setHeroStage3Title1] = useState(
+    initialContent?.hero_stage3_title_1 || V2_DEFAULTS.hero_stage3_title_1
+  );
+  const [heroStage3Title2, setHeroStage3Title2] = useState(
+    initialContent?.hero_stage3_title_2 || V2_DEFAULTS.hero_stage3_title_2
+  );
+  const [heroStage3Desc, setHeroStage3Desc] = useState(
+    initialContent?.hero_stage3_desc || V2_DEFAULTS.hero_stage3_desc
+  );
 
-  // Narasi Intro Tangga
+  // Tab 2: Intro Tangga & Siklus 24 Jam
   const [introStatement1, setIntroStatement1] = useState(
     initialContent?.intro_statement_1 || V2_DEFAULTS.intro_statement_1
   );
@@ -170,44 +469,84 @@ export function SuperAdminContentManagement({
   const [introStatement5, setIntroStatement5] = useState(
     initialContent?.intro_statement_5 || V2_DEFAULTS.intro_statement_5
   );
-  const [introDesc, setIntroDesc] = useState(
-    initialContent?.intro_desc || V2_DEFAULTS.intro_desc
+  const [introPrincipleKicker, setIntroPrincipleKicker] = useState(
+    initialContent?.intro_principle_kicker || V2_DEFAULTS.intro_principle_kicker
+  );
+  const [introPrincipleTitle, setIntroPrincipleTitle] = useState(
+    initialContent?.intro_principle_title || V2_DEFAULTS.intro_principle_title
+  );
+  const [introDesc, setIntroDesc] = useState(initialContent?.intro_desc || V2_DEFAULTS.intro_desc);
+  const [introStats, setIntroStats] = useState<LandingIntroStat[]>(
+    initialContent?.intro_stats && initialContent.intro_stats.length > 0
+      ? initialContent.intro_stats
+      : V2_DEFAULTS.intro_stats
+  );
+  const [videoSectionTitle, setVideoSectionTitle] = useState(
+    initialContent?.video_section_title || V2_DEFAULTS.video_section_title
+  );
+  const [videoUrl, setVideoUrl] = useState(initialContent?.video_url || V2_DEFAULTS.video_url);
+  const [videoPoster, setVideoPoster] = useState(
+    initialContent?.video_poster || V2_DEFAULTS.video_poster
+  );
+  const [diurnalPhases, setDiurnalPhases] = useState<LandingDiurnalPhase[]>(
+    initialContent?.diurnal_phases && initialContent.diurnal_phases.length > 0
+      ? initialContent.diurnal_phases
+      : V2_DEFAULTS.diurnal_phases
   );
 
-  // Helper format nomor WhatsApp: +62 8566-9548-964 (tiap 4 angka otomatis dipisahkan dengan tanda '-')
-  const formatWhatsAppNumber = (val: string): string => {
-    if (!val || val.trim() === "") {
-      return "+62 ";
-    }
+  // Tab 3: 5 Tahap Otomasi
+  const [pipelineHeading, setPipelineHeading] = useState(
+    initialContent?.pipeline_heading || V2_DEFAULTS.pipeline_heading
+  );
+  const [pipelineSteps, setPipelineSteps] = useState<LandingPipelineStep[]>(() =>
+    mergePipelineSteps(initialContent)
+  );
 
-    // Ambil hanya digit angka
-    let digits = val.replace(/\D/g, "");
+  // Tab 4: Arsitektur 3D
+  const [archHeading1, setArchHeading1] = useState(
+    initialContent?.arch_heading_1 || V2_DEFAULTS.arch_heading_1
+  );
+  const [archHeading2, setArchHeading2] = useState(
+    initialContent?.arch_heading_2 || V2_DEFAULTS.arch_heading_2
+  );
+  const [archAside, setArchAside] = useState(initialContent?.arch_aside || V2_DEFAULTS.arch_aside);
+  const [archPhases, setArchPhases] = useState<LandingArchPhase[]>(() =>
+    mergeArchPhases(initialContent)
+  );
 
-    // Jika diawali 62 (kode negara), hilangkan agar tidak dobel
-    if (digits.startsWith("62")) {
-      digits = digits.slice(2);
-    } else if (digits.startsWith("0")) {
-      // Jika diawali 0 (misal 0856...), hilangkan 0
-      digits = digits.slice(1);
-    }
+  // Tab 5: Paket & Harga
+  const [packagesHeading, setPackagesHeading] = useState(
+    initialContent?.packages_heading || V2_DEFAULTS.packages_heading
+  );
+  const [packagesSubtitle, setPackagesSubtitle] = useState(
+    initialContent?.packages_subtitle || V2_DEFAULTS.packages_subtitle
+  );
+  const [packages, setPackages] = useState<LandingPackageItem[]>(
+    initialContent?.packages && initialContent.packages.length > 0
+      ? initialContent.packages
+      : V2_DEFAULTS.packages
+  );
 
-    // Batasi hingga 13 digit nomor seluler
-    digits = digits.slice(0, 13);
+  // Tab 6: FAQ
+  const [faqHeading, setFaqHeading] = useState(
+    initialContent?.faq_heading || V2_DEFAULTS.faq_heading
+  );
+  const [faqs, setFaqs] = useState<LandingFaq[]>(
+    initialContent?.faqs && initialContent.faqs.length > 0 ? initialContent.faqs : V2_DEFAULTS.faqs
+  );
 
-    if (digits.length === 0) {
-      return "+62 ";
-    }
-
-    // Pisahkan tiap 4 digit: 8566-9548-964
-    const chunks: string[] = [];
-    for (let i = 0; i < digits.length; i += 4) {
-      chunks.push(digits.slice(i, i + 4));
-    }
-
-    return `+62 ${chunks.join("-")}`;
-  };
-
-  // Kontak & Email
+  // Tab 7: Tim, Kontak & Footer
+  const [footerKicker, setFooterKicker] = useState(
+    initialContent?.footer_kicker || V2_DEFAULTS.footer_kicker
+  );
+  const [footerHeading, setFooterHeading] = useState(
+    initialContent?.footer_heading || V2_DEFAULTS.footer_heading
+  );
+  const [developerTeam, setDeveloperTeam] = useState<LandingDeveloperMember[]>(
+    initialContent?.developer_team && initialContent.developer_team.length > 0
+      ? initialContent.developer_team
+      : V2_DEFAULTS.developer_team
+  );
   const [contactEmail, setContactEmail] = useState(
     initialContent?.contact_email || V2_DEFAULTS.contact_email
   );
@@ -220,76 +559,15 @@ export function SuperAdminContentManagement({
   const [institutionUrl, setInstitutionUrl] = useState(
     initialContent?.institution_url || V2_DEFAULTS.institution_url
   );
-
-  // CTA & Footer
-  const [ctaText, setCtaText] = useState(
-    initialContent?.cta_text || V2_DEFAULTS.cta_text
-  );
-  const [ctaButtonText, setCtaButtonText] = useState(
-    initialContent?.cta_button_text || V2_DEFAULTS.cta_button_text
-  );
   const [copyrightText, setCopyrightText] = useState(
     initialContent?.copyright_text || V2_DEFAULTS.copyright_text
   );
-
-  // Fitur List
-  const [capabilities, setCapabilities] = useState<LandingCapability[]>(
-    initialContent?.capabilities || V2_DEFAULTS.capabilities
-  );
-
-  // FAQ List
-  const [faqs, setFaqs] = useState<LandingFaq[]>(
-    initialContent?.faqs || V2_DEFAULTS.faqs
-  );
-
-  // Media State (Gambar & Video)
-  const [heroBgImage, setHeroBgImage] = useState(
-    initialContent?.hero_bg_image || "/pics/aerasi.jpg"
-  );
-  const [videoUrl, setVideoUrl] = useState(
-    initialContent?.video_url || "/pics/kolam-timelapse.webm"
-  );
-  const [videoPoster, setVideoPoster] = useState(
-    initialContent?.video_poster || "/pics/kolam-timelapse-poster.jpg"
-  );
-  const [step1Img, setStep1Img] = useState(
-    initialContent?.step_1_img || "/pics/ph-meter.jpg"
-  );
-  const [step2Img, setStep2Img] = useState(
-    initialContent?.step_2_img || "/pics/esp32.jpg"
-  );
-  const [step3Img, setStep3Img] = useState(
-    initialContent?.step_3_img || "/pics/lele-1.jpg"
-  );
-  const [step4Img, setStep4Img] = useState(
-    initialContent?.step_4_img || "/pics/aerasi.jpg"
-  );
-  const [step5Img, setStep5Img] = useState(
-    initialContent?.step_5_img || "/pics/tjipanas.jpg"
-  );
-  const [showcase1Img, setShowcase1Img] = useState(
-    initialContent?.showcase_1_img || "/pics/takeran.jpg"
-  );
-  const [showcase2Img, setShowcase2Img] = useState(
-    initialContent?.showcase_2_img || "/pics/esp32.jpg"
-  );
-  const [showcase3Img, setShowcase3Img] = useState(
-    initialContent?.showcase_3_img || "/pics/aerasi.jpg"
-  );
-  const [showcase4Img, setShowcase4Img] = useState(
-    initialContent?.showcase_4_img || "/pics/ph-meter.jpg"
-  );
-  const [footerBgImage, setFooterBgImage] = useState(
-    initialContent?.footer_bg_image || "/pics/takeran.jpg"
-  );
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Upload handler ke backend Laravel
   const triggerUpload = (
     fieldKey: string,
     setter: (val: string) => void,
@@ -351,13 +629,10 @@ export function SuperAdminContentManagement({
     }
 
     setUploadingField(fieldKey);
-
     const formData = new FormData();
     formData.append("file", file);
 
-    const token = (
-      document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement
-    )?.content;
+    const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
 
     try {
       const res = await fetch("/dashboard/landing-media/upload", {
@@ -393,8 +668,11 @@ export function SuperAdminContentManagement({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+
     if (!contactEmail.trim()) {
-      alert("Alamat email kontak tidak boleh kosong.");
+      setActiveSubTab("kontak");
+      setSaveError("Alamat email resmi wajib diisi sebelum menyimpan perubahan.");
       return;
     }
 
@@ -403,50 +681,111 @@ export function SuperAdminContentManagement({
       "/dashboard/landing-content",
       {
         hero_tag: heroTag.trim(),
+        hero_right_tag: heroRightTag.trim(),
         hero_title: heroTitle.trim(),
+        hero_headline_1: heroHeadline1.trim(),
+        hero_headline_2: heroHeadline2.trim(),
         hero_subtitle: heroSubtitle.trim(),
+        hero_stage2_kicker: heroStage2Kicker.trim(),
+        hero_stage2_title_1: heroStage2Title1.trim(),
+        hero_stage2_title_2: heroStage2Title2.trim(),
+        hero_stage2_desc: heroStage2Desc.trim(),
+        hero_passage_beats: heroPassageBeats.map((b) => ({
+          num: b.num.trim(),
+          title: b.title.trim(),
+          desc: b.desc.trim(),
+        })),
+        hero_stage3_kicker: heroStage3Kicker.trim(),
+        hero_stage3_title_1: heroStage3Title1.trim(),
+        hero_stage3_title_2: heroStage3Title2.trim(),
+        hero_stage3_desc: heroStage3Desc.trim(),
+
         intro_statement_1: introStatement1.trim(),
         intro_statement_2: introStatement2.trim(),
         intro_statement_3: introStatement3.trim(),
         intro_statement_4: introStatement4.trim(),
         intro_statement_5: introStatement5.trim(),
+        intro_principle_kicker: introPrincipleKicker.trim(),
+        intro_principle_title: introPrincipleTitle.trim(),
         intro_desc: introDesc.trim(),
+        intro_stats: introStats.map((s) => ({ val: s.val.trim(), label: s.label.trim() })),
+        video_section_title: videoSectionTitle.trim(),
+        video_url: videoUrl.trim(),
+        video_poster: videoPoster.trim(),
+        diurnal_phases: diurnalPhases.map((d) => ({
+          time: d.time.trim(),
+          title: d.title.trim(),
+          detail: d.detail.trim(),
+        })),
+
+        pipeline_heading: pipelineHeading.trim(),
+        pipeline_steps: pipelineSteps.map((st) => ({
+          num: st.num.trim(),
+          verb: st.verb.trim(),
+          title: st.title.trim(),
+          detail: st.detail.trim(),
+          spec: st.spec.trim(),
+          img: st.img.trim(),
+        })),
+        step_1_img: pipelineSteps[0]?.img.trim() || "/pics/ph-meter.jpg",
+        step_2_img: pipelineSteps[1]?.img.trim() || "/pics/esp32.jpg",
+        step_3_img: pipelineSteps[2]?.img.trim() || "/pics/lele-1.jpg",
+        step_4_img: pipelineSteps[3]?.img.trim() || "/pics/aerasi.jpg",
+        step_5_img: pipelineSteps[4]?.img.trim() || "/pics/tjipanas.jpg",
+
+        arch_heading_1: archHeading1.trim(),
+        arch_heading_2: archHeading2.trim(),
+        arch_aside: archAside.trim(),
+        arch_phases: archPhases.map((ap) => ({
+          phase: ap.phase,
+          num: ap.num.trim(),
+          short_name: ap.short_name.trim(),
+          label: ap.label.trim(),
+          summary: ap.summary.trim(),
+          specs: ap.specs.trim(),
+        })),
+
+        packages_heading: packagesHeading.trim(),
+        packages_subtitle: packagesSubtitle.trim(),
+        packages: packages.map((pkg) => ({
+          num: pkg.num.trim(),
+          badge: pkg.badge.trim(),
+          name: pkg.name.trim(),
+          config: pkg.config.trim(),
+          price: pkg.price.trim(),
+          saas: pkg.saas.trim(),
+          highlights: (pkg.highlights || []).map((h) => h.trim()).filter(Boolean),
+          featured: Boolean(pkg.featured),
+        })),
+
+        faq_heading: faqHeading.trim(),
+        faqs: faqs.map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
+
+        footer_kicker: footerKicker.trim(),
+        footer_heading: footerHeading.trim(),
+        developer_team: developerTeam.map((m) => ({ name: m.name.trim(), url: m.url.trim() })),
         contact_email: contactEmail.trim(),
         contact_phone: contactPhone.trim(),
         institution_name: institutionName.trim(),
         institution_url: institutionUrl.trim(),
-        cta_text: ctaText.trim(),
         cta_button_text: ctaButtonText.trim(),
         copyright_text: copyrightText.trim(),
-        capabilities,
-        faqs,
-
-        // Media fields
-        hero_bg_image: heroBgImage.trim(),
-        video_url: videoUrl.trim(),
-        video_poster: videoPoster.trim(),
-        step_1_img: step1Img.trim(),
-        step_2_img: step2Img.trim(),
-        step_3_img: step3Img.trim(),
-        step_4_img: step4Img.trim(),
-        step_5_img: step5Img.trim(),
-        showcase_1_img: showcase1Img.trim(),
-        showcase_2_img: showcase2Img.trim(),
-        showcase_3_img: showcase3Img.trim(),
-        showcase_4_img: showcase4Img.trim(),
-        footer_bg_image: footerBgImage.trim(),
       },
       {
         preserveScroll: true,
         onSuccess: () => {
           setIsSubmitting(false);
-          showToast(
-            "Seluruh konten, gambar, video, dan email resmi berhasil disimpan!"
-          );
+          setSaveError(null);
+          showToast("Seluruh konten landing page v2 berhasil disimpan dan disinkronkan!");
         },
-        onError: () => {
+        onError: (errors) => {
           setIsSubmitting(false);
-          alert("Gagal menyimpan konfigurasi. Periksa kelengkapan formulir.");
+          const messages = Object.values(errors || {}).filter(Boolean);
+          setSaveError(
+            messages.length > 0
+              ? `Gagal menyimpan: ${messages[0]}`
+              : "Gagal menyimpan konfigurasi. Periksa kembali isian formulir."
+          );
         },
       }
     );
@@ -455,79 +794,117 @@ export function SuperAdminContentManagement({
   const handleResetDefaults = () => {
     if (
       !confirm(
-        "Kembalikan seluruh konten, gambar, video, dan narasi landing page ke setelan awal pabrik BanyuWening?"
+        "Kembalikan seluruh konten landing page v2 (Hero 3D, Siklus 24J, 5 Tahap, Arsitektur 3D, Paket, FAQ, Tim & Kontak) ke setelan awal BanyuWening?"
       )
     ) {
       return;
     }
 
     setHeroTag(V2_DEFAULTS.hero_tag);
+    setHeroRightTag(V2_DEFAULTS.hero_right_tag);
     setHeroTitle(V2_DEFAULTS.hero_title);
+    setHeroHeadline1(V2_DEFAULTS.hero_headline_1);
+    setHeroHeadline2(V2_DEFAULTS.hero_headline_2);
     setHeroSubtitle(V2_DEFAULTS.hero_subtitle);
+    setCtaButtonText(V2_DEFAULTS.cta_button_text);
+    setHeroStage2Kicker(V2_DEFAULTS.hero_stage2_kicker);
+    setHeroStage2Title1(V2_DEFAULTS.hero_stage2_title_1);
+    setHeroStage2Title2(V2_DEFAULTS.hero_stage2_title_2);
+    setHeroStage2Desc(V2_DEFAULTS.hero_stage2_desc);
+    setHeroPassageBeats(V2_DEFAULTS.hero_passage_beats);
+    setHeroStage3Kicker(V2_DEFAULTS.hero_stage3_kicker);
+    setHeroStage3Title1(V2_DEFAULTS.hero_stage3_title_1);
+    setHeroStage3Title2(V2_DEFAULTS.hero_stage3_title_2);
+    setHeroStage3Desc(V2_DEFAULTS.hero_stage3_desc);
+
     setIntroStatement1(V2_DEFAULTS.intro_statement_1);
     setIntroStatement2(V2_DEFAULTS.intro_statement_2);
     setIntroStatement3(V2_DEFAULTS.intro_statement_3);
     setIntroStatement4(V2_DEFAULTS.intro_statement_4);
     setIntroStatement5(V2_DEFAULTS.intro_statement_5);
+    setIntroPrincipleKicker(V2_DEFAULTS.intro_principle_kicker);
+    setIntroPrincipleTitle(V2_DEFAULTS.intro_principle_title);
     setIntroDesc(V2_DEFAULTS.intro_desc);
+    setIntroStats(V2_DEFAULTS.intro_stats);
+    setVideoSectionTitle(V2_DEFAULTS.video_section_title);
+    setVideoUrl(V2_DEFAULTS.video_url);
+    setVideoPoster(V2_DEFAULTS.video_poster);
+    setDiurnalPhases(V2_DEFAULTS.diurnal_phases);
+
+    setPipelineHeading(V2_DEFAULTS.pipeline_heading);
+    setPipelineSteps(V2_DEFAULTS.pipeline_steps);
+
+    setArchHeading1(V2_DEFAULTS.arch_heading_1);
+    setArchHeading2(V2_DEFAULTS.arch_heading_2);
+    setArchAside(V2_DEFAULTS.arch_aside);
+    setArchPhases(V2_DEFAULTS.arch_phases);
+
+    setPackagesHeading(V2_DEFAULTS.packages_heading);
+    setPackagesSubtitle(V2_DEFAULTS.packages_subtitle);
+    setPackages(V2_DEFAULTS.packages);
+
+    setFaqHeading(V2_DEFAULTS.faq_heading);
+    setFaqs(V2_DEFAULTS.faqs);
+
+    setFooterKicker(V2_DEFAULTS.footer_kicker);
+    setFooterHeading(V2_DEFAULTS.footer_heading);
+    setDeveloperTeam(V2_DEFAULTS.developer_team);
     setContactEmail(V2_DEFAULTS.contact_email);
     setContactPhone(V2_DEFAULTS.contact_phone);
     setInstitutionName(V2_DEFAULTS.institution_name);
     setInstitutionUrl(V2_DEFAULTS.institution_url);
-    setCtaText(V2_DEFAULTS.cta_text);
-    setCtaButtonText(V2_DEFAULTS.cta_button_text);
     setCopyrightText(V2_DEFAULTS.copyright_text);
-    setCapabilities(V2_DEFAULTS.capabilities);
-    setFaqs(V2_DEFAULTS.faqs);
 
-    // Media defaults
-    setHeroBgImage("/pics/aerasi.jpg");
-    setVideoUrl("/pics/kolam-timelapse.webm");
-    setVideoPoster("/pics/kolam-timelapse-poster.jpg");
-    setStep1Img("/pics/ph-meter.jpg");
-    setStep2Img("/pics/esp32.jpg");
-    setStep3Img("/pics/lele-1.jpg");
-    setStep4Img("/pics/aerasi.jpg");
-    setStep5Img("/pics/tjipanas.jpg");
-    setShowcase1Img("/pics/takeran.jpg");
-    setShowcase2Img("/pics/esp32.jpg");
-    setShowcase3Img("/pics/aerasi.jpg");
-    setShowcase4Img("/pics/ph-meter.jpg");
-    setFooterBgImage("/pics/takeran.jpg");
-
-    showToast("Konten telah direset di formulir. Klik 'Simpan Perubahan' untuk menerapkan.");
+    showToast("Konten v2 direset di formulir. Klik 'Simpan Perubahan' untuk menerbitkan.");
   };
 
-  // Helper Capability Handlers
-  const handleAddCapability = () => {
-    setCapabilities([
-      ...capabilities,
+  const updatePassageBeat = (idx: number, field: keyof LandingPassageBeat, val: string) => {
+    setHeroPassageBeats((prev) => prev.map((b, i) => (i === idx ? { ...b, [field]: val } : b)));
+  };
+
+  const updateIntroStat = (idx: number, field: keyof LandingIntroStat, val: string) => {
+    setIntroStats((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: val } : s)));
+  };
+
+  const updateDiurnalPhase = (idx: number, field: keyof LandingDiurnalPhase, val: string) => {
+    setDiurnalPhases((prev) => prev.map((d, i) => (i === idx ? { ...d, [field]: val } : d)));
+  };
+
+  const updatePipelineStep = (idx: number, field: keyof LandingPipelineStep, val: string) => {
+    setPipelineSteps((prev) => prev.map((st, i) => (i === idx ? { ...st, [field]: val } : st)));
+  };
+
+  const updateArchPhase = (idx: number, field: keyof LandingArchPhase, val: string) => {
+    setArchPhases((prev) => prev.map((ap, i) => (i === idx ? { ...ap, [field]: val } : ap)));
+  };
+
+  const handleAddPackage = () => {
+    setPackages((prev) => [
+      ...prev,
       {
-        title: "Fitur Baru Sistem",
-        desc: "Deskripsi singkat mengenai kapabilitas sistem atau sensor kolam.",
-        tag: "Teknologi Kolam",
+        num: String(prev.length + 1).padStart(2, "0"),
+        badge: "Paket Baru",
+        name: "Paket Kustom Kolam",
+        config: "1 Core Hub + N Modul Kolam",
+        price: "Rp0",
+        saas: "Smart Guard Opsional",
+        highlights: ["Spesifikasi unggulan 1", "Spesifikasi unggulan 2"],
+        featured: false,
       },
     ]);
   };
 
-  const handleUpdateCapability = (
-    index: number,
-    field: keyof LandingCapability,
-    val: string
-  ) => {
-    const updated = [...capabilities];
-    updated[index] = { ...updated[index], [field]: val };
-    setCapabilities(updated);
+  const updatePackage = (idx: number, patch: Partial<LandingPackageItem>) => {
+    setPackages((prev) => prev.map((pkg, i) => (i === idx ? { ...pkg, ...patch } : pkg)));
   };
 
-  const handleRemoveCapability = (index: number) => {
-    setCapabilities(capabilities.filter((_, i) => i !== index));
+  const removePackage = (idx: number) => {
+    setPackages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Helper FAQ Handlers
   const handleAddFaq = () => {
-    setFaqs([
-      ...faqs,
+    setFaqs((prev) => [
+      ...prev,
       {
         q: "Pertanyaan baru yang sering ditanyakan pembudidaya?",
         a: "Jawaban komprehensif mengenai cara kerja atau instalasi alat di kolam.",
@@ -536,34 +913,74 @@ export function SuperAdminContentManagement({
   };
 
   const handleUpdateFaq = (index: number, field: keyof LandingFaq, val: string) => {
-    const updated = [...faqs];
-    updated[index] = { ...updated[index], [field]: val };
-    setFaqs(updated);
+    setFaqs((prev) => prev.map((f, i) => (i === index ? { ...f, [field]: val } : f)));
   };
 
   const handleRemoveFaq = (index: number) => {
-    setFaqs(faqs.filter((_, i) => i !== index));
+    setFaqs((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const handleAddMember = () => {
+    setDeveloperTeam((prev) => [...prev, { name: "Nama Anggota Baru", url: "https://" }]);
+  };
+
+  const updateMember = (idx: number, field: keyof LandingDeveloperMember, val: string) => {
+    setDeveloperTeam((prev) => prev.map((m, i) => (i === idx ? { ...m, [field]: val } : m)));
+  };
+
+  const removeMember = (idx: number) => {
+    setDeveloperTeam((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const tabs: { id: SubTabId; label: string; icon: React.ReactNode; badge?: string }[] = [
+    { id: "hero", label: "01 · Hero 3D", icon: <Sparkles className="w-4 h-4" /> },
+    { id: "siklus", label: "02 · Intro & Siklus 24J", icon: <Clock className="w-4 h-4" /> },
+    { id: "otomasi", label: "03 · 5 Tahap Otomasi", icon: <Layers className="w-4 h-4" /> },
+    { id: "arsitektur", label: "04 · Arsitektur 3D", icon: <Box className="w-4 h-4" /> },
+    {
+      id: "paket",
+      label: `05 · Paket & Harga (${packages.length})`,
+      icon: <Package className="w-4 h-4" />,
+    },
+    {
+      id: "faq",
+      label: `06 · FAQ Teknis (${faqs.length})`,
+      icon: <HelpCircle className="w-4 h-4" />,
+    },
+    {
+      id: "kontak",
+      label: "07 · Tim, Kontak & Footer",
+      icon: <Users className="w-4 h-4" />,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Hidden Master File Input for direct uploads */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
 
-      {/* Toast Notification */}
       {toastMessage && (
-        <div className="p-4 bg-aman/15 border border-aman text-ink rounded-[6px] flex items-center gap-2.5 text-[13px] animate-fadeIn">
+        <div className="p-4 bg-aman/15 border border-aman text-ink rounded-[6px] flex items-center gap-2.5 text-[13px]">
           <CheckCircle2 className="w-5 h-5 text-aman shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Upload Security Error Banner */}
+      {saveError && (
+        <div className="p-4 bg-bahaya-bg/40 border border-bahaya/40 text-ink rounded-[6px] flex items-center justify-between gap-2.5 text-[13px]">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-bahaya shrink-0" />
+            <span>{saveError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="text-xs font-semibold text-muted hover:text-ink cursor-pointer"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
       {uploadError && (
         <div className="p-4 bg-bahaya-bg/40 border border-bahaya/40 text-ink rounded-[6px] flex items-center justify-between gap-2.5 text-[13px]">
           <div className="flex items-center gap-2.5">
@@ -585,14 +1002,15 @@ export function SuperAdminContentManagement({
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-brand text-[12px] font-semibold mb-2">
             <Globe className="w-3.5 h-3.5" />
-            <span>Content Management System (CMS)</span>
+            <span>CMS Landing Page v2</span>
           </div>
           <h1 className="text-[24px] md:text-[28px] font-display text-ink leading-tight">
             Manajemen Konten Landing Page
           </h1>
           <p className="text-[13px] text-muted mt-1">
-            Atur teks hero, narasi intro, video ekosistem kolam, 5 foto tahapan pipeline,
-            tanya jawab (FAQ), tombol demo, dan kontak resmi yang tampil di landing page BanyuWening.
+            Seluruh tab tersusun 1:1 mengikuti bagian halaman depan BanyuWening v2—mulai dari
+            Hero 3D 3-tahap, Intro &amp; Siklus 24 Jam, 5 Tahap Otomasi, Arsitektur 3D, Paket Harga,
+            FAQ, hingga Tim &amp; Kontak Footer.
           </p>
         </div>
 
@@ -608,6 +1026,7 @@ export function SuperAdminContentManagement({
           </a>
 
           <button
+            type="button"
             onClick={handleSave}
             disabled={isSubmitting}
             className="h-10 px-5 bg-brand text-brand-ink rounded-[6px] text-[13px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs"
@@ -618,198 +1037,427 @@ export function SuperAdminContentManagement({
         </div>
       </div>
 
-      {/* Navigasi Sub-Tab */}
-      <div className="flex border-b border-line gap-2 overflow-x-auto pb-px text-[13px]">
-        <button
-          onClick={() => setActiveSubTab("media")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "media"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <ImageIcon className="w-4 h-4" />
-          <span>Gambar & Video Landing</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-brand/10 text-brand font-bold">
-            Penting
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("kontak")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "kontak"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Mail className="w-4 h-4" />
-          <span>Email & Kontak Resmi</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("hero")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "hero"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Hero & Judul Utama</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("intro")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "intro"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Narasi Intro</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("faq")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "faq"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <HelpCircle className="w-4 h-4" />
-          <span>Tanya Jawab / FAQ ({faqs.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("cta")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "cta"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          <span>Ajakan & Footer</span>
-        </button>
+      {/* Sub-Tab Navigation (7 Bagian v2) */}
+      <div className="flex border-b border-line gap-1.5 overflow-x-auto pb-px text-[13px]">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveSubTab(tab.id)}
+            className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeSubTab === tab.id
+                ? "border-brand text-brand"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* FORM BODY */}
       <form onSubmit={handleSave} className="space-y-6">
         {/* ======================================================== */}
-        {/* SUB-TAB 0: GAMBAR & VIDEO LANDING (MEDIA CMS)           */}
+        {/* 01 · HERO 3D (3-STAGE PORTAL JOURNEY)                    */}
         {/* ======================================================== */}
-        {activeSubTab === "media" && (
-          <div className="space-y-6 animate-fadeIn">
-            {/* Info Banner Media */}
+        {activeSubTab === "hero" && (
+          <div className="space-y-6">
             <div className="p-4 rounded-[6px] bg-brand/10 border border-brand/30 flex items-start gap-3">
-              <Film className="w-5 h-5 text-brand shrink-0 mt-0.5" />
+              <Sparkles className="w-5 h-5 text-brand shrink-0 mt-0.5" />
               <div className="text-[13px] text-ink leading-relaxed">
                 <span className="font-semibold text-brand block mb-0.5">
-                  Pengelolaan Media Visual Landing Page BanyuWening
+                  Hero Interaktif WebGL 3-Tahap (Apricode Portal)
                 </span>
-                Anda dapat mengganti foto latar belakang, video time-lapse dinamika kolam, poster video,
-                5 foto tahap otomasi sistem, 4 panel showcase, hingga latar footer. Anda bisa
-                <strong> mengetik path/URL</strong>, <strong>memilih preset foto kolam yang tersedia</strong>,
-                atau <strong>mengunggah file langsung dari komputer</strong> Anda (otomatis disimpan ke server).
+                Landing page v2 menggunakan latar 3D WebGL real-time di seluruh Hero (bukan foto
+                statis). Atur teks micro-kicker atas dan copywriting untuk Tahap 01 (Portal),
+                Tahap 02 (Lorong Core Hub), serta Tahap 03 (Ekosistem Kolam).
               </div>
             </div>
 
-            {/* SECTION 1: HERO & VIDEO */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Hero Background Image */}
-              <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-brand" />
-                    <h3 className="text-[15px] font-semibold text-ink">
-                      Gambar Latar Belakang Hero Utama
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-muted">Layar Penuh Atas</span>
-                </div>
-
-                <div className="aspect-video w-full rounded-[6px] overflow-hidden border border-line bg-surface-2 relative group">
-                  <img
-                    src={heroBgImage}
-                    alt="Preview Hero"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/pics/aerasi.jpg";
-                    }}
+            {/* Micro-Kicker Row */}
+            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
+              <h2 className="text-[15px] font-semibold text-ink">
+                Baris Micro-Kicker Atas Hero
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Tag Kiri Atas:</label>
+                  <input
+                    type="text"
+                    value={heroTag}
+                    onChange={(e) => setHeroTag(e.target.value)}
+                    placeholder="SMART AQUACULTURE STUDIO"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-mono uppercase focus:outline-hidden focus:border-brand"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <a
-                      href={heroBgImage}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white rounded text-[12px] inline-flex items-center gap-1.5"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Lihat Resolusi Penuh</span>
-                    </a>
-                  </div>
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Tag Kanan Atas:</label>
+                  <input
+                    type="text"
+                    value={heroRightTag}
+                    onChange={(e) => setHeroRightTag(e.target.value)}
+                    placeholder="EDGE FUZZY & IOT HARDWARE"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-mono uppercase focus:outline-hidden focus:border-brand"
+                  />
+                </div>
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <label className="text-[12px] font-medium text-muted block">
-                    URL atau Path File Gambar:
+            {/* Stage 01: Portal */}
+            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <h2 className="text-[16px] font-semibold text-ink">
+                  Tahap 01 · Portal Utama Hero
+                </h2>
+                <span className="mono-label text-[11px] text-brand">01 / BANYUWENING</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Nama Brand / Wordmark Footer (01 / ...):
                   </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={heroBgImage}
-                      onChange={(e) => setHeroBgImage(e.target.value)}
-                      placeholder="/pics/aerasi.jpg atau https://..."
-                      className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
-                    />
-                    <button
-                      type="button"
-                      disabled={uploadingField === "hero_bg"}
-                      onClick={() => triggerUpload("hero_bg", setHeroBgImage, "image/*")}
-                      className="px-3.5 py-2 bg-brand/10 hover:bg-brand/20 text-brand border border-brand/30 rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{uploadingField === "hero_bg" ? "Mengunggah..." : "Unggah"}</span>
-                    </button>
-                  </div>
-
-                  {/* Preset Choices */}
-                  <div className="pt-1 flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] text-muted mr-1">Preset Cepat:</span>
-                    {PRESET_IMAGES.slice(0, 4).map((p) => (
-                      <button
-                        key={p.path}
-                        type="button"
-                        onClick={() => setHeroBgImage(p.path)}
-                        className={`text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                          heroBgImage === p.path
-                            ? "bg-brand text-brand-ink border-brand"
-                            : "bg-surface-2 text-ink border-line hover:border-brand/40"
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
+                  <input
+                    type="text"
+                    value={heroTitle}
+                    onChange={(e) => setHeroTitle(e.target.value)}
+                    placeholder="BANYUWENING"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-bold tracking-wider uppercase focus:outline-hidden focus:border-brand"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Label Tombol Demo (Hero &amp; Footer):
+                  </label>
+                  <input
+                    type="text"
+                    value={ctaButtonText}
+                    onChange={(e) => setCtaButtonText(e.target.value)}
+                    placeholder="Buka Versi Demo"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Judul Besar Baris 1:
+                  </label>
+                  <input
+                    type="text"
+                    value={heroHeadline1}
+                    onChange={(e) => setHeroHeadline1(e.target.value)}
+                    placeholder="Buat kualitas air"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-ink focus:outline-hidden focus:border-brand"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Judul Besar Baris 2:
+                  </label>
+                  <input
+                    type="text"
+                    value={heroHeadline2}
+                    onChange={(e) => setHeroHeadline2(e.target.value)}
+                    placeholder="kolam selalu terkendali"
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-ink focus:outline-hidden focus:border-brand"
+                  />
                 </div>
               </div>
 
-              {/* Video Section */}
-              <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-brand" />
-                    <h3 className="text-[15px] font-semibold text-ink">
-                      Video Time-lapse Dinamika Kolam
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-muted">Bagian Time-lapse</span>
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">
+                  Subjudul Penjelasan Hero:
+                </label>
+                <textarea
+                  rows={2}
+                  value={heroSubtitle}
+                  onChange={(e) => setHeroSubtitle(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink leading-relaxed focus:outline-hidden focus:border-brand"
+                />
+              </div>
+            </div>
 
-                <div className="aspect-video w-full rounded-[6px] overflow-hidden border border-line bg-black relative">
+            {/* Stage 02: Lorong Hub & 3 Passage Beats */}
+            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <h2 className="text-[16px] font-semibold text-ink">
+                  Tahap 02 · Lorong Topologi &amp; 3 Kartu Beat
+                </h2>
+                <span className="mono-label text-[11px] text-brand">02 / LORONG HUB</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Kicker Tahap 02:</label>
+                  <input
+                    type="text"
+                    value={heroStage2Kicker}
+                    onChange={(e) => setHeroStage2Kicker(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[12px] font-mono text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Judul Baris 1:</label>
+                  <input
+                    type="text"
+                    value={heroStage2Title1}
+                    onChange={(e) => setHeroStage2Title1(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Judul Baris 2:</label>
+                  <input
+                    type="text"
+                    value={heroStage2Title2}
+                    onChange={(e) => setHeroStage2Title2(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">Deskripsi Tahap 02:</label>
+                <textarea
+                  rows={2}
+                  value={heroStage2Desc}
+                  onChange={(e) => setHeroStage2Desc(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                {heroPassageBeats.map((beat, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 bg-surface-2 rounded-[6px] border border-line space-y-2"
+                  >
+                    <input
+                      type="text"
+                      value={beat.num}
+                      onChange={(e) => updatePassageBeat(idx, "num", e.target.value)}
+                      className="w-full px-2.5 py-1 bg-surface border border-line rounded text-[11px] font-mono font-bold text-brand uppercase"
+                      placeholder="01 UKUR"
+                    />
+                    <input
+                      type="text"
+                      value={beat.title}
+                      onChange={(e) => updatePassageBeat(idx, "title", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[13px] font-semibold text-ink"
+                      placeholder="Judul Beat"
+                    />
+                    <textarea
+                      rows={2}
+                      value={beat.desc}
+                      onChange={(e) => updatePassageBeat(idx, "desc", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[12px] text-ink"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stage 03: Ekosistem Kolam */}
+            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <h2 className="text-[16px] font-semibold text-ink">
+                  Tahap 03 · Otonomi Pinggir Kolam
+                </h2>
+                <span className="mono-label text-[11px] text-brand">03 / EKOSISTEM</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Kicker Tahap 03:</label>
+                  <input
+                    type="text"
+                    value={heroStage3Kicker}
+                    onChange={(e) => setHeroStage3Kicker(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[12px] font-mono text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Judul Baris 1:</label>
+                  <input
+                    type="text"
+                    value={heroStage3Title1}
+                    onChange={(e) => setHeroStage3Title1(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Judul Baris 2:</label>
+                  <input
+                    type="text"
+                    value={heroStage3Title2}
+                    onChange={(e) => setHeroStage3Title2(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">Deskripsi Tahap 03:</label>
+                <textarea
+                  rows={2}
+                  value={heroStage3Desc}
+                  onChange={(e) => setHeroStage3Desc(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* 02 · INTRO TANGGA & SIKLUS 24 JAM (VIDEO + 4 FASE)       */}
+        {/* ======================================================== */}
+        {activeSubTab === "siklus" && (
+          <div className="space-y-6">
+            {/* Narasi Tangga */}
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-5">
+              <div>
+                <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-brand" />
+                  <span>Narasi Tangga &amp; Prinsip Desain</span>
+                </h2>
+                <p className="text-[13px] text-muted mt-1">
+                  Lima kalimat bertingkat yang muncul berurutan saat halaman digulir, diikuti blok
+                  Prinsip Desain dan 3 metrik kunci.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                {[
+                  { label: "Baris 1", val: introStatement1, set: setIntroStatement1, cls: "" },
+                  {
+                    label: "Baris 2",
+                    val: introStatement2,
+                    set: setIntroStatement2,
+                    cls: "md:pl-6",
+                  },
+                  {
+                    label: "Baris 3",
+                    val: introStatement3,
+                    set: setIntroStatement3,
+                    cls: "md:pl-12",
+                  },
+                  {
+                    label: "Baris 4",
+                    val: introStatement4,
+                    set: setIntroStatement4,
+                    cls: "md:pl-18",
+                  },
+                  {
+                    label: "Baris 5",
+                    val: introStatement5,
+                    set: setIntroStatement5,
+                    cls: "md:pl-24",
+                  },
+                ].map((row) => (
+                  <div key={row.label} className={`space-y-1 ${row.cls}`}>
+                    <label className="text-[12px] font-semibold text-muted">{row.label}:</label>
+                    <input
+                      type="text"
+                      value={row.val}
+                      onChange={(e) => row.set(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-medium"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-line">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Kicker Prinsip Desain:
+                  </label>
+                  <input
+                    type="text"
+                    value={introPrincipleKicker}
+                    onChange={(e) => setIntroPrincipleKicker(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[12px] font-mono uppercase text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Judul Prinsip Desain:
+                  </label>
+                  <input
+                    type="text"
+                    value={introPrincipleTitle}
+                    onChange={(e) => setIntroPrincipleTitle(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] font-semibold text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">
+                  Deskripsi Prinsip Desain:
+                </label>
+                <textarea
+                  rows={3}
+                  value={introDesc}
+                  onChange={(e) => setIntroDesc(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink leading-relaxed"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                {introStats.map((stat, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2"
+                  >
+                    <label className="text-[11px] font-bold text-brand uppercase block">
+                      Metrik #{idx + 1}
+                    </label>
+                    <input
+                      type="text"
+                      value={stat.val}
+                      onChange={(e) => updateIntroStat(idx, "val", e.target.value)}
+                      placeholder="<15 ms"
+                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[14px] font-bold text-ink"
+                    />
+                    <input
+                      type="text"
+                      value={stat.label}
+                      onChange={(e) => updateIntroStat(idx, "label", e.target.value)}
+                      placeholder="Inferensi Edge Fuzzy"
+                      className="w-full px-2.5 py-1 bg-surface border border-line rounded text-[12px] text-muted"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Video Time-lapse & 4 Fase Diurnal */}
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-5">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div className="flex items-center gap-2">
+                  <Video className="w-5 h-5 text-brand" />
+                  <h2 className="text-[18px] font-semibold text-ink">
+                    Video Ekosistem &amp; Siklus 24 Jam
+                  </h2>
+                </div>
+                <span className="mono-label text-[11px] text-muted">#siklus-24-jam</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">
+                  Judul Seksi Video &amp; Siklus:
+                </label>
+                <input
+                  type="text"
+                  value={videoSectionTitle}
+                  onChange={(e) => setVideoSectionTitle(e.target.value)}
+                  placeholder="Siklus 24 jam kolam terpal"
+                  className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-ink"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="aspect-video w-full rounded-[6px] overflow-hidden border border-line bg-black">
                   <video
                     src={videoUrl}
                     poster={videoPoster}
@@ -818,10 +1466,9 @@ export function SuperAdminContentManagement({
                   />
                 </div>
 
-                <div className="space-y-3">
-                  {/* Video URL */}
-                  <div>
-                    <label className="text-[12px] font-medium text-muted block mb-1">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-medium text-muted block">
                       URL atau File Video (.webm / .mp4):
                     </label>
                     <div className="flex gap-2">
@@ -829,8 +1476,8 @@ export function SuperAdminContentManagement({
                         type="text"
                         value={videoUrl}
                         onChange={(e) => setVideoUrl(e.target.value)}
-                        placeholder="/pics/kolam-timelapse.webm atau https://..."
-                        className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
+                        placeholder="/pics/kolam-timelapse.webm"
+                        className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
                       />
                       <button
                         type="button"
@@ -844,9 +1491,8 @@ export function SuperAdminContentManagement({
                     </div>
                   </div>
 
-                  {/* Poster Image */}
-                  <div>
-                    <label className="text-[12px] font-medium text-muted block mb-1">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-medium text-muted block">
                       Poster Thumbnail Video:
                     </label>
                     <div className="flex gap-2">
@@ -855,7 +1501,7 @@ export function SuperAdminContentManagement({
                         value={videoPoster}
                         onChange={(e) => setVideoPoster(e.target.value)}
                         placeholder="/pics/kolam-timelapse-poster.jpg"
-                        className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
+                        className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
                       />
                       <button
                         type="button"
@@ -864,716 +1510,307 @@ export function SuperAdminContentManagement({
                         className="px-3.5 py-2 bg-surface-2 hover:bg-line border border-line rounded-[6px] text-[12px] font-medium inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Poster</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 2: GAMBAR 5 TAHAP ALUR KERJA (HOW IT WORKS) */}
-            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
-              <div className="flex items-center justify-between border-b border-line pb-3">
-                <div>
-                  <h3 className="text-[16px] font-semibold text-ink flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-brand" />
-                    <span>Gambar 5 Tahap Alur Kerja Sistem (How It Works)</span>
-                  </h3>
-                  <p className="text-[12px] text-muted mt-0.5">
-                    Gambar fullscreen yang bergulir halus pada bagian "5 Tahap Otomasi BanyuWening".
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                {/* Tahap 1: Ukur */}
-                <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
-                    <span>Tahap 01</span>
-                    <span className="text-ink">Ukur (pH Probe)</span>
-                  </div>
-                  <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
-                    <img
-                      src={step1Img}
-                      alt="Tahap 1"
-                      className="w-full h-full object-cover"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/ph-meter.jpg")}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={step1Img}
-                    onChange={(e) => setStep1Img(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-surface border border-line rounded text-[11px] text-ink"
-                    placeholder="/pics/ph-meter.jpg"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingField === "step1"}
-                    onClick={() => triggerUpload("step1", setStep1Img)}
-                    className="w-full py-1 bg-surface hover:bg-line border border-line rounded text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3 text-muted" />
-                    <span>{uploadingField === "step1" ? "Mengunggah..." : "Unggah Gambar"}</span>
-                  </button>
-                </div>
-
-                {/* Tahap 2: Kirim */}
-                <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
-                    <span>Tahap 02</span>
-                    <span className="text-ink">Isolasi (Watchdog)</span>
-                  </div>
-                  <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
-                    <img
-                      src={step2Img}
-                      alt="Tahap 2"
-                      className="w-full h-full object-cover"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/esp32.jpg")}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={step2Img}
-                    onChange={(e) => setStep2Img(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-surface border border-line rounded text-[11px] text-ink"
-                    placeholder="/pics/esp32.jpg"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingField === "step2"}
-                    onClick={() => triggerUpload("step2", setStep2Img)}
-                    className="w-full py-1 bg-surface hover:bg-line border border-line rounded text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3 text-muted" />
-                    <span>{uploadingField === "step2" ? "Mengunggah..." : "Unggah Gambar"}</span>
-                  </button>
-                </div>
-
-                {/* Tahap 3: Prediksi */}
-                <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
-                    <span>Tahap 03</span>
-                    <span className="text-ink">Prediksi (Kolam)</span>
-                  </div>
-                  <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
-                    <img
-                      src={step3Img}
-                      alt="Tahap 3"
-                      className="w-full h-full object-cover"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/lele-1.jpg")}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={step3Img}
-                    onChange={(e) => setStep3Img(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-surface border border-line rounded text-[11px] text-ink"
-                    placeholder="/pics/lele-1.jpg"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingField === "step3"}
-                    onClick={() => triggerUpload("step3", setStep3Img)}
-                    className="w-full py-1 bg-surface hover:bg-line border border-line rounded text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3 text-muted" />
-                    <span>{uploadingField === "step3" ? "Mengunggah..." : "Unggah Gambar"}</span>
-                  </button>
-                </div>
-
-                {/* Tahap 4: Nyalakan */}
-                <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
-                    <span>Tahap 04</span>
-                    <span className="text-ink">Nyalakan (Aerasi)</span>
-                  </div>
-                  <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
-                    <img
-                      src={step4Img}
-                      alt="Tahap 4"
-                      className="w-full h-full object-cover"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/aerasi.jpg")}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={step4Img}
-                    onChange={(e) => setStep4Img(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-surface border border-line rounded text-[11px] text-ink"
-                    placeholder="/pics/aerasi.jpg"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingField === "step4"}
-                    onClick={() => triggerUpload("step4", setStep4Img)}
-                    className="w-full py-1 bg-surface hover:bg-line border border-line rounded text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3 text-muted" />
-                    <span>{uploadingField === "step4" ? "Mengunggah..." : "Unggah Gambar"}</span>
-                  </button>
-                </div>
-
-                {/* Tahap 5: Kabari */}
-                <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
-                    <span>Tahap 05</span>
-                    <span className="text-ink">Kabari WA</span>
-                  </div>
-                  <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
-                    <img
-                      src={step5Img}
-                      alt="Tahap 5"
-                      className="w-full h-full object-cover"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/tjipanas.jpg")}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={step5Img}
-                    onChange={(e) => setStep5Img(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-surface border border-line rounded text-[11px] text-ink"
-                    placeholder="/pics/tjipanas.jpg"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingField === "step5"}
-                    onClick={() => triggerUpload("step5", setStep5Img)}
-                    className="w-full py-1 bg-surface hover:bg-line border border-line rounded text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3 text-muted" />
-                    <span>{uploadingField === "step5" ? "Mengunggah..." : "Unggah Gambar"}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 3: GALERI SHOWCASE & FOOTER */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Showcase Panels */}
-              <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
-                <div className="flex items-center justify-between border-b border-line pb-3">
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-ink flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-brand" />
-                      <span>Galeri Kolam & Showcase (4 Kartu)</span>
-                    </h3>
-                    <p className="text-[12px] text-muted">
-                      Gambar yang tampil pada bagian showcase panel galeri landing page.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Showcase 1 */}
-                  <div className="p-2.5 bg-surface-2 rounded border border-line space-y-2">
-                    <span className="text-[11px] font-semibold text-ink block truncate">
-                      Panel 1: Budidaya Lele
-                    </span>
-                    <div className="h-20 rounded overflow-hidden bg-black/30">
-                      <img src={showcase1Img} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={showcase1Img}
-                        onChange={(e) => setShowcase1Img(e.target.value)}
-                        className="flex-1 px-2 py-1 bg-surface border border-line rounded text-[11px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload("sc1", setShowcase1Img)}
-                        className="p-1 bg-surface border border-line rounded hover:bg-line"
-                        title="Upload"
-                      >
-                        <Upload className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Showcase 2 */}
-                  <div className="p-2.5 bg-surface-2 rounded border border-line space-y-2">
-                    <span className="text-[11px] font-semibold text-ink block truncate">
-                      Panel 2: Node ESP32
-                    </span>
-                    <div className="h-20 rounded overflow-hidden bg-black/30">
-                      <img src={showcase2Img} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={showcase2Img}
-                        onChange={(e) => setShowcase2Img(e.target.value)}
-                        className="flex-1 px-2 py-1 bg-surface border border-line rounded text-[11px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload("sc2", setShowcase2Img)}
-                        className="p-1 bg-surface border border-line rounded hover:bg-line"
-                        title="Upload"
-                      >
-                        <Upload className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Showcase 3 */}
-                  <div className="p-2.5 bg-surface-2 rounded border border-line space-y-2">
-                    <span className="text-[11px] font-semibold text-ink block truncate">
-                      Panel 3: Aerasi Kolam
-                    </span>
-                    <div className="h-20 rounded overflow-hidden bg-black/30">
-                      <img src={showcase3Img} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={showcase3Img}
-                        onChange={(e) => setShowcase3Img(e.target.value)}
-                        className="flex-1 px-2 py-1 bg-surface border border-line rounded text-[11px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload("sc3", setShowcase3Img)}
-                        className="p-1 bg-surface border border-line rounded hover:bg-line"
-                        title="Upload"
-                      >
-                        <Upload className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Showcase 4 */}
-                  <div className="p-2.5 bg-surface-2 rounded border border-line space-y-2">
-                    <span className="text-[11px] font-semibold text-ink block truncate">
-                      Panel 4: Probe pH & TDS
-                    </span>
-                    <div className="h-20 rounded overflow-hidden bg-black/30">
-                      <img src={showcase4Img} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={showcase4Img}
-                        onChange={(e) => setShowcase4Img(e.target.value)}
-                        className="flex-1 px-2 py-1 bg-surface border border-line rounded text-[11px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload("sc4", setShowcase4Img)}
-                        className="p-1 bg-surface border border-line rounded hover:bg-line"
-                        title="Upload"
-                      >
-                        <Upload className="w-3 h-3" />
+                        <span>{uploadingField === "poster" ? "..." : "Poster"}</span>
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Footer Background Image */}
-              <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
-                <div className="flex items-center justify-between border-b border-line pb-3">
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-ink flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-brand" />
-                      <span>Gambar Latar Belakang Footer</span>
-                    </h3>
-                    <p className="text-[12px] text-muted">
-                      Gambar kolam yang menjadi latar belakang bagian kontak dan copyright bawah.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="h-40 rounded-[6px] overflow-hidden bg-black/40 border border-line relative">
-                  <img
-                    src={footerBgImage}
-                    alt="Footer Background"
-                    className="w-full h-full object-cover"
-                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/pics/takeran.jpg")}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[12px] font-medium text-muted block">
-                    URL atau Path Gambar Footer:
-                  </label>
-                  <div className="flex gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-line">
+                {diurnalPhases.map((phase, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2"
+                  >
                     <input
                       type="text"
-                      value={footerBgImage}
-                      onChange={(e) => setFooterBgImage(e.target.value)}
-                      placeholder="/pics/takeran.jpg"
-                      className="flex-1 px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink focus:outline-hidden focus:border-brand"
+                      value={phase.time}
+                      onChange={(e) => updateDiurnalPhase(idx, "time", e.target.value)}
+                      className="w-full px-2.5 py-1 bg-surface border border-line rounded text-[11px] font-mono font-bold text-brand"
+                      placeholder="06:00 Pagi"
                     />
-                    <button
-                      type="button"
-                      disabled={uploadingField === "footer_bg"}
-                      onClick={() => triggerUpload("footer_bg", setFooterBgImage)}
-                      className="px-3.5 py-2 bg-brand/10 hover:bg-brand/20 text-brand border border-brand/30 rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{uploadingField === "footer_bg" ? "Mengunggah..." : "Unggah"}</span>
-                    </button>
+                    <input
+                      type="text"
+                      value={phase.title}
+                      onChange={(e) => updateDiurnalPhase(idx, "title", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[13px] font-semibold text-ink"
+                    />
+                    <textarea
+                      rows={3}
+                      value={phase.detail}
+                      onChange={(e) => updateDiurnalPhase(idx, "detail", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[12px] text-ink leading-relaxed"
+                    />
                   </div>
-
-                  <div className="pt-1 flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] text-muted mr-1">Preset Cepat:</span>
-                    {PRESET_IMAGES.slice(1, 5).map((p) => (
-                      <button
-                        key={p.path}
-                        type="button"
-                        onClick={() => setFooterBgImage(p.path)}
-                        className={`text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                          footerBgImage === p.path
-                            ? "bg-brand text-brand-ink border-brand"
-                            : "bg-surface-2 text-ink border-line hover:border-brand/40"
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* SUB-TAB 1: EMAIL & KONTAK RESMI                          */}
+        {/* 03 · 5 TAHAP OTOMASI (#cara-kerja)                       */}
         {/* ======================================================== */}
-        {activeSubTab === "kontak" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
-                <Mail className="w-5 h-5 text-brand" />
-                <span>Pengaturan Email & Saluran Kontak Resmi</span>
-              </h2>
-              <p className="text-[13px] text-muted mt-1">
-                Alamat email yang diatur di sini akan otomatis tampil di seluruh tautan kontak
-                landing page, footer, serta kotak bantuan di halaman login. Tautan email diatur cerdas:
-                pada desktop langsung membuka web Gmail komposer, sedangkan pada smartphone memicu
-                aplikasi email bawaan perangkat.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
-                  <Mail className="w-4 h-4 text-brand" />
-                  <span>Alamat Email Utama Resmi</span>
-                  <span className="text-bahaya">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="admin@banyuwening.id"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
-                />
-                <span className="text-[11px] text-muted block">
-                  Contoh: <code>admin@banyuwening.id</code> atau <code>gofran@banyuwening.id</code>.
+        {activeSubTab === "otomasi" && (
+          <div className="space-y-6">
+            <div className="p-4 rounded-[6px] bg-brand/10 border border-brand/30 flex items-start gap-3">
+              <Film className="w-5 h-5 text-brand shrink-0 mt-0.5" />
+              <div className="text-[13px] text-ink leading-relaxed">
+                <span className="font-semibold text-brand block mb-0.5">
+                  5 Tahap Alur Otomasi BanyuWening (Scroll Parallax Deck)
                 </span>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-brand" />
-                  <span>Nomor WhatsApp / Hotline Petambak (+62)</span>
-                  <span className="text-bahaya">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(formatWhatsAppNumber(e.target.value))}
-                  onKeyDown={(e) => {
-                    const input = e.currentTarget;
-                    const start = input.selectionStart || 0;
-                    const end = input.selectionEnd || 0;
-                    // Kunci awalan "+62 ": cegah Backspace atau Delete sebelum/di dalam "+62 "
-                    if (e.key === "Backspace" && start <= 4 && end <= 4) {
-                      e.preventDefault();
-                    }
-                    if (e.key === "Delete" && start < 4) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onFocus={(e) => {
-                    if ((e.currentTarget.selectionStart || 0) < 4) {
-                      e.currentTarget.setSelectionRange(4, 4);
-                    }
-                  }}
-                  onClick={(e) => {
-                    if ((e.currentTarget.selectionStart || 0) < 4) {
-                      e.currentTarget.setSelectionRange(4, 4);
-                    }
-                  }}
-                  placeholder="+62 8566-9548-964"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
-                />
-                <span className="text-[11px] text-muted block">
-                  Format WAJIB menggunakan kode negara <code>+62</code> (contoh: <code>+62 8566-9548-964</code>).
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
-                  <Building className="w-4 h-4 text-brand" />
-                  <span>Nama Institusi / Afiliasi Kampus</span>
-                </label>
-                <input
-                  type="text"
-                  value={institutionName}
-                  onChange={(e) => setInstitutionName(e.target.value)}
-                  placeholder="Institut Teknologi dan Bisnis PalComTech"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand"
-                />
-                <span className="text-[11px] text-muted block">
-                  Teks nama kampus yang ditampilkan pada bagian Kontak & Kolaborasi serta Footer.
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
-                  <ExternalLink className="w-4 h-4 text-brand" />
-                  <span>Tautan Website Resmi Kampus (Hyperlink)</span>
-                </label>
-                <input
-                  type="url"
-                  value={institutionUrl}
-                  onChange={(e) => setInstitutionUrl(e.target.value)}
-                  placeholder="https://palcomtech.ac.id/"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
-                />
-                <span className="text-[11px] text-muted block">
-                  URL website yang akan terbuka di tab baru saat pengunjung mengklik tulisan nama institusi di halaman muka.
-                </span>
+                Edit kata kerja, judul, penjelasan teknis, spesifikasi bawah, serta foto tiap tahap
+                (01 Ukur hingga 05 Kabari WA). Anda bisa mengetik path, memilih preset foto kolam,
+                atau mengunggah foto langsung ke server.
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ======================================================== */}
-        {/* SUB-TAB 2: HERO & JUDUL UTAMA                            */}
-        {/* ======================================================== */}
-        {activeSubTab === "hero" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-brand" />
-                <span>Hero & Judul Utama Landing Page</span>
-              </h2>
-              <p className="text-[13px] text-muted mt-1">
-                Ubah teks tajuk dan judul raksasa yang menyambut pengunjung di bagian paling atas
-                landing page.
-              </p>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink">
-                  Tagline Badge Atas (Pill):
-                </label>
-                <input
-                  type="text"
-                  value={heroTag}
-                  onChange={(e) => setHeroTag(e.target.value)}
-                  placeholder="Sistem Monitoring & Otomasi Kualitas Air Kolam"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink">
-                  Judul Raksasa di Tengah Hero:
-                </label>
-                <input
-                  type="text"
-                  value={heroTitle}
-                  onChange={(e) => setHeroTitle(e.target.value)}
-                  placeholder="BANYUWENING"
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink font-display font-bold tracking-widest uppercase focus:outline-hidden focus:border-brand"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink">
-                  Subjudul Penjelasan (Paragraf Hero):
-                </label>
-                <textarea
-                  rows={3}
-                  value={heroSubtitle}
-                  onChange={(e) => setHeroSubtitle(e.target.value)}
-                  placeholder="Pemantauan kualitas air kolam 24/7 dengan prediksi risiko dini..."
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand leading-relaxed"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* SUB-TAB 3: NARASI TANGGA (INTRO)                         */}
-        {/* ======================================================== */}
-        {activeSubTab === "intro" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
-                <FileText className="w-5 h-5 text-brand" />
-                <span>Narasi Tangga Pembuka (Staircase Statements)</span>
-              </h2>
-              <p className="text-[13px] text-muted mt-1">
-                Kustomisasi lima kalimat bertingkat yang bergeser ke kanan untuk menciptakan narasi
-                dramatis komitmen BanyuWening menjaga kolam petambak.
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-2">
+            <div className="p-5 bg-surface rounded-[6px] border border-line space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-ink">Baris 1 (Paling Kiri):</label>
-                <input
-                  type="text"
-                  value={introStatement1}
-                  onChange={(e) => setIntroStatement1(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-medium"
-                />
-              </div>
-
-              <div className="space-y-1.5" style={{ paddingLeft: "1.5rem" }}>
-                <label className="text-[12px] font-semibold text-ink">Baris 2 (Inden 1):</label>
-                <input
-                  type="text"
-                  value={introStatement2}
-                  onChange={(e) => setIntroStatement2(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-medium"
-                />
-              </div>
-
-              <div className="space-y-1.5" style={{ paddingLeft: "3rem" }}>
-                <label className="text-[12px] font-semibold text-ink">Baris 3 (Inden 2):</label>
-                <input
-                  type="text"
-                  value={introStatement3}
-                  onChange={(e) => setIntroStatement3(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-medium"
-                />
-              </div>
-
-              <div className="space-y-1.5" style={{ paddingLeft: "4.5rem" }}>
-                <label className="text-[12px] font-semibold text-ink">Baris 4 (Inden 3):</label>
-                <input
-                  type="text"
-                  value={introStatement4}
-                  onChange={(e) => setIntroStatement4(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-medium"
-                />
-              </div>
-
-              <div className="space-y-1.5" style={{ paddingLeft: "6rem" }}>
-                <label className="text-[12px] font-semibold text-ink">Baris 5 (Inden 4):</label>
-                <input
-                  type="text"
-                  value={introStatement5}
-                  onChange={(e) => setIntroStatement5(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink font-bold text-brand"
-                />
-              </div>
-
-              <div className="space-y-2 pt-4 border-t border-line">
                 <label className="text-[13px] font-semibold text-ink">
-                  Deskripsi Ringkas di Bawah Tangga:
+                  Judul Besar Seksi 5 Tahap Otomasi:
                 </label>
-                <textarea
-                  rows={3}
-                  value={introDesc}
-                  onChange={(e) => setIntroDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand leading-relaxed"
+                <input
+                  type="text"
+                  value={pipelineHeading}
+                  onChange={(e) => setPipelineHeading(e.target.value)}
+                  placeholder="Lima tahap otomasi"
+                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] font-bold uppercase text-ink"
                 />
               </div>
+            </div>
+
+            <div className="space-y-4">
+              {pipelineSteps.map((st, idx) => {
+                const uploadKey = `step_${idx + 1}`;
+                const fallbackImg = V2_DEFAULTS.pipeline_steps[idx]?.img || "/pics/ph-meter.jpg";
+                return (
+                  <div
+                    key={st.num}
+                    className="p-5 bg-surface rounded-[6px] border border-line grid grid-cols-1 lg:grid-cols-12 gap-5"
+                  >
+                    <div className="lg:col-span-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="mono-label text-[11px] font-bold text-brand">
+                          TAHAP {st.num}
+                        </span>
+                        <span className="text-[11px] text-muted">{st.verb}</span>
+                      </div>
+
+                      <div className="aspect-[16/10] rounded-[6px] overflow-hidden border border-line bg-black/40">
+                        <img
+                          src={st.img}
+                          alt={st.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = fallbackImg;
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={st.img}
+                          onChange={(e) => updatePipelineStep(idx, "img", e.target.value)}
+                          placeholder={fallbackImg}
+                          className="flex-1 px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-ink"
+                        />
+                        <button
+                          type="button"
+                          disabled={uploadingField === uploadKey}
+                          onClick={() =>
+                            triggerUpload(uploadKey, (url) => updatePipelineStep(idx, "img", url))
+                          }
+                          className="px-3 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand border border-brand/30 rounded text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{uploadingField === uploadKey ? "..." : "Unggah"}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {PRESET_IMAGES.slice(0, 5).map((p) => (
+                          <button
+                            key={p.path}
+                            type="button"
+                            onClick={() => updatePipelineStep(idx, "img", p.path)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border cursor-pointer ${
+                              st.img === p.path
+                                ? "bg-brand text-brand-ink border-brand"
+                                : "bg-surface-2 text-muted border-line hover:text-ink"
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-8 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted">
+                            Kata Kerja (Badge):
+                          </label>
+                          <input
+                            type="text"
+                            value={st.verb}
+                            onChange={(e) => updatePipelineStep(idx, "verb", e.target.value)}
+                            className="w-full px-3 py-1.5 bg-surface-2 border border-line rounded text-[13px] font-semibold text-ink"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="text-[11px] font-medium text-muted">
+                            Judul Tahapan:
+                          </label>
+                          <input
+                            type="text"
+                            value={st.title}
+                            onChange={(e) => updatePipelineStep(idx, "title", e.target.value)}
+                            className="w-full px-3 py-1.5 bg-surface-2 border border-line rounded text-[13px] font-semibold text-ink"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-muted">
+                          Penjelasan Detail:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={st.detail}
+                          onChange={(e) => updatePipelineStep(idx, "detail", e.target.value)}
+                          className="w-full px-3 py-2 bg-surface-2 border border-line rounded text-[13px] text-ink leading-relaxed"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-muted">
+                          Spesifikasi Bawah (Mono Label):
+                        </label>
+                        <input
+                          type="text"
+                          value={st.spec}
+                          onChange={(e) => updatePipelineStep(idx, "spec", e.target.value)}
+                          className="w-full px-3 py-1.5 bg-surface-2 border border-line rounded text-[12px] font-mono text-brand"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* SUB-TAB 4: FITUR & KEUNGGULAN (CAPABILITIES)             */}
+        {/* 04 · ARSITEKTUR 3D (#arsitektur-3d)                      */}
         {/* ======================================================== */}
-        {activeSubTab === "fitur" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {activeSubTab === "arsitektur" && (
+          <div className="space-y-6">
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
               <div>
                 <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-brand" />
-                  <span>Daftar Fitur & Keunggulan Sistem</span>
+                  <Box className="w-5 h-5 text-brand" />
+                  <span>Judul &amp; Penjelasan Seksi Arsitektur 3D</span>
                 </h2>
                 <p className="text-[13px] text-muted mt-1">
-                  Kelola kartu kapabilitas yang menjelaskan kelebihan teknis sistem BanyuWening
-                  kepada pengunjung.
+                  Mengatur tajuk besar dan empat lapisan sistem interaktif yang terhubung dengan
+                  panggung 3D Core Hub.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleAddCapability}
-                className="h-9 px-3.5 bg-surface-2 hover:bg-line border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer self-start transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5 text-brand" />
-                <span>Tambah Kartu Fitur</span>
-              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Tajuk Baris 1:</label>
+                  <input
+                    type="text"
+                    value={archHeading1}
+                    onChange={(e) => setArchHeading1(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Tajuk Baris 2 (Aksen Teal):
+                  </label>
+                  <input
+                    type="text"
+                    value={archHeading2}
+                    onChange={(e) => setArchHeading2(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-brand"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">
+                  Teks Pengantar Samping:
+                </label>
+                <textarea
+                  rows={2}
+                  value={archAside}
+                  onChange={(e) => setArchAside(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {capabilities.map((cap, idx) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {archPhases.map((ap, idx) => (
                 <div
-                  key={idx}
-                  className="p-4 bg-surface-2 rounded-[6px] border border-line space-y-3 relative group"
+                  key={ap.phase}
+                  className="p-5 bg-surface rounded-[6px] border border-line space-y-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-muted uppercase">
-                      Kartu #{idx + 1}
+                  <div className="flex items-center justify-between border-b border-line pb-2">
+                    <span className="mono-label text-[11px] font-bold text-brand">
+                      LAPISAN {ap.num}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCapability(idx)}
-                      className="text-muted hover:text-bahaya p-1 rounded transition-colors cursor-pointer"
-                      title="Hapus kartu ini"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <span className="text-[11px] text-muted">3D Phase #{ap.phase}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted">Tab Mobile:</label>
+                      <input
+                        type="text"
+                        value={ap.short_name}
+                        onChange={(e) => updateArchPhase(idx, "short_name", e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] font-semibold text-ink"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-[11px] font-medium text-muted">Judul Lengkap:</label>
+                      <input
+                        type="text"
+                        value={ap.label}
+                        onChange={(e) => updateArchPhase(idx, "label", e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[13px] font-semibold text-ink"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted">Judul Fitur:</label>
-                    <input
-                      type="text"
-                      value={cap.title}
-                      onChange={(e) => handleUpdateCapability(idx, "title", e.target.value)}
-                      placeholder="Judul Fitur"
-                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[13px] font-semibold text-ink"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted">Badge Kategori:</label>
-                    <input
-                      type="text"
-                      value={cap.tag}
-                      onChange={(e) => handleUpdateCapability(idx, "tag", e.target.value)}
-                      placeholder="Hardware ESP32 / Machine Learning"
-                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[12px] text-brand font-medium"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted">Deskripsi Lengkap:</label>
+                    <label className="text-[11px] font-medium text-muted">Ringkasan:</label>
                     <textarea
-                      rows={2}
-                      value={cap.desc}
-                      onChange={(e) => handleUpdateCapability(idx, "desc", e.target.value)}
-                      placeholder="Penjelasan kapabilitas..."
-                      className="w-full px-2.5 py-1.5 bg-surface border border-line rounded text-[12px] text-ink leading-relaxed"
+                      rows={3}
+                      value={ap.summary}
+                      onChange={(e) => updateArchPhase(idx, "summary", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-ink leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted">
+                      Spesifikasi Teknis:
+                    </label>
+                    <input
+                      type="text"
+                      value={ap.specs}
+                      onChange={(e) => updateArchPhase(idx, "specs", e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[11px] font-mono text-brand"
                     />
                   </div>
                 </div>
@@ -1583,10 +1820,167 @@ export function SuperAdminContentManagement({
         )}
 
         {/* ======================================================== */}
-        {/* SUB-TAB 5: TANYA JAWAB (FAQ)                             */}
+        {/* 05 · PAKET & HARGA (#paket-harga)                        */}
+        {/* ======================================================== */}
+        {activeSubTab === "paket" && (
+          <div className="space-y-6">
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
+                    <Package className="w-5 h-5 text-brand" />
+                    <span>Paket Modular &amp; Skema Harga</span>
+                  </h2>
+                  <p className="text-[13px] text-muted mt-1">
+                    Kelola kartu paket hardware dan biaya layanan Smart Guard yang tampil di landing
+                    page.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddPackage}
+                  className="h-9 px-3.5 bg-surface-2 hover:bg-line border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer self-start"
+                >
+                  <Plus className="w-3.5 h-3.5 text-brand" />
+                  <span>Tambah Paket</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-line">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">Judul Seksi Paket:</label>
+                  <input
+                    type="text"
+                    value={packagesHeading}
+                    onChange={(e) => setPackagesHeading(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] font-semibold text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Subjudul Keterangan:
+                  </label>
+                  <input
+                    type="text"
+                    value={packagesSubtitle}
+                    onChange={(e) => setPackagesSubtitle(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {packages.map((pkg, idx) => (
+                <div
+                  key={idx}
+                  className="p-5 bg-surface rounded-[6px] border border-line space-y-3"
+                >
+                  <div className="flex items-center justify-between border-b border-line pb-2">
+                    <span className="mono-label text-[11px] font-bold text-brand">
+                      PAKET #{pkg.num || idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePackage(idx)}
+                      className="text-muted hover:text-bahaya p-1 rounded cursor-pointer"
+                      title="Hapus paket"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted">Nomor:</label>
+                      <input
+                        type="text"
+                        value={pkg.num}
+                        onChange={(e) => updatePackage(idx, { num: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] font-mono text-ink"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[11px] font-medium text-muted">Badge Label:</label>
+                      <input
+                        type="text"
+                        value={pkg.badge}
+                        onChange={(e) => updatePackage(idx, { badge: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-brand font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted">Nama Paket:</label>
+                    <input
+                      type="text"
+                      value={pkg.name}
+                      onChange={(e) => updatePackage(idx, { name: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[13px] font-semibold text-ink"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted">
+                      Konfigurasi Hardware:
+                    </label>
+                    <input
+                      type="text"
+                      value={pkg.config}
+                      onChange={(e) => updatePackage(idx, { config: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-ink"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted">Harga Paket:</label>
+                      <input
+                        type="text"
+                        value={pkg.price}
+                        onChange={(e) => updatePackage(idx, { price: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[14px] font-bold text-ink"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted">
+                        Keterangan SaaS / Langganan:
+                      </label>
+                      <input
+                        type="text"
+                        value={pkg.saas}
+                        onChange={(e) => updatePackage(idx, { saas: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-muted"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted">
+                      Poin Keunggulan (1 baris = 1 poin):
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={(pkg.highlights || []).join("\n")}
+                      onChange={(e) =>
+                        updatePackage(idx, { highlights: e.target.value.split("\n") })
+                      }
+                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-line rounded text-[12px] text-ink leading-relaxed"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* 06 · FAQ TEKNIS (#faq)                                   */}
         {/* ======================================================== */}
         {activeSubTab === "faq" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
+          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
@@ -1594,35 +1988,45 @@ export function SuperAdminContentManagement({
                   <span>Tanya Jawab / Frequently Asked Questions (FAQ)</span>
                 </h2>
                 <p className="text-[13px] text-muted mt-1">
-                  Tambahkan atau ubah butir pertanyaan teknis yang sering ditanyakan oleh pembudidaya
-                  lele dan mitra lapangan.
+                  Tambahkan atau ubah butir pertanyaan teknis yang tampil pada seksi FAQ landing
+                  page.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={handleAddFaq}
-                className="h-9 px-3.5 bg-surface-2 hover:bg-line border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer self-start transition-colors"
+                className="h-9 px-3.5 bg-surface-2 hover:bg-line border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer self-start"
               >
                 <Plus className="w-3.5 h-3.5 text-brand" />
                 <span>Tambah Pertanyaan FAQ</span>
               </button>
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-semibold text-ink">Judul Seksi FAQ:</label>
+              <input
+                type="text"
+                value={faqHeading}
+                onChange={(e) => setFaqHeading(e.target.value)}
+                className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[14px] font-semibold text-ink"
+              />
+            </div>
+
             <div className="space-y-4 pt-2">
               {faqs.map((faq, idx) => (
                 <div
                   key={idx}
-                  className="p-4 bg-surface-2 rounded-[6px] border border-line space-y-3 relative group"
+                  className="p-4 bg-surface-2 rounded-[6px] border border-line space-y-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold text-muted uppercase">
-                      Pertanyaan #{idx + 1}
+                      Pertanyaan #{String(idx + 1).padStart(2, "0")}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveFaq(idx)}
-                      className="text-muted hover:text-bahaya p-1 rounded transition-colors cursor-pointer"
+                      className="text-muted hover:text-bahaya p-1 rounded cursor-pointer"
                       title="Hapus FAQ ini"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1630,23 +2034,25 @@ export function SuperAdminContentManagement({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted">Pertanyaan (Tanya):</label>
+                    <label className="text-[11px] font-medium text-muted">
+                      Pertanyaan (Tanya):
+                    </label>
                     <input
                       type="text"
                       value={faq.q}
                       onChange={(e) => handleUpdateFaq(idx, "q", e.target.value)}
-                      placeholder="Apakah sistem tetap bekerja jika WiFi terputus?"
                       className="w-full px-3 py-2 bg-surface border border-line rounded text-[13px] font-semibold text-ink"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted">Jawaban Rinci (Jawab):</label>
+                    <label className="text-[11px] font-medium text-muted">
+                      Jawaban Rinci (Jawab):
+                    </label>
                     <textarea
                       rows={3}
                       value={faq.a}
                       onChange={(e) => handleUpdateFaq(idx, "a", e.target.value)}
-                      placeholder="Ya, mikrokontroler memiliki failsafe mandiri..."
                       className="w-full px-3 py-2 bg-surface border border-line rounded text-[13px] text-ink leading-relaxed"
                     />
                   </div>
@@ -1657,59 +2063,210 @@ export function SuperAdminContentManagement({
         )}
 
         {/* ======================================================== */}
-        {/* SUB-TAB 6: AJAKAN (CTA) & FOOTER                         */}
+        {/* 07 · TIM PENGEMBANG, KONTAK RESMI & FOOTER               */}
         {/* ======================================================== */}
-        {activeSubTab === "cta" && (
-          <div className="p-6 bg-surface rounded-[6px] border border-line space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
-                <Building className="w-5 h-5 text-brand" />
-                <span>Bagian Ajakan (Call to Action) & Hak Cipta Footer</span>
-              </h2>
-              <p className="text-[13px] text-muted mt-1">
-                Atur kalimat penutup landing page, label tombol menuju simulator, serta teks
-                copyright di dasar halaman.
-              </p>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <label className="text-[13px] font-semibold text-ink">
-                  Teks Ajakan / Penutup (CTA Statement):
-                </label>
-                <textarea
-                  rows={3}
-                  value={ctaText}
-                  onChange={(e) => setCtaText(e.target.value)}
-                  placeholder="Sistem ini dikembangkan oleh mahasiswa Institut Teknologi dan Bisnis PalComTech..."
-                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand leading-relaxed"
-                />
+        {activeSubTab === "kontak" && (
+          <div className="space-y-6">
+            {/* Footer Header & Copyright */}
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
+              <div>
+                <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-brand" />
+                  <span>Tajuk Ajakan &amp; Hak Cipta Footer</span>
+                </h2>
+                <p className="text-[13px] text-muted mt-1">
+                  Tampil di bagian penutup halaman di atas daftar tim pengembang dan kontak resmi.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[13px] font-semibold text-ink">
-                    Teks Tombol Aksi Utama (CTA Button):
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Sub-label Atas Footer:
                   </label>
                   <input
                     type="text"
-                    value={ctaButtonText}
-                    onChange={(e) => setCtaButtonText(e.target.value)}
-                    placeholder="Masuk ke Versi Demo"
+                    value={footerKicker}
+                    onChange={(e) => setFooterKicker(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-semibold text-ink">
+                    Judul Besar Footer:
+                  </label>
+                  <input
+                    type="text"
+                    value={footerHeading}
+                    onChange={(e) => setFooterHeading(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] font-semibold text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-semibold text-ink">
+                  Teks Hak Cipta (Footer Copyright):
+                </label>
+                <input
+                  type="text"
+                  value={copyrightText}
+                  onChange={(e) => setCopyrightText(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-surface-2 border border-line rounded-[6px] text-[13px] text-ink"
+                />
+              </div>
+            </div>
+
+            {/* Tim Pengembang */}
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
+                    <Users className="w-5 h-5 text-brand" />
+                    <span>Tim Pengembang (Footer Rows)</span>
+                  </h2>
+                  <p className="text-[13px] text-muted mt-1">
+                    Daftar nama &amp; tautan portofolio/sosial media tim pengembang pada footer.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddMember}
+                  className="h-9 px-3.5 bg-surface-2 hover:bg-line border border-line text-ink rounded-[6px] text-[12px] font-semibold inline-flex items-center gap-1.5 cursor-pointer self-start"
+                >
+                  <Plus className="w-3.5 h-3.5 text-brand" />
+                  <span>Tambah Anggota</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {developerTeam.map((member, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 bg-surface-2 rounded-[6px] border border-line grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
+                  >
+                    <div className="md:col-span-1 mono-label text-[11px] font-bold text-brand">
+                      {String(idx + 1).padStart(2, "0")}
+                    </div>
+                    <div className="md:col-span-5">
+                      <input
+                        type="text"
+                        value={member.name}
+                        onChange={(e) => updateMember(idx, "name", e.target.value)}
+                        placeholder="Nama Lengkap"
+                        className="w-full px-3 py-1.5 bg-surface border border-line rounded text-[13px] font-semibold text-ink"
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <input
+                        type="url"
+                        value={member.url}
+                        onChange={(e) => updateMember(idx, "url", e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 bg-surface border border-line rounded text-[12px] font-mono text-ink"
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeMember(idx)}
+                        className="text-muted hover:text-bahaya p-1.5 rounded cursor-pointer"
+                        title="Hapus anggota"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Email, WhatsApp & Institusi */}
+            <div className="p-6 bg-surface rounded-[6px] border border-line space-y-5">
+              <div>
+                <h2 className="text-[18px] font-semibold text-ink flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-brand" />
+                  <span>Email Resmi, WhatsApp &amp; Institusi</span>
+                </h2>
+                <p className="text-[13px] text-muted mt-1">
+                  Email tersinkron ke footer landing page dan halaman login. Pada desktop membuka
+                  komposer web Gmail; pada perangkat mobile membuka aplikasi email bawaan.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-brand" />
+                    <span>Alamat Email Utama Resmi</span>
+                    <span className="text-bahaya">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="admin@banyuwening.id"
+                    className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-brand" />
+                    <span>Nomor WhatsApp / Hotline (+62)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(formatWhatsAppNumber(e.target.value))}
+                    onKeyDown={(e) => {
+                      const input = e.currentTarget;
+                      const start = input.selectionStart || 0;
+                      const end = input.selectionEnd || 0;
+                      if (e.key === "Backspace" && start <= 4 && end <= 4) e.preventDefault();
+                      if (e.key === "Delete" && start < 4) e.preventDefault();
+                    }}
+                    onFocus={(e) => {
+                      if ((e.currentTarget.selectionStart || 0) < 4) {
+                        e.currentTarget.setSelectionRange(4, 4);
+                      }
+                    }}
+                    onClick={(e) => {
+                      if ((e.currentTarget.selectionStart || 0) < 4) {
+                        e.currentTarget.setSelectionRange(4, 4);
+                      }
+                    }}
+                    placeholder="+62 8566-9548-964"
+                    className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
+                    <Building className="w-4 h-4 text-brand" />
+                    <span>Nama Institusi / Afiliasi Kampus</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={institutionName}
+                    onChange={(e) => setInstitutionName(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[13px] font-semibold text-ink">
-                    Teks Hak Cipta (Footer Copyright):
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-ink flex items-center gap-1.5">
+                    <ExternalLink className="w-4 h-4 text-brand" />
+                    <span>Tautan Website Resmi Kampus</span>
                   </label>
                   <input
-                    type="text"
-                    value={copyrightText}
-                    onChange={(e) => setCopyrightText(e.target.value)}
-                    placeholder="© 2026 BanyuWening · Institut Teknologi dan Bisnis PalComTech."
-                    className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand"
+                    type="url"
+                    value={institutionUrl}
+                    onChange={(e) => setInstitutionUrl(e.target.value)}
+                    placeholder="https://palcomtech.ac.id/"
+                    className="w-full px-3.5 py-2.5 bg-surface-2 border border-line rounded-[6px] text-[14px] text-ink focus:outline-hidden focus:border-brand font-mono"
                   />
                 </div>
               </div>
@@ -1721,7 +2278,7 @@ export function SuperAdminContentManagement({
         <div className="p-4 bg-surface rounded-[6px] border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-[12px] text-muted">
             <Info className="w-4 h-4 text-brand shrink-0" />
-            <span>Perubahan yang Anda simpan akan seketika tampil di seluruh beranda publik.</span>
+            <span>Perubahan yang disimpan akan langsung tampil di landing page v2 publik.</span>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -1731,7 +2288,7 @@ export function SuperAdminContentManagement({
               className="px-3.5 py-2 border border-line bg-surface hover:bg-surface-2 text-muted hover:text-ink rounded-[6px] text-[12px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset ke Setelan Awal</span>
+              <span>Reset ke Setelan Awal v2</span>
             </button>
 
             <button

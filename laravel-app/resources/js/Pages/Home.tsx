@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo, type ReactNode } from "react";
 import { Head, Link } from "@inertiajs/react";
 import {
   motion,
@@ -16,7 +16,14 @@ import { ThreeUICoreHub3DStage, type CoreHubPhase } from "@/Components/three/Thr
 import { SimulatorSection } from "@/Components/SimulatorSection";
 import { ContactEmailLink } from "@/Components/ContactEmailLink";
 import { HelloWorldInteractiveWordmark } from "@/Components/HelloWorldInteractiveWordmark";
-import type { LandingContentSettings, LandingFaq } from "@/Types";
+import type {
+  LandingContentSettings,
+  LandingDiurnalPhase,
+  LandingFaq,
+  LandingIntroStat,
+  LandingPackageItem,
+  LandingDeveloperMember,
+} from "@/Types";
 import {
   Sparkles,
   ArrowUpRight,
@@ -107,9 +114,12 @@ const PIPELINE_STEPS = [
   },
 ];
 
+type PipelineStep = (typeof PIPELINE_STEPS)[number] & { fallbackImg: string };
+
 const ARCH_PHASES: {
   phase: CoreHubPhase;
   num: string;
+  short_name: string;
   label: string;
   summary: string;
   specs: string;
@@ -117,6 +127,7 @@ const ARCH_PHASES: {
   {
     phase: 0,
     num: "01",
+    short_name: "Topologi",
     label: "Topologi Modular 1 Core Hub : 1-4 Modul Kolam",
     summary:
       "Satu Core Hub melayani hingga 4 kolam terpal berdempetan milik satu petambak via soket kedap air GX16 dan kabel shielded maksimal 3-5 meter guna menjaga kejernihan sinyal ADC dan kestabilan kelistrikan.",
@@ -125,6 +136,7 @@ const ARCH_PHASES: {
   {
     phase: 1,
     num: "02",
+    short_name: "Susunan PCB",
     label: "Susunan PCB Berlapis & Pemisahan Jalur Daya",
     summary:
       "Carrier PCB menggabungkan ESP32-WROOM, 2-3x ADS1115 16-bit (8-12 kanal ADC), MCP23017, Level Shifter 3.3V/5V, MOSFET power-switch TDS anti-korosi, serta Relay 4-Ch / 8-Ch Optocoupler dengan filter EMI terisolasi.",
@@ -133,6 +145,7 @@ const ARCH_PHASES: {
   {
     phase: 2,
     num: "03",
+    short_name: "Anti-Lumpur",
     label: "Ketahanan Lumpur & Sensor Health Watchdog",
     summary:
       "Probe ditempatkan di dalam stilling well PVC pelindung tubrukan ikan. Sensor Health Watchdog otomatis mengisolasi nilai flatline atau lensa turbidity jenuh lumut (SATURATED/FAULT) dan mengirim pengingat bilas ke WhatsApp.",
@@ -141,6 +154,7 @@ const ARCH_PHASES: {
   {
     phase: 3,
     num: "04",
+    short_name: "Hybrid Cloud",
     label: "Always-On Cloud & HITL AI Safety Gate",
     summary:
       "Broker EMQX TLS Port 8883, FastAPI Always-On, dan Supabase Pro memproses proyeksi Random Forest 1-3 jam per pond_id. Pembaruan parameter JSON wajib melalui Human-in-the-Loop Engineer Gate + Dual-OTA 60s rollback.",
@@ -342,6 +356,12 @@ const StaircaseParallaxSection = memo(function StaircaseParallaxSection({
   );
 });
 
+function safeExternalUrl(url?: string): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : "#";
+}
+
 function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
@@ -388,15 +408,19 @@ const ApricodeScrollSection = memo(function ApricodeScrollSection({
 const ShowroomPlateSection = memo(function ShowroomPlateSection({
   videoRef,
   shouldReduceMotion,
+  sectionTitle,
   videoUrl,
   videoPoster,
+  diurnalPhases,
   activeDiurnal,
   onSelectDiurnal,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   shouldReduceMotion: boolean;
+  sectionTitle: string;
   videoUrl: string;
   videoPoster: string;
+  diurnalPhases: LandingDiurnalPhase[];
   activeDiurnal: number;
   onSelectDiurnal: (idx: number) => void;
 }) {
@@ -420,7 +444,7 @@ const ShowroomPlateSection = memo(function ShowroomPlateSection({
     <div ref={showroomRef} className="mt-14 sm:mt-24 pt-10 sm:pt-16 border-t border-[#111918]/15">
       <div className="mb-6 sm:mb-8">
         <h2 className="text-[clamp(26px,4vw,58px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#111918]">
-          Siklus 24 jam kolam terpal
+          {sectionTitle}
         </h2>
       </div>
 
@@ -460,7 +484,7 @@ const ShowroomPlateSection = memo(function ShowroomPlateSection({
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-[#111918]/12 border-b border-[#111918]/15">
-          {DIURNAL_PHASES.map((phase, idx) => {
+          {diurnalPhases.map((phase, idx) => {
             const selected = activeDiurnal === idx;
             return (
               <button
@@ -782,7 +806,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
 
   const trackScaleX = useTransform(smoothJourney, [0, 1], [0.02, 1]);
 
-  const passageBeats = [
+  const defaultBeats = [
     {
       num: "01 UKUR",
       title: "Multi-ADC 16-bit",
@@ -805,6 +829,15 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
       end: 0.58,
     },
   ];
+  const passageBeats = defaultBeats.map((beat, idx) => {
+    const custom = landingContent?.hero_passage_beats?.[idx];
+    return {
+      ...beat,
+      num: custom?.num?.trim() || beat.num,
+      title: custom?.title?.trim() || beat.title,
+      desc: custom?.desc?.trim() || beat.desc,
+    };
+  });
 
   return (
     <>
@@ -825,7 +858,9 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
         <span className="truncate max-w-[78vw] sm:max-w-[60vw]">
           {landingContent?.hero_tag || "SMART AQUACULTURE STUDIO"}
         </span>
-        <span className="hidden sm:inline">EDGE FUZZY &amp; IOT HARDWARE</span>
+        <span className="hidden sm:inline">
+          {landingContent?.hero_right_tag || "EDGE FUZZY & IOT HARDWARE"}
+        </span>
       </div>
 
       {/* Main 3-Stage Bidirectional Scroll-Scrubbed Copy Layer (Zero-Re-Render MotionValues) */}
@@ -865,7 +900,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s1Line1Y }}
               >
-                Buat kualitas air
+                {landingContent?.hero_headline_1 || "Buat kualitas air"}
               </motion.span>
             </span>
             <span className="block overflow-hidden pb-0.5 sm:pb-1">
@@ -873,7 +908,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s1Line2Y }}
               >
-                kolam selalu terkendali
+                {landingContent?.hero_headline_2 || "kolam selalu terkendali"}
               </motion.span>
             </span>
           </h1>
@@ -935,7 +970,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 aria-hidden="true"
                 className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#8CC2BA] shadow-[0_0_14px_#8CC2BA]"
               />
-              <span>02 / LORONG TOPOLOGI CORE HUB</span>
+              <span>{landingContent?.hero_stage2_kicker || "02 / LORONG TOPOLOGI CORE HUB"}</span>
             </div>
             <h2 className="text-[clamp(21px,5.2vw,72px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#F2EFE7] text-balance">
               <span className="block overflow-hidden pb-0.5 sm:pb-1">
@@ -943,7 +978,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   className="block hero-split-line will-change-transform"
                   style={shouldReduceMotion ? undefined : { y: s2Line1Y }}
                 >
-                  Satu inti hardware
+                  {landingContent?.hero_stage2_title_1 || "Satu inti hardware"}
                 </motion.span>
               </span>
               <span className="block overflow-hidden pb-0.5 sm:pb-1">
@@ -951,12 +986,13 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                   className="block hero-split-line will-change-transform"
                   style={shouldReduceMotion ? undefined : { y: s2Line2Y }}
                 >
-                  menyatukan empat kolam
+                  {landingContent?.hero_stage2_title_2 || "menyatukan empat kolam"}
                 </motion.span>
               </span>
             </h2>
             <p className="mt-2 sm:mt-3.5 max-w-[52ch] text-[12.5px] sm:text-[15px] md:text-[18px] leading-[1.45] sm:leading-[1.55] text-[#D9D4C7]">
-              Jalur kabel shielded GX16 mengisolasi pembacaan ADC 16-bit tiap kolam sekaligus mempertahankan efisiensi instalasi petambak UMKM.
+              {landingContent?.hero_stage2_desc ||
+                "Jalur kabel shielded GX16 mengisolasi pembacaan ADC 16-bit tiap kolam sekaligus mempertahankan efisiensi instalasi petambak UMKM."}
             </p>
             <div className="lg:hidden grid grid-cols-3 gap-1.5 sm:gap-2 mt-2.5 sm:mt-3.5 pt-2.5 sm:pt-3 border-t border-white/15">
               {passageBeats.map((b) => (
@@ -1006,7 +1042,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
               aria-hidden="true"
               className="signal-dot inline-block w-1.5 h-1.5 rounded-full bg-[#33706A]"
             />
-            <span>03 / OTONOMI PENUH PINGGIR KOLAM</span>
+            <span>{landingContent?.hero_stage3_kicker || "03 / OTONOMI PENUH PINGGIR KOLAM"}</span>
           </div>
           <h2 className="text-[clamp(21px,5.2vw,68px)] leading-[1.06] tracking-[-0.035em] font-semibold text-[#14302D] text-balance">
             <span className="block overflow-hidden pb-0.5 sm:pb-1">
@@ -1014,7 +1050,7 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s3Line1Y }}
               >
-                Dibuat untuk eksplorasi.
+                {landingContent?.hero_stage3_title_1 || "Dibuat untuk eksplorasi."}
               </motion.span>
             </span>
             <span className="block overflow-hidden pb-0.5 sm:pb-1">
@@ -1022,12 +1058,13 @@ const HeroJourneyOverlay = memo(function HeroJourneyOverlay({
                 className="block hero-split-line will-change-transform"
                 style={shouldReduceMotion ? undefined : { y: s3Line2Y }}
               >
-                Siap bekerja otomatis.
+                {landingContent?.hero_stage3_title_2 || "Siap bekerja otomatis."}
               </motion.span>
             </span>
           </h2>
           <p className="mt-2 sm:mt-3.5 max-w-[50ch] text-[12.5px] sm:text-[15px] md:text-[18px] leading-[1.45] sm:leading-[1.55] text-[#4B5D5A]">
-            Tetap menjaga pH, suhu, kekeruhan, dan pompa aerasi walaupun WiFi kolam terputus melalui Edge Fuzzy &amp; Mode Offline-Plus Rp0.
+            {landingContent?.hero_stage3_desc ||
+              "Tetap menjaga pH, suhu, kekeruhan, dan pompa aerasi walaupun WiFi kolam terputus melalui Edge Fuzzy & Mode Offline-Plus Rp0."}
           </p>
           <div className="mt-3 sm:mt-6">
             <a
@@ -1129,7 +1166,7 @@ const PipelineCard = memo(function PipelineCard({
   active,
   smoothPipeline,
 }: {
-  st: (typeof PIPELINE_STEPS)[number];
+  st: PipelineStep;
   idx: number;
   active: boolean;
   smoothPipeline: MotionValue<number>;
@@ -1195,6 +1232,13 @@ const PipelineCard = memo(function PipelineCard({
               loading="eager"
               decoding="async"
               className="absolute inset-0 h-full w-full object-cover object-center"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                if (!img.dataset.fallbackApplied) {
+                  img.dataset.fallbackApplied = "1";
+                  img.src = st.fallbackImg;
+                }
+              }}
             />
           </div>
         </div>
@@ -1229,7 +1273,7 @@ const PipelineRailStep = memo(function PipelineRailStep({
   isCurrent,
   smoothPipeline,
 }: {
-  st: (typeof PIPELINE_STEPS)[number];
+  st: PipelineStep;
   idx: number;
   isCurrent: boolean;
   smoothPipeline: MotionValue<number>;
@@ -1260,16 +1304,20 @@ const PipelineRailStep = memo(function PipelineRailStep({
 
 const PipelineScrollStage = memo(function PipelineScrollStage({
   smoothPipeline,
+  heading,
+  steps,
 }: {
   smoothPipeline: MotionValue<number>;
+  heading: string;
+  steps: PipelineStep[];
 }) {
   const [activeStepIdx, setActiveStepIdx] = useState(0);
 
   useMotionValueEvent(smoothPipeline, "change", (latest) => {
     const p = Math.max(0, Math.min(1, latest));
     const nextIdx = Math.min(
-      PIPELINE_STEPS.length - 1,
-      Math.max(0, Math.round(p * (PIPELINE_STEPS.length - 1)))
+      steps.length - 1,
+      Math.max(0, Math.round(p * (steps.length - 1)))
     );
     setActiveStepIdx((prev) => (prev === nextIdx ? prev : nextIdx));
   });
@@ -1313,7 +1361,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
       <div className="relative z-20 w-full flex flex-row items-center justify-between gap-2 sm:gap-4">
         <div className="min-w-0">
           <h2 className="text-[clamp(22px,4vw,56px)] leading-[0.98] tracking-[-0.04em] font-bold uppercase text-white">
-            Lima tahap otomasi
+            {heading}
           </h2>
         </div>
 
@@ -1338,7 +1386,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
         className="relative z-10 flex-1 min-h-0 w-full flex items-stretch justify-center my-2 sm:my-4"
         style={{ perspective: "1400px" }}
       >
-        {PIPELINE_STEPS.map((st, idx) => (
+        {steps.map((st, idx) => (
           <PipelineCard
             key={st.num}
             st={st}
@@ -1352,7 +1400,7 @@ const PipelineScrollStage = memo(function PipelineScrollStage({
       {/* Bottom Full-Page Read-Only Scroll Rail */}
       <div className="pointer-events-none relative z-20 w-full pt-2 sm:pt-3 border-t border-white/15 flex items-center justify-between gap-4">
         <div className="flex flex-nowrap overflow-x-auto no-scrollbar items-center gap-3 sm:gap-6">
-          {PIPELINE_STEPS.map((st, idx) => (
+          {steps.map((st, idx) => (
             <PipelineRailStep
               key={st.num}
               st={st}
@@ -1629,6 +1677,77 @@ export default function Home({ landingContent }: HomeProps) {
       ? landingContent.faqs
       : DEFAULT_FAQS;
 
+  const introStats: LandingIntroStat[] =
+    landingContent?.intro_stats && landingContent.intro_stats.length > 0
+      ? landingContent.intro_stats
+      : [
+          { val: "<15 ms", label: "Inferensi Edge Fuzzy" },
+          { val: "72 Jam", label: "Log LittleFS Offline" },
+          { val: "Rp0", label: "Mode Offline-Plus" },
+        ];
+
+  const diurnalPhases: LandingDiurnalPhase[] =
+    landingContent?.diurnal_phases && landingContent.diurnal_phases.length > 0
+      ? landingContent.diurnal_phases
+      : DIURNAL_PHASES;
+
+  const pipelineHeading = landingContent?.pipeline_heading || "Lima tahap otomasi";
+
+  const pipelineSteps: PipelineStep[] = useMemo(() => {
+    const legacyOverrides = [
+      landingContent?.step_1_img,
+      landingContent?.step_2_img,
+      landingContent?.step_3_img,
+      landingContent?.step_4_img,
+      landingContent?.step_5_img,
+    ];
+    return PIPELINE_STEPS.map((st, idx) => {
+      const custom = landingContent?.pipeline_steps?.[idx];
+      return {
+        num: custom?.num?.trim() || st.num,
+        verb: custom?.verb?.trim() || st.verb,
+        title: custom?.title?.trim() || st.title,
+        detail: custom?.detail?.trim() || st.detail,
+        spec: custom?.spec?.trim() || st.spec,
+        img: custom?.img?.trim() || legacyOverrides[idx]?.trim() || st.img,
+        fallbackImg: st.img,
+      };
+    });
+  }, [
+    landingContent?.pipeline_steps,
+    landingContent?.step_1_img,
+    landingContent?.step_2_img,
+    landingContent?.step_3_img,
+    landingContent?.step_4_img,
+    landingContent?.step_5_img,
+  ]);
+
+  const archPhases = useMemo(
+    () =>
+      ARCH_PHASES.map((item, idx) => {
+        const custom = landingContent?.arch_phases?.[idx];
+        return {
+          ...item,
+          num: custom?.num?.trim() || item.num,
+          short_name: custom?.short_name?.trim() || item.short_name,
+          label: custom?.label?.trim() || item.label,
+          summary: custom?.summary?.trim() || item.summary,
+          specs: custom?.specs?.trim() || item.specs,
+        };
+      }),
+    [landingContent?.arch_phases]
+  );
+
+  const packages: LandingPackageItem[] =
+    landingContent?.packages && landingContent.packages.length > 0
+      ? landingContent.packages
+      : PACKAGES_OVERVIEW;
+
+  const developerTeam: LandingDeveloperMember[] =
+    landingContent?.developer_team && landingContent.developer_team.length > 0
+      ? landingContent.developer_team
+      : DEVELOPER_TEAM;
+
   const rawPhone = landingContent?.contact_phone || "+62 8566-9548-964";
   const cleanDigits = rawPhone.replace(/\D/g, "");
   const waNumber = cleanDigits.startsWith("0")
@@ -1839,9 +1958,11 @@ export default function Home({ landingContent }: HomeProps) {
             {/* Col 5-12 Architectural Detail + Stats Table */}
             <div className="mt-8 sm:mt-16 pt-6 sm:pt-10 border-t border-[#111918]/15 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
               <div className="lg:col-span-4 space-y-1.5 sm:space-y-2">
-                <div className="mono-label text-[10.5px] sm:text-[11px] text-[#53625E]">PRINSIP DESAIN</div>
+                <div className="mono-label text-[10.5px] sm:text-[11px] text-[#53625E]">
+                  {landingContent?.intro_principle_kicker || "PRINSIP DESAIN"}
+                </div>
                 <div className="text-[18px] sm:text-[20px] font-semibold text-[#111918]">
-                  Anti-Bricking &amp; Otomasi Lokal
+                  {landingContent?.intro_principle_title || "Anti-Bricking & Otomasi Lokal"}
                 </div>
               </div>
               <div className="lg:col-span-8 lg:pl-6 space-y-5 sm:space-y-8">
@@ -1851,13 +1972,9 @@ export default function Home({ landingContent }: HomeProps) {
                 </p>
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-0 border-t border-[#111918]/15">
-                  {[
-                    { val: "<15 ms", label: "Inferensi Edge Fuzzy" },
-                    { val: "72 Jam", label: "Log LittleFS Offline" },
-                    { val: "Rp0", label: "Mode Offline-Plus" },
-                  ].map((stat, idx) => (
+                  {introStats.map((stat, idx) => (
                     <div
-                      key={stat.label}
+                      key={`${stat.label}-${idx}`}
                       className={`py-3.5 sm:py-5 ${
                         idx > 0 ? "border-l border-[#111918]/15 pl-2.5 sm:pl-6" : "pr-1.5 sm:pr-6"
                       }`}
@@ -1878,8 +1995,10 @@ export default function Home({ landingContent }: HomeProps) {
             <ShowroomPlateSection
               videoRef={videoRef}
               shouldReduceMotion={Boolean(shouldReduceMotion)}
+              sectionTitle={landingContent?.video_section_title || "Siklus 24 jam kolam terpal"}
               videoUrl={landingContent?.video_url || "/pics/kolam-timelapse.webm"}
               videoPoster={landingContent?.video_poster || "/pics/kolam-timelapse-poster.jpg"}
+              diurnalPhases={diurnalPhases}
               activeDiurnal={activeDiurnal}
               onSelectDiurnal={setActiveDiurnal}
             />
@@ -1899,7 +2018,7 @@ export default function Home({ landingContent }: HomeProps) {
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/15 pb-6">
                 <div>
                   <h2 className="text-[clamp(32px,4.5vw,64px)] leading-[0.98] tracking-[-0.04em] font-bold uppercase text-white">
-                    Lima tahap otomasi
+                    {pipelineHeading}
                   </h2>
                 </div>
                 <div className="mono-label text-[12px] text-[#A9F2E8]">
@@ -1908,7 +2027,7 @@ export default function Home({ landingContent }: HomeProps) {
               </div>
 
               <div className="space-y-6">
-                {PIPELINE_STEPS.map((st) => (
+                {pipelineSteps.map((st) => (
                   <article
                     key={st.num}
                     className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center rounded-2xl bg-[#051B18]/80 border border-white/15 p-5 md:p-8"
@@ -1921,6 +2040,13 @@ export default function Home({ landingContent }: HomeProps) {
                         height={500}
                         loading="lazy"
                         className="absolute inset-0 h-full w-full object-cover object-center"
+                        onError={(e) => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          if (!img.dataset.fallbackApplied) {
+                            img.dataset.fallbackApplied = "1";
+                            img.src = st.fallbackImg;
+                          }
+                        }}
                       />
                     </div>
                     <div className="lg:col-span-7 space-y-3">
@@ -1953,7 +2079,11 @@ export default function Home({ landingContent }: HomeProps) {
             ref={pipelineRef}
             className="relative w-full h-[450vh] bg-[#072926] text-white"
           >
-            <PipelineScrollStage smoothPipeline={smoothPipeline} />
+            <PipelineScrollStage
+              smoothPipeline={smoothPipeline}
+              heading={pipelineHeading}
+              steps={pipelineSteps}
+            />
           </section>
         )}
 
@@ -1970,10 +2100,10 @@ export default function Home({ landingContent }: HomeProps) {
               <div className="mb-6 sm:mb-8 lg:mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                 <h2 className="text-[clamp(32px,7.5vw,96px)] leading-[0.98] tracking-[-0.045em] font-semibold text-[#F3F1EC]">
                   <span
-                    aria-label="Fungsional."
+                    aria-label={landingContent?.arch_heading_1 || "Fungsional."}
                     className="inline-block overflow-hidden align-bottom whitespace-nowrap pb-1"
                   >
-                    {Array.from("Fungsional.").map((char, idx) => (
+                    {Array.from(landingContent?.arch_heading_1 || "Fungsional.").map((char, idx) => (
                       <PracticeGlyph
                         key={idx}
                         char={char}
@@ -1993,7 +2123,7 @@ export default function Home({ landingContent }: HomeProps) {
                       }
                       className="practice-design inline-block text-[#8CC2BA] will-change-transform"
                     >
-                      Dari desain.
+                      {landingContent?.arch_heading_2 || "Dari desain."}
                     </motion.span>
                   </span>
                 </h2>
@@ -2005,13 +2135,13 @@ export default function Home({ landingContent }: HomeProps) {
                   }
                   className="practice-aside text-[15px] md:text-[16px] leading-[1.6] text-[#B5C4C0] max-w-[48ch] will-change-transform"
                 >
-                  Empat lapisan sistem BanyuWening dari kolam hingga cloud. Gulir halaman atau klik salah satu lapisan untuk memutar dan membedah model 3D secara interaktif.
+                  {landingContent?.arch_aside ||
+                    "Empat lapisan sistem BanyuWening dari kolam hingga cloud. Gulir halaman atau klik salah satu lapisan untuk memutar dan membedah model 3D secara interaktif."}
                 </motion.p>
               </div>
 
               {(() => {
-                const activeArchItem = ARCH_PHASES[activePhase] ?? ARCH_PHASES[0];
-                const shortNames = ["Topologi", "Susunan PCB", "Anti-Lumpur", "Hybrid Cloud"];
+                const activeArchItem = archPhases[activePhase] ?? archPhases[0];
                 return (
                   <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8 items-stretch lg:items-start">
                     {/* Mobile Compact 4-Tab Pill Bar */}
@@ -2020,7 +2150,7 @@ export default function Home({ landingContent }: HomeProps) {
                       aria-label="Pilih lapisan arsitektur 3D"
                       className="order-1 lg:hidden grid grid-cols-2 sm:flex sm:flex-wrap gap-2"
                     >
-                      {ARCH_PHASES.map((item) => {
+                      {archPhases.map((item) => {
                         const isActive = activePhase === item.phase;
                         return (
                           <button
@@ -2036,7 +2166,7 @@ export default function Home({ landingContent }: HomeProps) {
                             }`}
                           >
                             <span className="mono-label text-[10px] sm:text-[11px] opacity-80">{item.num}</span>
-                            <span className="truncate">{shortNames[item.phase]}</span>
+                            <span className="truncate">{item.short_name}</span>
                           </button>
                         );
                       })}
@@ -2044,7 +2174,7 @@ export default function Home({ landingContent }: HomeProps) {
 
                     {/* Desktop Interactive 4-Layer Selector List with Bidirectional Scrub */}
                     <div className="hidden lg:block lg:col-span-5 border-b border-white/15">
-                      {ARCH_PHASES.map((item, idx) => (
+                      {archPhases.map((item, idx) => (
                         <PracticeCapabilityRow
                           key={item.phase}
                           index={idx}
@@ -2112,17 +2242,18 @@ export default function Home({ landingContent }: HomeProps) {
           <ApricodeScrollSection className="w-full">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
               <h2 className="text-[clamp(30px,4vw,56px)] leading-[1.04] tracking-[-0.035em] font-semibold text-[#111918]">
-                Skala modular sesuai kebutuhan kolam
+                {landingContent?.packages_heading || "Skala modular sesuai kebutuhan kolam"}
               </h2>
               <p className="text-[14px] text-[#485653] max-w-[38ch]">
-                Perangkat dibeli penuh petambak, dilindungi Mode Offline-Plus Rp0 permanen.
+                {landingContent?.packages_subtitle ||
+                  "Perangkat dibeli penuh petambak, dilindungi Mode Offline-Plus Rp0 permanen."}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {PACKAGES_OVERVIEW.map((pkg) => (
+              {packages.map((pkg, pkgIdx) => (
                 <div
-                  key={pkg.name}
+                  key={`${pkg.name}-${pkgIdx}`}
                   className="group rounded-2xl p-6 md:p-8 flex flex-col justify-between bg-white text-[#111918] border border-[#111918]/12 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:bg-[#111918] hover:text-[#F3F1EC] hover:border-[#111918] hover:shadow-[0_24px_60px_-15px_rgba(17,25,24,0.35)]"
                 >
                   <div>
@@ -2146,8 +2277,8 @@ export default function Home({ landingContent }: HomeProps) {
                     </div>
 
                     <ul className="mt-6 space-y-2.5 text-[14px]">
-                      {pkg.highlights.map((item) => (
-                        <li key={item} className="flex items-start gap-2.5">
+                      {(pkg.highlights ?? []).map((item, hIdx) => (
+                        <li key={`${item}-${hIdx}`} className="flex items-start gap-2.5">
                           <CheckCircle2
                             className="w-4 h-4 shrink-0 mt-0.5 text-[#136F63] transition-colors duration-300 group-hover:text-[#7FD3A0]"
                             aria-hidden="true"
@@ -2188,7 +2319,7 @@ export default function Home({ landingContent }: HomeProps) {
           <ApricodeScrollSection className="w-full">
             <div className="mb-8 sm:mb-10">
               <h2 className="text-[clamp(26px,4vw,48px)] leading-[1.06] tracking-[-0.03em] font-semibold text-[#111918]">
-                Pertanyaan teknis &amp; operasional
+                {landingContent?.faq_heading || "Pertanyaan teknis & operasional"}
               </h2>
             </div>
 
@@ -2207,7 +2338,7 @@ export default function Home({ landingContent }: HomeProps) {
                     >
                       <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
                         <span className="mono-label text-[11px] sm:text-[12px] text-[#136F63] shrink-0">
-                          0{i + 1}
+                          {String(i + 1).padStart(2, "0")}
                         </span>
                         <span className="text-[15px] sm:text-[16px] md:text-[18px] font-semibold text-[#111918]">
                           {faq.q}
@@ -2245,10 +2376,11 @@ export default function Home({ landingContent }: HomeProps) {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="space-y-3">
               <p className="text-[13px] sm:text-[14px] text-[#485653]">
-                Sistem Monitoring &amp; Otomasi Kolam Ikan BanyuWening
+                {landingContent?.footer_kicker ||
+                  "Sistem Monitoring & Otomasi Kolam Ikan BanyuWening"}
               </p>
               <h2 className="text-[clamp(28px,5.2vw,64px)] leading-[1.02] tracking-[-0.04em] font-semibold text-[#111918]">
-                Mari bangun kolam presisi bersama.
+                {landingContent?.footer_heading || "Mari bangun kolam presisi bersama."}
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto shrink-0">
@@ -2271,16 +2403,16 @@ export default function Home({ landingContent }: HomeProps) {
 
           {/* Left Labels & Right-Aligned Team, Contact & Institution Rows */}
           <div className="divide-y divide-[#111918]/15 border-t border-b border-[#111918]/15">
-            {DEVELOPER_TEAM.map((member) => (
+            {developerTeam.map((member, idx) => (
               <div
-                key={member.name}
+                key={`${member.name}-${idx}`}
                 className="py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
               >
                 <div className="mono-label text-[11px] text-[#53625E]">
-                  {member.num} / TIM PENGEMBANG
+                  {String(idx + 1).padStart(2, "0")} / TIM PENGEMBANG
                 </div>
                 <a
-                  href={member.url}
+                  href={safeExternalUrl(member.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group inline-flex min-h-[44px] items-center gap-1.5 text-[18px] font-semibold text-[#111918] hover:text-[#136F63] transition-colors sm:justify-end"
@@ -2296,7 +2428,7 @@ export default function Home({ landingContent }: HomeProps) {
 
             <div className="py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="mono-label text-[11px] text-[#53625E]">
-                04 / EMAIL RESMI
+                {String(developerTeam.length + 1).padStart(2, "0")} / EMAIL RESMI
               </div>
               <div className="text-[17px] font-semibold text-[#111918] sm:text-right">
                 <ContactEmailLink
@@ -2309,7 +2441,7 @@ export default function Home({ landingContent }: HomeProps) {
 
             <div className="py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="mono-label text-[11px] text-[#53625E]">
-                05 / WHATSAPP
+                {String(developerTeam.length + 2).padStart(2, "0")} / WHATSAPP
               </div>
               <a
                 href={`https://wa.me/${waNumber}`}
@@ -2324,10 +2456,10 @@ export default function Home({ landingContent }: HomeProps) {
 
             <div className="py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="mono-label text-[11px] text-[#53625E]">
-                06 / INSTITUSI
+                {String(developerTeam.length + 3).padStart(2, "0")} / INSTITUSI
               </div>
               <a
-                href={landingContent?.institution_url || "https://palcomtech.ac.id/"}
+                href={safeExternalUrl(landingContent?.institution_url || "https://palcomtech.ac.id/")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[44px] items-center gap-1.5 text-[16px] font-medium text-[#485653] hover:text-[#136F63] sm:justify-end"

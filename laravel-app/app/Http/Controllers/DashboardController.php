@@ -1372,14 +1372,85 @@ class DashboardController extends Controller
 
         $validated = $request->validate([
             'hero_tag' => ['nullable', 'string', 'max:255'],
+            'hero_right_tag' => ['nullable', 'string', 'max:255'],
             'hero_title' => ['nullable', 'string', 'max:255'],
+            'hero_headline_1' => ['nullable', 'string', 'max:255'],
+            'hero_headline_2' => ['nullable', 'string', 'max:255'],
             'hero_subtitle' => ['nullable', 'string'],
+            'hero_stage2_kicker' => ['nullable', 'string', 'max:255'],
+            'hero_stage2_title_1' => ['nullable', 'string', 'max:255'],
+            'hero_stage2_title_2' => ['nullable', 'string', 'max:255'],
+            'hero_stage2_desc' => ['nullable', 'string'],
+            'hero_passage_beats' => ['nullable', 'array', 'max:6'],
+            'hero_passage_beats.*.num' => ['nullable', 'string', 'max:100'],
+            'hero_passage_beats.*.title' => ['nullable', 'string', 'max:255'],
+            'hero_passage_beats.*.desc' => ['nullable', 'string', 'max:500'],
+            'hero_stage3_kicker' => ['nullable', 'string', 'max:255'],
+            'hero_stage3_title_1' => ['nullable', 'string', 'max:255'],
+            'hero_stage3_title_2' => ['nullable', 'string', 'max:255'],
+            'hero_stage3_desc' => ['nullable', 'string'],
+
             'intro_statement_1' => ['nullable', 'string'],
             'intro_statement_2' => ['nullable', 'string'],
             'intro_statement_3' => ['nullable', 'string'],
             'intro_statement_4' => ['nullable', 'string'],
             'intro_statement_5' => ['nullable', 'string'],
+            'intro_principle_kicker' => ['nullable', 'string', 'max:255'],
+            'intro_principle_title' => ['nullable', 'string', 'max:255'],
             'intro_desc' => ['nullable', 'string'],
+            'intro_stats' => ['nullable', 'array', 'max:6'],
+            'intro_stats.*.val' => ['nullable', 'string', 'max:120'],
+            'intro_stats.*.label' => ['nullable', 'string', 'max:120'],
+            'video_section_title' => ['nullable', 'string', 'max:255'],
+            'diurnal_phases' => ['nullable', 'array', 'max:8'],
+            'diurnal_phases.*.time' => ['nullable', 'string', 'max:120'],
+            'diurnal_phases.*.title' => ['nullable', 'string', 'max:255'],
+            'diurnal_phases.*.detail' => ['nullable', 'string', 'max:500'],
+
+            'pipeline_heading' => ['nullable', 'string', 'max:255'],
+            'pipeline_steps' => ['nullable', 'array', 'max:5'],
+            'pipeline_steps.*.num' => ['nullable', 'string', 'max:50'],
+            'pipeline_steps.*.verb' => ['nullable', 'string', 'max:100'],
+            'pipeline_steps.*.title' => ['nullable', 'string', 'max:255'],
+            'pipeline_steps.*.detail' => ['nullable', 'string', 'max:2000'],
+            'pipeline_steps.*.spec' => ['nullable', 'string', 'max:255'],
+            'pipeline_steps.*.img' => ['nullable', 'string', 'max:1000'],
+
+            'arch_heading_1' => ['nullable', 'string', 'max:120'],
+            'arch_heading_2' => ['nullable', 'string', 'max:120'],
+            'arch_aside' => ['nullable', 'string', 'max:1000'],
+            'arch_phases' => ['nullable', 'array', 'max:4'],
+            'arch_phases.*.phase' => ['nullable', 'integer', 'min:0', 'max:3'],
+            'arch_phases.*.num' => ['nullable', 'string', 'max:50'],
+            'arch_phases.*.short_name' => ['nullable', 'string', 'max:120'],
+            'arch_phases.*.label' => ['nullable', 'string', 'max:255'],
+            'arch_phases.*.summary' => ['nullable', 'string', 'max:2000'],
+            'arch_phases.*.specs' => ['nullable', 'string', 'max:255'],
+
+            'packages_heading' => ['nullable', 'string', 'max:500'],
+            'packages_subtitle' => ['nullable', 'string', 'max:500'],
+            'packages' => ['nullable', 'array', 'max:6'],
+            'packages.*.num' => ['nullable', 'string', 'max:50'],
+            'packages.*.badge' => ['nullable', 'string', 'max:255'],
+            'packages.*.name' => ['nullable', 'string', 'max:255'],
+            'packages.*.config' => ['nullable', 'string', 'max:255'],
+            'packages.*.price' => ['nullable', 'string', 'max:255'],
+            'packages.*.saas' => ['nullable', 'string', 'max:255'],
+            'packages.*.highlights' => ['nullable', 'array', 'max:10'],
+            'packages.*.highlights.*' => ['nullable', 'string', 'max:300'],
+            'packages.*.featured' => ['nullable', 'boolean'],
+
+            'faq_heading' => ['nullable', 'string', 'max:255'],
+            'faqs' => ['nullable', 'array'],
+            'faqs.*.q' => ['nullable', 'string', 'max:2000'],
+            'faqs.*.a' => ['nullable', 'string', 'max:2000'],
+
+            'footer_kicker' => ['nullable', 'string', 'max:255'],
+            'footer_heading' => ['nullable', 'string', 'max:255'],
+            'developer_team' => ['nullable', 'array', 'max:12'],
+            'developer_team.*.name' => ['nullable', 'string', 'max:150'],
+            'developer_team.*.url' => ['nullable', 'string', 'max:500'],
+
             'contact_email' => ['required', 'email', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:100'],
             'institution_name' => ['nullable', 'string', 'max:255'],
@@ -1388,7 +1459,6 @@ class DashboardController extends Controller
             'cta_button_text' => ['nullable', 'string', 'max:100'],
             'copyright_text' => ['nullable', 'string'],
             'capabilities' => ['nullable', 'array'],
-            'faqs' => ['nullable', 'array'],
 
             // Media (Images & Videos)
             'hero_bg_image' => ['nullable', 'string', 'max:1000'],
@@ -1406,9 +1476,17 @@ class DashboardController extends Controller
             'footer_bg_image' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        if (!empty($validated['pipeline_steps']) && is_array($validated['pipeline_steps'])) {
+            foreach (array_values($validated['pipeline_steps']) as $idx => $step) {
+                if ($idx < 5 && !empty($step['img']) && !array_key_exists('step_' . ($idx + 1) . '_img', $validated)) {
+                    $validated['step_' . ($idx + 1) . '_img'] = $step['img'];
+                }
+            }
+        }
+
         LandingContent::setMany($validated);
 
-        return back()->with('success', 'Seluruh konten landing page, media gambar, video & email berhasil disimpan!');
+        return back()->with('success', 'Konten landing page v2 berhasil disimpan!');
     }
 
     public function createBackup(Request $request)
