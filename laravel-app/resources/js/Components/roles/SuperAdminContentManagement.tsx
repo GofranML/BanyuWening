@@ -31,7 +31,7 @@ interface SuperAdminContentManagementProps {
   landingContent?: LandingContentSettings;
 }
 
-type SubTabId = "kontak" | "media" | "hero" | "intro" | "fitur" | "faq" | "cta";
+type SubTabId = "kontak" | "media" | "hero" | "intro" | "faq" | "cta";
 
 const PRESET_IMAGES = [
   { label: "Aerasi Kolam", path: "/pics/aerasi.jpg" },
@@ -52,7 +52,7 @@ const PRESET_VIDEOS = [
 ];
 
 const V2_DEFAULTS = {
-  hero_tag: "Sistem Monitoring & Otomasi Kualitas Air Kolam",
+  hero_tag: "SMART AQUACULTURE STUDIO",
   hero_title: "BANYUWENING",
   hero_subtitle:
     "Platform IoT akuakultur presisi dengan kecerdasan Edge Fuzzy lokal dan kontrol pompa otomatis untuk menjaga kualitas air kolam lele 24 jam penuh.",
@@ -591,8 +591,8 @@ export function SuperAdminContentManagement({
             Manajemen Konten Landing Page
           </h1>
           <p className="text-[13px] text-muted mt-1">
-            Atur seluruh teks narasi, media gambar latar belakang, video ekosistem kolam,
-            daftar fitur, tanya jawab (FAQ), dan alamat email kontak resmi BanyuWening.
+            Atur teks hero, narasi intro, video ekosistem kolam, 5 foto tahapan pipeline,
+            tanya jawab (FAQ), tombol demo, dan kontak resmi yang tampil di landing page BanyuWening.
           </p>
         </div>
 
@@ -669,18 +669,6 @@ export function SuperAdminContentManagement({
         >
           <FileText className="w-4 h-4" />
           <span>Narasi Intro</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("fitur")}
-          className={`pb-2.5 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeSubTab === "fitur"
-              ? "border-brand text-brand"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Fitur & Keunggulan ({capabilities.length})</span>
         </button>
 
         <button
@@ -935,7 +923,7 @@ export function SuperAdminContentManagement({
                 <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
                     <span>Tahap 02</span>
-                    <span className="text-ink">Kirim (ESP32)</span>
+                    <span className="text-ink">Isolasi (Watchdog)</span>
                   </div>
                   <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
                     <img
@@ -1031,7 +1019,7 @@ export function SuperAdminContentManagement({
                 <div className="p-3 bg-surface-2 rounded-[6px] border border-line space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] font-bold text-brand uppercase">
                     <span>Tahap 05</span>
-                    <span className="text-ink">Kabari (WA & Telegram)</span>
+                    <span className="text-ink">Kabari WA</span>
                   </div>
                   <div className="h-28 rounded overflow-hidden bg-black/40 border border-line">
                     <img
